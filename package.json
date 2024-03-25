@@ -3,6 +3,7 @@
 	"displayName": "Ren'Py Warp to Line",
 	"description": "warp to current line in renpy",
 	"version": "0.0.1",
+	"publisher": "PaisleySoftworks",
 	"engines": {
 		"vscode": "^1.87.0"
 	},
