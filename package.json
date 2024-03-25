@@ -1,7 +1,7 @@
 {
 	"name": "renpyWarp",
 	"displayName": "Ren'Py Warp to Line",
-	"description": "warp to current line in renpy",
+	"description": "warp to current line in ren'py",
 	"version": "0.0.2",
 	"publisher": "PaisleySoftworks",
 	"icon": "icon.jpeg",
@@ -27,7 +27,8 @@
 		"commands": [
 			{
 				"command": "renpyWarp.warp",
-				"title": "Warp to current line"
+				"title": "Renpy: Warp to current line",
+				"icon": "$(play)"
 			}
 		],
 		"keybindings": [
