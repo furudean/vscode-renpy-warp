@@ -1,46 +1,70 @@
 {
-	"name": "renpy-warp",
+	"name": "renpyWarp",
 	"displayName": "Ren'Py Warp to Line",
 	"description": "warp to current line in renpy",
 	"version": "0.0.1",
 	"engines": {
 		"vscode": "^1.87.0"
 	},
+	"keywords": [
+		"renpy"
+	],
 	"categories": [
 		"Other"
 	],
-	"activationEvents": [],
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/furudean/renpy-warp.git"
+	},
+	"preview": true,
+	"activationEvents": [
+		"onLanguage:renpy"
+	],
 	"main": "./extension.js",
 	"contributes": {
 		"commands": [
 			{
-				"command": "renpy-warp.warp",
+				"command": "renpyWarp.warp",
 				"title": "Warp to current line"
+			}
+		],
+		"keybindings": [
+			{
+				"command": "renpyWarp.warp",
+				"key": "ctrl+k shift+e",
+				"mac": "cmd+k shift+e",
+				"when": "editorTextFocus"
 			}
 		],
 		"configuration": {
 			"title": "TypeScript",
 			"properties": {
-				"renpy-warp.sdkPath": {
+				"renpyWarp.sdkPath": {
 					"type": "string",
-					"default": "~/renpy-sdk",
-					"description": "A path to the Ren'Py SDK directory"
+					"default": "~/renpy",
+					"description": "Path to the Ren'Py SDK"
 				}
 			}
 		}
 	},
+	"extensionDependencies": [
+		"LuqueDaniel.languague-renpy"
+	],
 	"scripts": {
 		"lint": "eslint .",
 		"pretest": "npm run lint",
 		"test": "vscode-test"
 	},
 	"devDependencies": {
-		"@types/vscode": "^1.87.0",
 		"@types/mocha": "^10.0.6",
 		"@types/node": "18.x",
-		"eslint": "^8.56.0",
-		"typescript": "^5.3.3",
+		"@types/vscode": "^1.87.0",
 		"@vscode/test-cli": "^0.0.6",
-		"@vscode/test-electron": "^2.3.9"
+		"@vscode/test-electron": "^2.3.9",
+		"eslint": "^8.56.0",
+		"typescript": "^5.3.3"
+	},
+	"dependencies": {
+		"untildify": "^4.0.0"
 	}
 }

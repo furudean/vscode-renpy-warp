@@ -1,6 +1,8 @@
 const vscode = require('vscode')
 const path = require('path')
 const child_process = require('child_process')
+const fs = require('fs/promises')
+const untildify = require('untildify')
 
 /**
  * @param {string} cmd
@@ -25,8 +27,9 @@ function escape_shell_args(arg) {
 
 /**
  * @param {string} filename
+ * @returns {string}
  */
-function relative_to_game_root(filename, haystack = null) {
+function find_game_root(filename, haystack = null) {
 	const workspace_root = vscode.workspace.workspaceFolders[0].uri.fsPath
 
 	if (haystack) {
@@ -36,10 +39,7 @@ function relative_to_game_root(filename, haystack = null) {
 	}
 
 	if (path.basename(haystack) === 'game') {
-		return {
-			filename: filename.replace(haystack + '/', ''),
-			game_root: haystack,
-		}
+		return haystack
 	}
 
 	if (haystack === workspace_root) {
@@ -47,52 +47,73 @@ function relative_to_game_root(filename, haystack = null) {
 		return null
 	}
 
-	return relative_to_game_root(filename, haystack)
+	return find_game_root(filename, haystack)
+}
+
+async function main() {
+	const active_editor = vscode.window.activeTextEditor
+	let sdk_path = vscode.workspace.getConfiguration('renpyWarp').get('sdkPath')
+
+	if (!active_editor) {
+		return
+	}
+
+	sdk_path = untildify(sdk_path)
+	const executable = path.join(sdk_path, 'renpy.sh')
+
+	try {
+		await fs.access(executable, fs.constants.X_OK)
+	} catch (err) {
+		console.error(err)
+		vscode.window
+			.showErrorMessage(
+				`No valid renpy.sh found at ${executable}. Please set a valid SDK path in \`renpyWarp.sdkPath\`.`,
+				'Open Settings'
+			)
+			.then((selection) => {
+				if (selection === 'Open Settings') {
+					vscode.commands.executeCommand(
+						'workbench.action.openSettings',
+						'renpyWarp.sdkPath'
+					)
+				}
+			})
+		return
+	}
+
+	// is renpy file
+	if (active_editor.document.languageId !== 'renpy') {
+		vscode.window.showErrorMessage('Not in Renpy file')
+		return
+	}
+
+	const line = active_editor.selection.active.line + 1
+	const current_file = active_editor.document.fileName
+	const game_root = find_game_root(current_file)
+	const filename_relative = current_file.replace(game_root + '/', '')
+
+	const cmd = [
+		escape_shell_args(executable),
+		escape_shell_args(game_root),
+		'--warp',
+		escape_shell_args(filename_relative + ':' + line),
+	].join(' ')
+
+	try {
+		console.log(cmd)
+		await exec_shell(cmd)
+	} catch (err) {
+		vscode.window.showErrorMessage(err.message)
+	}
 }
 
 /**
  * @param {vscode.ExtensionContext} context
  */
 function activate(context) {
-	// The command has been defined in the package.json file
-	// Now provide the implementation of the command with  registerCommand
-	// The commandId parameter must match the command field in package.json
-	let disposable = vscode.commands.registerCommand(
-		'renpy-warp.warp',
-		async function () {
-			const active_editor = vscode.window.activeTextEditor
-			const sdk_path = vscode.workspace
-				.getConfiguration('renpy-warp')
-				.get('sdkPath')
-
-			if (!active_editor) {
-				return
-			}
-
-			// is renpy file
-			if (active_editor.document.languageId !== 'renpy') {
-				vscode.window.showErrorMessage('Not a Renpy file')
-				return
-			}
-
-			const line = active_editor.selection.active.line + 1
-			const current_file = active_editor.document.fileName
-			const { filename, game_root } = relative_to_game_root(current_file)
-
-			const cmd = `${sdk_path}/renpy.sh ${escape_shell_args(
-				game_root
-			)} --warp ${escape_shell_args(filename + ':' + line)}`
-
-			try {
-				console.log(cmd)
-				await exec_shell(cmd)
-			} catch (err) {
-				vscode.window.showErrorMessage(err.message)
-			}
-		}
+	context.subscriptions.push(
+		vscode.commands.registerCommand('renpyWarp.warp', main)
 	)
-
-	context.subscriptions.push(disposable)
 }
 
 // This method is called when your extension is deactivated
