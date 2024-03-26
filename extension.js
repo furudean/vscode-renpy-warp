@@ -1,6 +1,7 @@
 const vscode = require('vscode')
 const path = require('upath')
 const child_process = require('child_process')
+const os = require('os')
 const fs = require('fs/promises')
 const untildify = require('untildify')
 
@@ -57,31 +58,37 @@ function find_game_root(filename, haystack = null, depth = 1) {
 
 async function main() {
 	const active_editor = vscode.window.activeTextEditor
-	let sdk_path = vscode.workspace.getConfiguration('renpyWarp').get('sdkPath')
+	/** @type {string} */
+	let sdk_path = path.resolve(
+		untildify(vscode.workspace.getConfiguration('renpyWarp').get('sdkPath'))
+	)
 
 	if (!active_editor) {
 		return
 	}
 
-	sdk_path = untildify(sdk_path)
-	const executable = path.join(sdk_path, 'renpy.sh')
+	// https://www.renpy.org/doc/html/cli.html#command-line-interface
+	const executable_name =
+		os.platform() === 'win32'
+			? 'lib/py3-windows-x86_64/python.exe renpy.py'
+			: 'renpy.sh'
+
+	const executable = path.join(sdk_path, executable_name)
 
 	try {
-		await fs.access(executable, fs.constants.X_OK)
+		await fs.access(executable)
 	} catch (err) {
 		console.error(err)
 		vscode.window
 			.showErrorMessage(
-				`No valid renpy.sh found at ${executable}. Please set a valid SDK path in \`renpyWarp.sdkPath\`.`,
+				`No valid renpy CLI found in '${sdk_path}'. Please set a valid SDK path in settings`,
 				'Open Settings'
 			)
-			.then((selection) => {
-				if (selection === 'Open Settings') {
-					vscode.commands.executeCommand(
-						'workbench.action.openSettings',
-						'renpyWarp.sdkPath'
-					)
-				}
+			.then(() => {
+				vscode.commands.executeCommand(
+					'workbench.action.openSettings',
+					'renpyWarp.sdkPath'
+				)
 			})
 		return
 	}
