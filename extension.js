@@ -5,6 +5,9 @@ const os = require('os')
 const fs = require('fs/promises')
 const untildify = require('untildify')
 
+/** @type {vscode.LogOutputChannel} */
+let logger
+
 /**
  * @param {string} cmd
  */
@@ -78,7 +81,7 @@ async function main() {
 	try {
 		await fs.access(executable)
 	} catch (err) {
-		console.error(err)
+		logger.error(err)
 		vscode.window
 			.showErrorMessage(
 				`No valid renpy CLI found in '${sdk_path}'. Please set a valid SDK path in settings`,
@@ -123,10 +126,10 @@ async function main() {
 	].join(' ')
 
 	try {
-		console.log(cmd)
+		logger.info(cmd)
 		await exec_shell(cmd)
 	} catch (err) {
-		console.error(err)
+		logger.error(err)
 		vscode.window.showErrorMessage(err.message)
 	}
 }
@@ -135,6 +138,10 @@ async function main() {
  * @param {vscode.ExtensionContext} context
  */
 function activate(context) {
+	logger = vscode.window.createOutputChannel("Ren'Py Warp to Line", {
+		log: true,
+	})
+
 	context.subscriptions.push(
 		vscode.commands.registerCommand('renpyWarp.warp', main)
 	)
