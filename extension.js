@@ -1,5 +1,5 @@
 const vscode = require('vscode')
-const path = require('path')
+const path = require('upath')
 const child_process = require('child_process')
 const fs = require('fs/promises')
 const untildify = require('untildify')
