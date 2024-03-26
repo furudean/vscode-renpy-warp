@@ -103,7 +103,10 @@ async function main() {
 		return
 	}
 
-	const filename_relative = current_file.replace(game_root + '/', '')
+	const filename_relative = current_file.replace(
+		path.join(game_root, '/game/'),
+		''
+	)
 
 	const cmd = [
 		escape_shell_args(executable),
