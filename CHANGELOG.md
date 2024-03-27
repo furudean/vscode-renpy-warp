@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## Unreleased
+
+-   Updated the README, documenting some troubleshooting steps.
+
 ## 0.1.1 - 2024-03-27
 
 The icon for the extension has been updated to be an official rendition of
