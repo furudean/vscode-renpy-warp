@@ -23,6 +23,13 @@ function exec_shell(cmd) {
 	})
 }
 
+function open_sdk_path() {
+	vscode.commands.executeCommand(
+		'workbench.action.openSettings',
+		'renpyWarp.sdkPath'
+	)
+}
+
 /**
  * @param {string} filename
  * @param {string} [haystack]
@@ -56,14 +63,29 @@ function find_game_root(filename, haystack = null, depth = 1) {
 
 async function main() {
 	const active_editor = vscode.window.activeTextEditor
-	/** @type {string} */
-	let sdk_path = path.resolve(
-		untildify(vscode.workspace.getConfiguration('renpyWarp').get('sdkPath'))
-	)
 
 	if (!active_editor) {
 		return
 	}
+
+	const raw_sdk_path = vscode.workspace
+		.getConfiguration('renpyWarp')
+		.get('sdkPath')
+
+	logger.info('raw sdk path:', raw_sdk_path)
+
+	if (!raw_sdk_path) {
+		vscode.window
+			.showErrorMessage(
+				"Please set a valid Ren'Py SDK path",
+				'Open Settings'
+			)
+			.then(open_sdk_path)
+		return
+	}
+
+	/** @type {string} */
+	let sdk_path = path.resolve(untildify(raw_sdk_path))
 
 	// https://www.renpy.org/doc/html/cli.html#command-line-interface
 	const executable_name =
@@ -82,12 +104,7 @@ async function main() {
 				`No valid Ren'Py CLI found in '${sdk_path}'. Please set a valid SDK path in settings`,
 				'Open Settings'
 			)
-			.then(() => {
-				vscode.commands.executeCommand(
-					'workbench.action.openSettings',
-					'renpyWarp.sdkPath'
-				)
-			})
+			.then(open_sdk_path)
 		return
 	}
 
