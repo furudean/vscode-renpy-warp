@@ -1,7 +1,7 @@
 {
 	"name": "renpyWarp",
 	"displayName": "Ren'Py Warp to Line",
-	"description": "warp to current line in ren'py",
+	"description": "Quickly open Ren'Py at current line",
 	"version": "0.1.0",
 	"publisher": "PaisleySoftworks",
 	"icon": "icon.jpeg",
