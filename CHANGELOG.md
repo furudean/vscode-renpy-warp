@@ -8,6 +8,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 -   Updated the README, documenting some troubleshooting steps.
 -   Refactor, shouldn't be any user-facing changes.
+-   Change the icon for the command `warpToFile`
 
 ## 0.1.1 - 2024-03-27
 

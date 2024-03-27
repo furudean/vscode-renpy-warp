@@ -34,7 +34,7 @@
 				"command": "renpyWarp.warpToFile",
 				"title": "Open Ren'Py at file",
 				"category": "Ren'Py Warp",
-				"icon": "$(play)"
+				"icon": "$(debug-alt)"
 			},
 			{
 				"command": "renpyWarp.launch",
