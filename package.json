@@ -2,7 +2,7 @@
 	"name": "renpyWarp",
 	"displayName": "Ren'Py Warp to Line",
 	"description": "warp to current line in ren'py",
-	"version": "0.0.10",
+	"version": "0.0.11",
 	"publisher": "PaisleySoftworks",
 	"icon": "icon.jpeg",
 	"engines": {
