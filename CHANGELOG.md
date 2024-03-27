@@ -7,6 +7,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 ## Unreleased
 
 -   Updated the README, documenting some troubleshooting steps.
+-   Refactor, shouldn't be any user-facing changes.
 
 ## 0.1.1 - 2024-03-27
 

@@ -6,6 +6,28 @@ const fs = require('node:fs/promises')
 const untildify = require('untildify')
 const { quoteForShell } = require('puka')
 
+class NoSDKError extends Error {
+	/**
+	 * @param {string} [message]
+	 */
+	constructor(message) {
+		super(message)
+		this.name = 'NoSDKError'
+	}
+}
+
+class BadSDKError extends Error {
+	/**
+	 * @param {string} [message]
+	 * @param {string} [sdk_path]
+	 */
+	constructor(message, sdk_path) {
+		super(message)
+		this.name = 'BadSDKError'
+		this.sdk_path = sdk_path
+	}
+}
+
 /** @type {vscode.LogOutputChannel} */
 let logger
 
@@ -73,6 +95,52 @@ function find_game_root(filename, haystack = null, depth = 1) {
 }
 
 /**
+ * @returns {Promise<string[]>}
+ */
+async function get_renpy_sh() {
+	const is_windows = os.platform() === 'win32'
+
+	/** @type {string} */
+	const raw_sdk_path = vscode.workspace
+		.getConfiguration('renpyWarp')
+		.get('sdkPath')
+
+	logger.debug('raw sdk path:', raw_sdk_path)
+
+	if (!raw_sdk_path.trim()) {
+		throw new NoSDKError()
+	}
+
+	const expanded_sdk_path = path.resolve(untildify(raw_sdk_path))
+
+	logger.debug('expanded sdk path:', expanded_sdk_path)
+
+	// on windows, we call python.exe and pass renpy.py as an argument
+	// on unix, we call renpy.sh directly
+	// https://www.renpy.org/doc/html/cli.html#command-line-interface
+	const executable_name = is_windows
+		? 'lib/py3-windows-x86_64/python.exe'
+		: 'renpy.sh'
+
+	const executable = path.join(expanded_sdk_path, executable_name)
+
+	try {
+		await fs.access(executable)
+	} catch (err) {
+		throw new BadSDKError('cannot find renpy.sh', expanded_sdk_path)
+	}
+
+	if (is_windows) {
+		// python.exe renpy.py
+		const win_renpy_path = path.join(expanded_sdk_path, 'renpy.py')
+		return [executable, win_renpy_path]
+	} else {
+		// renpy.sh
+		return [executable]
+	}
+}
+
+/**
  * @param {vscode.Uri} [uri]
  * @param {Partial<{warp: boolean, line: boolean}>} options
  */
@@ -83,44 +151,31 @@ async function main(uri, options = {}) {
 		...options,
 	}
 
-	const raw_sdk_path = vscode.workspace
-		.getConfiguration('renpyWarp')
-		.get('sdkPath')
-
-	logger.debug('raw sdk path:', raw_sdk_path)
-
-	if (!raw_sdk_path) {
-		vscode.window
-			.showErrorMessage(
-				"Please set a valid Ren'Py SDK path",
-				'Open Settings'
-			)
-			.then(open_sdk_path)
-		return
-	}
-
-	/** @type {string} */
-	let sdk_path = path.resolve(untildify(raw_sdk_path))
-
-	// https://www.renpy.org/doc/html/cli.html#command-line-interface
-	const executable_name =
-		os.platform() === 'win32'
-			? 'lib/py3-windows-x86_64/python.exe'
-			: 'renpy.sh'
-
-	const executable = path.join(sdk_path, executable_name)
+	/** @type {string[]} */
+	let renpy_sh
 
 	try {
-		await fs.access(executable)
+		renpy_sh = await get_renpy_sh()
 	} catch (err) {
-		logger.error(`no cli executable found, looked in ${executable}`, err)
-		vscode.window
-			.showErrorMessage(
-				`No valid Ren'Py CLI found in '${sdk_path}'. Please set a valid SDK path in settings`,
-				'Open Settings'
-			)
-			.then(open_sdk_path)
-		return
+		logger.error(err)
+		if (err instanceof BadSDKError) {
+			vscode.window
+				.showErrorMessage(
+					`Invalid Ren'Py SDK path: ${err.sdk_path}`,
+					'Open Settings'
+				)
+				.then(open_sdk_path)
+			return
+		} else if (err instanceof NoSDKError) {
+			vscode.window
+				.showErrorMessage(
+					"Please set a Ren'Py SDK path in the settings",
+					'Open Settings'
+				)
+				.then(open_sdk_path)
+			return
+		}
+		throw err
 	}
 
 	const current_file =
@@ -143,28 +198,23 @@ async function main(uri, options = {}) {
 	/** @type {string} */
 	let cmd
 
-	// windows calls python.exe and then renpy.py as an arg
-	const win_renpy_path =
-		os.platform() === 'win32' ? path.join(sdk_path, 'renpy.py') : null
-
 	if (options.warp) {
 		const line_number = options.line
 			? vscode.window.activeTextEditor.selection.active.line + 1
 			: 1
 
 		cmd = make_cmd([
-			executable,
-			win_renpy_path,
+			...renpy_sh,
 			game_root,
 			'--warp',
 			`${filename_relative}:${line_number}`,
 		])
 	} else {
-		cmd = make_cmd([executable, win_renpy_path, game_root])
+		cmd = make_cmd([...renpy_sh, game_root])
 	}
 
 	try {
-		logger.info('executing subshell', cmd)
+		logger.info('executing subshell:', cmd)
 		await exec_shell(cmd)
 	} catch (err) {
 		logger.error(err)
