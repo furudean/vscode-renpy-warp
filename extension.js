@@ -1,8 +1,8 @@
 const vscode = require('vscode')
 const path = require('upath')
-const child_process = require('child_process')
-const os = require('os')
-const fs = require('fs/promises')
+const child_process = require('node:child_process')
+const os = require('node:os')
+const fs = require('node:fs/promises')
 const untildify = require('untildify')
 
 /** @type {vscode.LogOutputChannel} */
@@ -53,6 +53,7 @@ function find_game_root(filename, haystack = null, depth = 1) {
 	}
 
 	if (haystack === workspace_root || depth >= 10) {
+		logger.info('exceeded recursion depth at', haystack)
 		return null
 	}
 
@@ -73,7 +74,7 @@ async function main() {
 	// https://www.renpy.org/doc/html/cli.html#command-line-interface
 	const executable_name =
 		os.platform() === 'win32'
-			? 'lib/py3-windows-x86_64/python.exe renpy.py'
+			? 'lib/py3-windows-x86_64/python.exe'
 			: 'renpy.sh'
 
 	const executable = path.join(sdk_path, executable_name)
@@ -81,10 +82,10 @@ async function main() {
 	try {
 		await fs.access(executable)
 	} catch (err) {
-		logger.error(err)
+		logger.error(`no cli executable found, looked in ${executable}`, err)
 		vscode.window
 			.showErrorMessage(
-				`No valid renpy CLI found in '${sdk_path}'. Please set a valid SDK path in settings`,
+				`No valid Ren'Py CLI found in '${sdk_path}'. Please set a valid SDK path in settings`,
 				'Open Settings'
 			)
 			.then(() => {
@@ -99,6 +100,7 @@ async function main() {
 	// is renpy file
 	if (active_editor.document.languageId !== 'renpy') {
 		vscode.window.showErrorMessage('Not in Renpy file')
+		logger.info('not in renpy file')
 		return
 	}
 
@@ -110,20 +112,21 @@ async function main() {
 		vscode.window.showErrorMessage(
 			'Unable to find "game" folder in parent directory. Not a Renpy project?'
 		)
+		logger.info(`cannot find game root in ${current_file}`)
 		return
 	}
 
-	const filename_relative = current_file.replace(
-		path.join(game_root, '/game/'),
-		''
-	)
+	const filename_relative = path.relative(path.join(game_root, 'game'), current_file)
 
 	const cmd = [
 		escape_shell_args(executable),
+		os.platform() === 'win32' ? 'renpy.py' : null,
 		escape_shell_args(game_root),
 		'--warp',
 		escape_shell_args(filename_relative + ':' + line),
-	].join(' ')
+	]
+		.filter(Boolean)
+		.join(' ')
 
 	try {
 		logger.info(cmd)
@@ -147,8 +150,9 @@ function activate(context) {
 	)
 }
 
-// This method is called when your extension is deactivated
-function deactivate() {}
+function deactivate() {
+	logger.dispose()
+}
 
 module.exports = {
 	activate,

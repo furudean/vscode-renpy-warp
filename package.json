@@ -27,10 +27,26 @@
 		"commands": [
 			{
 				"command": "renpyWarp.warp",
-				"title": "Renpy: Warp to current line",
+				"title": "Warp to current line",
+				"category": "Renpy",
 				"icon": "$(play)"
 			}
 		],
+		"menus": {
+			"commandPalette": [
+				{
+					"command": "renpyWarp.warp",
+					"when": "editorLangId == renpy"
+				}
+			],
+			"editor/title/run": [
+				{
+					"command": "renpyWarp.warp",
+					"group": "navigation",
+					"when": "editorLangId == renpy"
+				}
+			]
+		},
 		"keybindings": [
 			{
 				"command": "renpyWarp.warp",
