@@ -25,3 +25,9 @@ Open your Ren'Py game at the current line or file in the editor.
 You must set <code codesetting="renpyWarp.sdkPath">renpyWarp.sdkPath</code> to a
 valid Ren'Py SDK installation. If you haven't done so a prompt will appear to
 inform you to set it.
+
+## Attribution
+
+The icon for this extension is a cropped version of an rendition of the Ren'Py
+mascot, Eileen, taken from
+[the Ren'Py website](https://www.renpy.org/artcard.html).

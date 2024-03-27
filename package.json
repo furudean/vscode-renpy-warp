@@ -2,9 +2,9 @@
 	"name": "renpyWarp",
 	"displayName": "Ren'Py Warp to Line",
 	"description": "Quickly open Ren'Py at current line",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"publisher": "PaisleySoftworks",
-	"icon": "icon.jpeg",
+	"icon": "images/eileen.png",
 	"engines": {
 		"vscode": "^1.87.0"
 	},
@@ -121,7 +121,9 @@
 	"scripts": {
 		"lint": "eslint .",
 		"pretest": "npm run lint",
-		"test": "vscode-test"
+		"test": "vscode-test",
+		"package": "vsce package",
+		"publish": "vsce publish"
 	},
 	"devDependencies": {
 		"@types/mocha": "^10.0.6",
@@ -129,6 +131,7 @@
 		"@types/vscode": "^1.87.0",
 		"@vscode/test-cli": "^0.0.6",
 		"@vscode/test-electron": "^2.3.9",
+		"@vscode/vsce": "^2.24.0",
 		"eslint": "^8.56.0",
 		"typescript": "^5.3.3"
 	},
