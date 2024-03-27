@@ -4,6 +4,7 @@ const child_process = require('node:child_process')
 const os = require('node:os')
 const fs = require('node:fs/promises')
 const untildify = require('untildify')
+const { quoteForShell } = require('puka')
 
 /** @type {vscode.LogOutputChannel} */
 let logger
@@ -20,13 +21,6 @@ function exec_shell(cmd) {
 			return resolve(out)
 		})
 	})
-}
-
-/**
- * @param {string} arg
- */
-function escape_shell_args(arg) {
-	return `'${arg.replace(/'/g, `'\\''`)}'`
 }
 
 /**
@@ -116,17 +110,21 @@ async function main() {
 		return
 	}
 
-	const filename_relative = path.relative(path.join(game_root, 'game'), current_file)
+	const filename_relative = path.relative(
+		path.join(game_root, 'game'),
+		current_file
+	)
 
 	const cmd = [
-		escape_shell_args(executable),
-		os.platform() === 'win32' ? 'renpy.py' : null,
-		escape_shell_args(game_root),
+		executable,
+		os.platform() === 'win32' ? path.join(sdk_path, 'renpy.py') : null,
+		game_root,
 		'--warp',
-		escape_shell_args(filename_relative + ':' + line),
+		filename_relative + ':' + line,
 	]
 		.filter(Boolean)
-		.join(' ')
+		.map((part) => ' ' + quoteForShell(part))
+		.join('')
 
 	try {
 		logger.info(cmd)

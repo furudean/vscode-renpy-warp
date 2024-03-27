@@ -84,6 +84,7 @@
 		"typescript": "^5.3.3"
 	},
 	"dependencies": {
+		"puka": "^1.0.1",
 		"untildify": "^4.0.0",
 		"upath": "^2.0.1"
 	}
