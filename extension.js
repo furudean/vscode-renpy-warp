@@ -31,6 +31,17 @@ function open_sdk_path() {
 }
 
 /**
+ * @param {string[]} l
+ * @returns {string}
+ */
+function make_cmd(l) {
+	return l
+		.filter(Boolean)
+		.map((i) => ' ' + quoteForShell(i))
+		.join('')
+}
+
+/**
  * @param {string} filename
  * @param {string} [haystack]
  * @param {number} [depth]
@@ -61,18 +72,22 @@ function find_game_root(filename, haystack = null, depth = 1) {
 	return find_game_root(filename, haystack, depth + 1)
 }
 
-async function main() {
-	const active_editor = vscode.window.activeTextEditor
-
-	if (!active_editor) {
-		return
+/**
+ * @param {vscode.Uri} [uri]
+ * @param {Partial<{warp: boolean, line: boolean}>} options
+ */
+async function main(uri, options = {}) {
+	options = {
+		warp: false,
+		line: true,
+		...options,
 	}
 
 	const raw_sdk_path = vscode.workspace
 		.getConfiguration('renpyWarp')
 		.get('sdkPath')
 
-	logger.info('raw sdk path:', raw_sdk_path)
+	logger.debug('raw sdk path:', raw_sdk_path)
 
 	if (!raw_sdk_path) {
 		vscode.window
@@ -108,15 +123,8 @@ async function main() {
 		return
 	}
 
-	// is renpy file
-	if (active_editor.document.languageId !== 'renpy') {
-		vscode.window.showErrorMessage('Not in Renpy file')
-		logger.info('not in renpy file')
-		return
-	}
-
-	const line = active_editor.selection.active.line + 1
-	const current_file = active_editor.document.fileName
+	const current_file =
+		(uri && uri.fsPath) || vscode.window.activeTextEditor.document.fileName
 	const game_root = find_game_root(current_file)
 
 	if (!game_root) {
@@ -132,19 +140,31 @@ async function main() {
 		current_file
 	)
 
-	const cmd = [
-		executable,
-		os.platform() === 'win32' ? path.join(sdk_path, 'renpy.py') : null,
-		game_root,
-		'--warp',
-		filename_relative + ':' + line,
-	]
-		.filter(Boolean)
-		.map((part) => ' ' + quoteForShell(part))
-		.join('')
+	/** @type {string} */
+	let cmd
+
+	// windows calls python.exe and then renpy.py as an arg
+	const win_renpy_path =
+		os.platform() === 'win32' ? path.join(sdk_path, 'renpy.py') : null
+
+	if (options.warp) {
+		const line_number = options.line
+			? vscode.window.activeTextEditor.selection.active.line + 1
+			: 1
+
+		cmd = make_cmd([
+			executable,
+			win_renpy_path,
+			game_root,
+			'--warp',
+			`${filename_relative}:${line_number}`,
+		])
+	} else {
+		cmd = make_cmd([executable, win_renpy_path, game_root])
+	}
 
 	try {
-		logger.info(cmd)
+		logger.info('executing subshell', cmd)
 		await exec_shell(cmd)
 	} catch (err) {
 		logger.error(err)
@@ -161,7 +181,13 @@ function activate(context) {
 	})
 
 	context.subscriptions.push(
-		vscode.commands.registerCommand('renpyWarp.warp', main)
+		vscode.commands.registerCommand('renpyWarp.warpToLine', (uri) =>
+			main(uri, { warp: true })
+		),
+		vscode.commands.registerCommand('renpyWarp.launch', (uri) => main(uri)),
+		vscode.commands.registerCommand('renpyWarp.warpToFile', (uri) => {
+			main(uri, { warp: true, line: false })
+		})
 	)
 }
 

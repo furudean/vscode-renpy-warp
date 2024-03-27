@@ -2,7 +2,7 @@
 	"name": "renpyWarp",
 	"displayName": "Ren'Py Warp to Line",
 	"description": "warp to current line in ren'py",
-	"version": "0.0.11",
+	"version": "0.1.0",
 	"publisher": "PaisleySoftworks",
 	"icon": "icon.jpeg",
 	"engines": {
@@ -18,7 +18,6 @@
 		"type": "git",
 		"url": "https://github.com/furudean/vscode-renpy-warp.git"
 	},
-	"preview": true,
 	"activationEvents": [
 		"onLanguage:renpy"
 	],
@@ -26,33 +25,83 @@
 	"contributes": {
 		"commands": [
 			{
-				"command": "renpyWarp.warp",
-				"title": "Warp to current line",
-				"category": "Renpy",
+				"command": "renpyWarp.warpToLine",
+				"title": "Open Ren'Py at line",
+				"category": "Ren'Py Warp",
+				"icon": "$(debug-alt)"
+			},
+			{
+				"command": "renpyWarp.warpToFile",
+				"title": "Open Ren'Py at file",
+				"category": "Ren'Py Warp",
+				"icon": "$(play)"
+			},
+			{
+				"command": "renpyWarp.launch",
+				"title": "Launch project in Ren'Py",
+				"category": "Ren'Py Warp",
 				"icon": "$(play)"
 			}
 		],
 		"menus": {
 			"commandPalette": [
 				{
-					"command": "renpyWarp.warp",
+					"command": "renpyWarp.warpToLine",
+					"when": "editorLangId == renpy"
+				},
+				{
+					"command": "renpyWarp.warpToFile",
+					"when": "editorLangId == renpy"
+				},
+				{
+					"command": "renpyWarp.launch",
 					"when": "editorLangId == renpy"
 				}
 			],
 			"editor/title/run": [
 				{
-					"command": "renpyWarp.warp",
-					"group": "navigation",
+					"command": "renpyWarp.warpToFile",
+					"group": "renpywarp",
 					"when": "editorLangId == renpy"
+				}
+			],
+			"editor/context": [
+				{
+					"command": "renpyWarp.warpToLine",
+					"group": "renpywarp"
+				}
+			],
+			"editor/lineNumber/context": [
+				{
+					"command": "renpyWarp.warpToLine",
+					"group": "renpywarp"
+				}
+			],
+			"explorer/context": [
+				{
+					"command": "renpyWarp.warpToFile",
+					"group": "renpywarp"
 				}
 			]
 		},
 		"keybindings": [
 			{
-				"command": "renpyWarp.warp",
-				"key": "ctrl+k shift+e",
-				"mac": "cmd+k shift+e",
-				"when": "editorTextFocus"
+				"command": "renpyWarp.warpToLine",
+				"key": "alt+shift+e",
+				"mac": "cmd+shift+e",
+				"when": "editorTextFocus && editorLangId == renpy"
+			},
+			{
+				"command": "renpyWarp.warpToFile",
+				"key": "alt+shift+f",
+				"mac": "cmd+shift+f",
+				"when": "editorLangId == renpy"
+			},
+			{
+				"command": "renpyWarp.launch",
+				"key": "alt+shift+l",
+				"mac": "cmd+shift+l",
+				"when": "editorLangId == renpy"
 			}
 		],
 		"configuration": {
