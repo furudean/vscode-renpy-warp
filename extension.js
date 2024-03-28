@@ -311,7 +311,7 @@ function activate(context) {
 
 	const launch_status_bar = vscode.window.createStatusBarItem(
 		vscode.StatusBarAlignment.Left,
-		100
+		0
 	)
 	launch_status_bar.command = 'renpyWarp.launch'
 	launch_status_bar.text = `$(play) Launch project`
