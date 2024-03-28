@@ -6,6 +6,9 @@ const fs = require('node:fs/promises')
 const untildify = require('untildify')
 const { quoteForShell } = require('puka')
 
+/** @type {vscode.LogOutputChannel} */
+let logger
+
 class NoSDKError extends Error {
 	/**
 	 * @param {string} [message]
@@ -28,8 +31,25 @@ class BadSDKError extends Error {
 	}
 }
 
-/** @type {vscode.LogOutputChannel} */
-let logger
+class BadEditorError extends Error {
+	/**
+	 * @param {string} [message]
+	 * @param {string} [editor_path]
+	 */
+	constructor(message, editor_path) {
+		super(message)
+		this.name = 'BadEditorError'
+		this.editor_path = editor_path
+	}
+}
+
+/**
+ * @param {string} str
+ * @returns {string}
+ */
+function parse_path(str) {
+	return path.resolve(untildify(str))
+}
 
 /**
  * @param {string} cmd
@@ -44,13 +64,6 @@ function exec_shell(cmd) {
 			return resolve(out)
 		})
 	})
-}
-
-function open_sdk_path() {
-	vscode.commands.executeCommand(
-		'workbench.action.openSettings',
-		'renpyWarp.sdkPath'
-	)
 }
 
 /**
@@ -103,17 +116,17 @@ async function get_renpy_sh() {
 	const is_windows = os.platform() === 'win32'
 
 	/** @type {string} */
-	const raw_sdk_path = vscode.workspace
+	const sdk_path_setting = vscode.workspace
 		.getConfiguration('renpyWarp')
 		.get('sdkPath')
 
-	logger.debug('raw sdk path:', raw_sdk_path)
+	logger.debug('raw sdk path:', sdk_path_setting)
 
-	if (!raw_sdk_path.trim()) {
+	if (!sdk_path_setting.trim()) {
 		throw new NoSDKError()
 	}
 
-	const expanded_sdk_path = path.resolve(untildify(raw_sdk_path))
+	const expanded_sdk_path = parse_path(sdk_path_setting)
 
 	logger.debug('expanded sdk path:', expanded_sdk_path)
 
@@ -132,10 +145,26 @@ async function get_renpy_sh() {
 		throw new BadSDKError('cannot find renpy.sh', expanded_sdk_path)
 	}
 
-	const editor = path.resolve(
-		expanded_sdk_path,
-		'launcher/Visual Studio Code (System).edit.py'
-	)
+	/** @type {string} */
+	const editor_setting = vscode.workspace
+		.getConfiguration('renpyWarp')
+		.get('editor')
+
+	/** @type {string} */
+	let editor
+
+	if (path.isAbsolute(editor_setting)) {
+		editor = parse_path(editor_setting)
+	} else {
+		// relative path to launcher
+		editor = path.resolve(expanded_sdk_path, editor_setting)
+	}
+
+	try {
+		await fs.access(editor)
+	} catch (err) {
+		throw new BadEditorError('cannot find editor', editor)
+	}
 
 	if (is_windows) {
 		const win_renpy_path = path.join(expanded_sdk_path, 'renpy.py')
@@ -167,7 +196,12 @@ async function main({ mode, uri } = {}) {
 					`Invalid Ren'Py SDK path: ${err.sdk_path}`,
 					'Open Settings'
 				)
-				.then(open_sdk_path)
+				.then(() => {
+					vscode.commands.executeCommand(
+						'workbench.action.openSettings',
+						'renpyWarp.sdkPath'
+					)
+				})
 			return
 		} else if (err instanceof NoSDKError) {
 			vscode.window
@@ -175,7 +209,25 @@ async function main({ mode, uri } = {}) {
 					"Please set a Ren'Py SDK path in the settings",
 					'Open Settings'
 				)
-				.then(open_sdk_path)
+				.then(() => {
+					vscode.commands.executeCommand(
+						'workbench.action.openSettings',
+						'renpyWarp.sdkPath'
+					)
+				})
+			return
+		} else if (err instanceof BadEditorError) {
+			vscode.window
+				.showErrorMessage(
+					`Invalid Ren'Py editor path: '${err.editor_path}'`,
+					'Open Settings'
+				)
+				.then(() => {
+					vscode.commands.executeCommand(
+						'workbench.action.openSettings',
+						'renpyWarp.editor'
+					)
+				})
 			return
 		}
 		throw err

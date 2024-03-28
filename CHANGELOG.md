@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## Unreleased
+
+-   Fix configuration title in `package.json`
+-   Introduces the setting `renpyWarp.editor` to specify the editor to use when
+    pressing <kbd>Shift</kbd>+<kbd>E</kbd> in Ren'Py. Equivalent to setting the
+    [environment variable `RENPY_EDIT_PY`](https://www.renpy.org/doc/html/editor.html).
+
 ## 0.3.1 - 2024-03-27
 
 -   Fix syntax for `RENPY_EDIT_PY` on Windows

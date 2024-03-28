@@ -54,7 +54,8 @@
 					"when": "editorLangId == renpy"
 				},
 				{
-					"command": "renpyWarp.launch"
+					"command": "renpyWarp.launch",
+					"when": "workbenchState == 'folder' || editorLangId == renpy"
 				}
 			],
 			"editor/title/run": [
@@ -104,12 +105,18 @@
 			}
 		],
 		"configuration": {
-			"title": "TypeScript",
+			"title": "Ren'Py Warp to Line",
 			"properties": {
 				"renpyWarp.sdkPath": {
 					"type": "string",
 					"default": "",
-					"description": "Path to the Ren'Py SDK. This is used to launch your game."
+					"markdownDescription": "Path to the Ren'Py SDK. This is used to launch your game.\n\nThis should be an absolute path, or a path starting with `~` to indicate the home directory.",
+					"order": 0
+				},
+				"renpyWarp.editor": {
+					"type": "string",
+					"default": "launcher/Visual Studio Code (System).edit.py",
+					"markdownDescription": "The Editor class to use when opening files from inside Ren'Py. Should be a relative or absolute path to an `.edit.py` file.\n\nRelative paths are resolved from the SDK path. For example, a valid value would be [`launcher/System Editor.edit.py`](https://github.com/renpy/renpy/blob/master/launcher/System%20Editor.edit.py).\n\nThis setting is equivalent to the environment variable [`RENPY_EDIT_PY`, as defined in Ren'Py's documentation](https://www.renpy.org/doc/html/editor.html)."
 				}
 			}
 		}
