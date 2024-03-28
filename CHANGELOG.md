@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## Unreleased
+
+-   Fix incorrect icon on the `renpyWarp.warpToFile` command.
+-   Allow `renpyWarp.launch` to be called for a workspace folder context
+-   Add a run button for the `renpyWarp.launch` command
+
 ## 0.2.0 - 2024-03-27
 
 -   Updated the README, documenting some troubleshooting steps.

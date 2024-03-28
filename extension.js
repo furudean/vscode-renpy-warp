@@ -141,16 +141,9 @@ async function get_renpy_sh() {
 }
 
 /**
- * @param {vscode.Uri} [uri]
- * @param {Partial<{warp: boolean, line: boolean}>} options
+ * @param {Partial<{mode: 'line' | 'file' | 'launch', uri: vscode.Uri}>} options
  */
-async function main(uri, options = {}) {
-	options = {
-		warp: false,
-		line: true,
-		...options,
-	}
-
+async function main({ mode, uri } = {}) {
 	/** @type {string[]} */
 	let renpy_sh
 
@@ -178,8 +171,19 @@ async function main(uri, options = {}) {
 		throw err
 	}
 
+	const active_editor = vscode.window.activeTextEditor
+
+	const renpy_file_in_workspace = await vscode.workspace
+		.findFiles('**/game/**/*.rpy', null, 1)
+		.then((files) => (files.length ? files[0].path : null))
+
 	const current_file =
-		(uri && uri.fsPath) || vscode.window.activeTextEditor.document.fileName
+		(uri && uri.fsPath) ||
+		(active_editor && active_editor.document.fileName) ||
+		renpy_file_in_workspace
+
+	logger.info('current file:', current_file)
+
 	const game_root = find_game_root(current_file)
 
 	if (!game_root) {
@@ -198,10 +202,13 @@ async function main(uri, options = {}) {
 	/** @type {string} */
 	let cmd
 
-	if (options.warp) {
-		const line_number = options.line
-			? vscode.window.activeTextEditor.selection.active.line + 1
-			: 1
+	if (mode === 'launch') {
+		cmd = make_cmd([...renpy_sh, game_root])
+	} else {
+		const line_number =
+			mode === 'line'
+				? vscode.window.activeTextEditor.selection.active.line + 1
+				: 1
 
 		cmd = make_cmd([
 			...renpy_sh,
@@ -209,8 +216,6 @@ async function main(uri, options = {}) {
 			'--warp',
 			`${filename_relative}:${line_number}`,
 		])
-	} else {
-		cmd = make_cmd([...renpy_sh, game_root])
 	}
 
 	try {
@@ -230,20 +235,30 @@ function activate(context) {
 		log: true,
 	})
 
+	const launch_status_bar = vscode.window.createStatusBarItem(
+		vscode.StatusBarAlignment.Left,
+		100
+	)
+	launch_status_bar.command = 'renpyWarp.launch'
+	launch_status_bar.text = `$(play) Launch project`
+	launch_status_bar.show()
+
 	context.subscriptions.push(
 		vscode.commands.registerCommand('renpyWarp.warpToLine', (uri) =>
-			main(uri, { warp: true })
+			main({ uri, mode: 'line' })
 		),
-		vscode.commands.registerCommand('renpyWarp.launch', (uri) => main(uri)),
 		vscode.commands.registerCommand('renpyWarp.warpToFile', (uri) => {
-			main(uri, { warp: true, line: false })
-		})
+			main({ uri, mode: 'file' })
+		}),
+		vscode.commands.registerCommand('renpyWarp.launch', (uri) =>
+			main({ uri, mode: 'launch' })
+		),
+		launch_status_bar,
+		logger
 	)
 }
 
-function deactivate() {
-	logger.dispose()
-}
+function deactivate() {}
 
 module.exports = {
 	activate,

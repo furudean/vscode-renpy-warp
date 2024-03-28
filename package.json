@@ -28,13 +28,13 @@
 				"command": "renpyWarp.warpToLine",
 				"title": "Open Ren'Py at line",
 				"category": "Ren'Py Warp",
-				"icon": "$(debug-alt)"
+				"icon": "$(play)"
 			},
 			{
 				"command": "renpyWarp.warpToFile",
 				"title": "Open Ren'Py at file",
 				"category": "Ren'Py Warp",
-				"icon": "$(debug-alt)"
+				"icon": "$(play)"
 			},
 			{
 				"command": "renpyWarp.launch",
@@ -54,8 +54,7 @@
 					"when": "editorLangId == renpy"
 				},
 				{
-					"command": "renpyWarp.launch",
-					"when": "editorLangId == renpy"
+					"command": "renpyWarp.launch"
 				}
 			],
 			"editor/title/run": [
@@ -101,7 +100,7 @@
 				"command": "renpyWarp.launch",
 				"key": "alt+shift+l",
 				"mac": "cmd+shift+l",
-				"when": "editorLangId == renpy"
+				"when": "workspaceFolderCount >= 1"
 			}
 		],
 		"configuration": {
