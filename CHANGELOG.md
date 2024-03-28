@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 
 This project adheres to [Semantic Versioning](http://semver.org/).
 
-## Unreleased
+## 0.5.0 - 2024-03-28
 
 -   Using commands will update the spinner in the status bar to indicate that the
     command is running. (Though it's slightly faked)
