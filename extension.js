@@ -118,7 +118,7 @@ async function get_renpy_sh() {
 	logger.debug('expanded sdk path:', expanded_sdk_path)
 
 	// on windows, we call python.exe and pass renpy.py as an argument
-	// on unix, we call renpy.sh directly
+	// on all other systems, we call renpy.sh directly
 	// https://www.renpy.org/doc/html/cli.html#command-line-interface
 	const executable_name = is_windows
 		? 'lib/py3-windows-x86_64/python.exe'
@@ -136,15 +136,17 @@ async function get_renpy_sh() {
 		expanded_sdk_path,
 		'launcher/Visual Studio Code (System).edit.py'
 	)
-	const editor_env = `RENPY_EDIT_PY='${editor}'`
 
 	if (is_windows) {
 		const win_renpy_path = path.join(expanded_sdk_path, 'renpy.py')
-		// RENPY_EDIT_PY=editor.edit.py python.exe renpy.py
-		return editor_env + ' && ' + make_cmd([executable, win_renpy_path])
+		// set RENPY_EDIT_PY=editor.edit.py && python.exe renpy.py
+		return (
+			`set "RENPY_EDIT_PY=${editor}" && ` +
+			make_cmd([executable, win_renpy_path])
+		)
 	} else {
 		// RENPY_EDIT_PY=editor.edit.py renpy.sh
-		return editor_env + ' ' + make_cmd([executable])
+		return `RENPY_EDIT_PY='${editor}' ` + make_cmd([executable])
 	}
 }
 
