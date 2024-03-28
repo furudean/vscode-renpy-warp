@@ -317,15 +317,35 @@ function activate(context) {
 	launch_status_bar.text = `$(play) Launch project`
 	launch_status_bar.show()
 
+	/** @type {NodeJS.Timeout} */
+	let launch_timeout
+
+	function has_spinner(fn) {
+		return (...args) => {
+			clearTimeout(launch_timeout)
+
+			launch_status_bar.text = `$(sync~spin) Launching...`
+
+			launch_timeout = setTimeout(() => {
+				launch_status_bar.text = `$(play) Launch project`
+			}, 2000)
+
+			return fn(...args)
+		}
+	}
+
 	context.subscriptions.push(
-		vscode.commands.registerCommand('renpyWarp.warpToLine', (uri) =>
-			main({ uri, mode: 'line' })
+		vscode.commands.registerCommand(
+			'renpyWarp.warpToLine',
+			has_spinner((uri) => main({ uri, mode: 'line' }))
 		),
-		vscode.commands.registerCommand('renpyWarp.warpToFile', (uri) => {
-			main({ uri, mode: 'file' })
-		}),
-		vscode.commands.registerCommand('renpyWarp.launch', (uri) =>
-			main({ uri, mode: 'launch' })
+		vscode.commands.registerCommand(
+			'renpyWarp.warpToFile',
+			has_spinner((uri) => main({ uri, mode: 'file' }))
+		),
+		vscode.commands.registerCommand(
+			'renpyWarp.launch',
+			has_spinner((uri) => main({ uri, mode: 'launch' }))
 		),
 		launch_status_bar,
 		logger
