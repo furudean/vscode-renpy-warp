@@ -9,6 +9,9 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 -   Fix incorrect icon on the `renpyWarp.warpToFile` command.
 -   Allow `renpyWarp.launch` to be called for a workspace folder context
 -   Add a status bar button for the `renpyWarp.launch` command
+-   Set [`RENPY_EDIT_PY`](https://www.renpy.org/doc/html/editor.html) to point
+    at the system Visual Studio Code, allowing <kbd>Shift</kbd>+<kbd>E</kbd> to
+    open the current line from Ren'Py.
 
 ## 0.2.0 - 2024-03-27
 

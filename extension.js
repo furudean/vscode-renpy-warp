@@ -33,6 +33,7 @@ let logger
 
 /**
  * @param {string} cmd
+ * @returns {Promise<string>}
  */
 function exec_shell(cmd) {
 	return new Promise((resolve, reject) => {
@@ -53,14 +54,15 @@ function open_sdk_path() {
 }
 
 /**
- * @param {string[]} l
+ * @param {string[]} cmds
  * @returns {string}
  */
-function make_cmd(l) {
-	return l
+function make_cmd(cmds) {
+	return cmds
 		.filter(Boolean)
 		.map((i) => ' ' + quoteForShell(i))
 		.join('')
+		.trim()
 }
 
 /**
@@ -95,7 +97,7 @@ function find_game_root(filename, haystack = null, depth = 1) {
 }
 
 /**
- * @returns {Promise<string[]>}
+ * @returns {Promise<string>}
  */
 async function get_renpy_sh() {
 	const is_windows = os.platform() === 'win32'
@@ -130,13 +132,19 @@ async function get_renpy_sh() {
 		throw new BadSDKError('cannot find renpy.sh', expanded_sdk_path)
 	}
 
+	const editor = path.resolve(
+		expanded_sdk_path,
+		'launcher/Visual Studio Code (System).edit.py'
+	)
+	const editor_env = `RENPY_EDIT_PY='${editor}'`
+
 	if (is_windows) {
-		// python.exe renpy.py
 		const win_renpy_path = path.join(expanded_sdk_path, 'renpy.py')
-		return [executable, win_renpy_path]
+		// RENPY_EDIT_PY=editor.edit.py python.exe renpy.py
+		return editor_env + ' && ' + make_cmd([executable, win_renpy_path])
 	} else {
-		// renpy.sh
-		return [executable]
+		// RENPY_EDIT_PY=editor.edit.py renpy.sh
+		return editor_env + ' ' + make_cmd([executable])
 	}
 }
 
@@ -144,7 +152,7 @@ async function get_renpy_sh() {
  * @param {Partial<{mode: 'line' | 'file' | 'launch', uri: vscode.Uri}>} options
  */
 async function main({ mode, uri } = {}) {
-	/** @type {string[]} */
+	/** @type {string} */
 	let renpy_sh
 
 	try {
@@ -201,7 +209,7 @@ async function main({ mode, uri } = {}) {
 	}
 
 	const filename_relative = path.relative(
-		path.join(game_root, 'game'),
+		path.join(game_root, 'game/'),
 		current_file
 	)
 
@@ -209,19 +217,21 @@ async function main({ mode, uri } = {}) {
 	let cmd
 
 	if (mode === 'launch') {
-		cmd = make_cmd([...renpy_sh, game_root])
+		cmd = renpy_sh + ' ' + make_cmd([game_root])
 	} else {
 		const line_number =
 			mode === 'line'
 				? vscode.window.activeTextEditor.selection.active.line + 1
 				: 1
 
-		cmd = make_cmd([
-			...renpy_sh,
-			game_root,
-			'--warp',
-			`${filename_relative}:${line_number}`,
-		])
+		cmd =
+			renpy_sh +
+			' ' +
+			make_cmd([
+				game_root,
+				'--warp',
+				`${filename_relative}:${line_number}`,
+			])
 	}
 
 	try {
@@ -229,7 +239,11 @@ async function main({ mode, uri } = {}) {
 		await exec_shell(cmd)
 	} catch (err) {
 		logger.error(err)
-		vscode.window.showErrorMessage(err.message)
+		vscode.window
+			.showErrorMessage("Ren'Py closed with errors", 'Open Log')
+			.then(() => {
+				logger.show()
+			})
 	}
 }
 
