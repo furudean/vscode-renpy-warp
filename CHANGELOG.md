@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 
 This project adheres to [Semantic Versioning](http://semver.org/).
 
-## Unreleased
+## 0.4.0 - 2024-03-27
 
 -   Fix configuration title in `package.json`
 -   Introduces the setting `renpyWarp.editor` to specify the editor to use when
