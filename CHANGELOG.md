@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## 0.4.1 - 2024-03-27
+
+-   Minor documentation updates
+
 ## 0.4.0 - 2024-03-27
 
 -   Fix configuration title in `package.json`

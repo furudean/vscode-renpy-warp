@@ -16,9 +16,10 @@ Open your Ren'Py game at the current line or file in the editor.
 2. By using the right click context in an editor ![](images/editor_context.png)
 3. By using the right click context menu in the file explorer
    ![](images/explorer_context.png)
-4. By opening the command palette and typing the command, i.e.
+4. By using the status bar ![](images/status_bar.png)
+5. By opening the command palette and typing the command, i.e.
    `Renpy: Open Ren'Py at current line`
-5. Via keyboard shortcut ([see here](#commands))
+6. Via keyboard shortcut ([see here](#commands))
 
 ## Configuration
 
