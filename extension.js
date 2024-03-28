@@ -178,9 +178,15 @@ async function main({ mode, uri } = {}) {
 		.then((files) => (files.length ? files[0].path : null))
 
 	const current_file =
-		(uri && uri.fsPath) ||
-		(active_editor && active_editor.document.fileName) ||
-		renpy_file_in_workspace
+		mode === 'launch'
+			? renpy_file_in_workspace
+			: (uri && uri.fsPath) ||
+			  (active_editor && active_editor.document.fileName)
+
+	if (!current_file) {
+		vscode.window.showErrorMessage("No Ren'Py project in workspace")
+		return
+	}
 
 	logger.info('current file:', current_file)
 
@@ -188,7 +194,7 @@ async function main({ mode, uri } = {}) {
 
 	if (!game_root) {
 		vscode.window.showErrorMessage(
-			'Unable to find "game" folder in parent directory. Not a Renpy project?'
+			'Unable to find "game" folder in parent directory. Not a Ren\'Py project?'
 		)
 		logger.info(`cannot find game root in ${current_file}`)
 		return

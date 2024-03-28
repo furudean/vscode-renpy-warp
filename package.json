@@ -100,7 +100,7 @@
 				"command": "renpyWarp.launch",
 				"key": "alt+shift+l",
 				"mac": "cmd+shift+l",
-				"when": "workspaceFolderCount >= 1"
+				"when": "workbenchState == 'folder' || editorLangId == renpy"
 			}
 		],
 		"configuration": {
