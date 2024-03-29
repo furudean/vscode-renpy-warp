@@ -237,7 +237,7 @@ async function main({ mode, uri } = {}) {
 
 	const renpy_file_in_workspace = await vscode.workspace
 		.findFiles('**/game/**/*.rpy', null, 1)
-		.then((files) => (files.length ? files[0].path : null))
+		.then((files) => (files.length ? files[0].fsPath : null))
 
 	const current_file =
 		mode === 'launch'
