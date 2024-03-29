@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 
 This project adheres to [Semantic Versioning](http://semver.org/).
 
-## Unreleased
+## 0.7.0 - 2024-03-29
 
 -   Add a button to reopen the game with the same parameters if it crashes
 -   Use `fsPath` instead of `path` when finding the project path (via
