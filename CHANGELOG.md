@@ -7,6 +7,9 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 ## Unreleased
 
 -   Add a button to reopen the game with the same parameters if it crashes
+-   Use `fsPath` instead of `path` when finding the project path (via
+    [#1](https://github.com/furudean/vscode-renpy-warp/pull/1), thanks
+    @SirFlobo!)
 
 ## 0.6.0 - 2024-03-28
 
