@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## Unreleased
+
+-   Add a button to reopen the game with the same parameters if it crashes
+
 ## 0.6.0 - 2024-03-28
 
 -   Status bar has 0 priority now, so it should show up at the end of the status

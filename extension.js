@@ -294,9 +294,10 @@ async function main({ mode, uri } = {}) {
 	} catch (err) {
 		logger.error(err)
 		vscode.window
-			.showErrorMessage("Ren'Py closed with errors", 'Open Log')
-			.then(() => {
-				logger.show()
+			.showErrorMessage("Ren'Py closed with errors", 'Reopen', 'Logs')
+			.then((selected) => {
+				if (selected === 'Reopen') main({ mode, uri })
+				else if (selected === 'Logs') logger.show()
 			})
 	}
 }
