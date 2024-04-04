@@ -1,8 +1,10 @@
 # Ren'Py Warp to Line
 
-Open your Ren'Py game at the current line or file in the editor.
+Open your Ren'Py game at the current line or file in Visual Studio Code.
 
 ## Commands
+
+This extension contributes commands to the command palette.
 
 | Command                | Description                     | Shortcut                                     | Shortcut (Mac)                             |
 | ---------------------- | ------------------------------- | -------------------------------------------- | ------------------------------------------ |
@@ -11,6 +13,8 @@ Open your Ren'Py game at the current line or file in the editor.
 | `renpyWarp.launch`     | Launch the Ren'Py project       | <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>L</kbd> | <kbd>⌘</kbd>+<kbd>Shift</kbd>+<kbd>L</kbd> |
 
 ## Triggers
+
+The various commands added can be activated from the UI in Visual Studio Code.
 
 1. By using title bar run menu ![](images/tab_bar.png)
 2. By using the right click context in an editor ![](images/editor_context.png)
@@ -27,13 +31,21 @@ You must set <code codesetting="renpyWarp.sdkPath">renpyWarp.sdkPath</code> to a
 path where a Ren'Py SDK can be found. If you haven't done so, a prompt will appear
 to inform you to set it.
 
+<code
+codesetting="renpyWarp.advancedProgressBars">renpyWarp.advancedProgressBars</code>
+can be set to enhance the progress feedback used in this extension, but this
+requires your game to output something to standard output (stdout) when it's
+considered ready. If you don't do this, this feature will not work properly.
+This can most easily be achieved by adding an `init python:` block somewhere in
+an `.rpy` file that `print()`s some text.
+
 ## Troubleshooting
 
 In order to use the current line/file feature, your game must be compatible with
 warping as described in [the Ren'Py
 documentation](https://www.renpy.org/doc/html/developer_tools.html#warping-to-a-line).
-This feature has several limitations that you should be aware of, and as such may not
-work in all cases.
+This feature has several limitations that you should be aware of, and as such
+may not work in all cases.
 
 ## Attribution
 

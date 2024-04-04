@@ -9,8 +9,6 @@ const { quoteForShell } = require('puka')
 /** @type {vscode.LogOutputChannel} */
 let logger
 
-let clear_spinner_callback = () => {}
-
 class NoSDKError extends Error {
 	/**
 	 * @param {string} [message]
@@ -63,6 +61,13 @@ function make_cmd(cmds) {
 		.map((i) => ' ' + quoteForShell(i))
 		.join('')
 		.trim()
+}
+
+/** @returns {boolean} */
+function advanced_progress_bars_enabled() {
+	return vscode.workspace
+		.getConfiguration('renpyWarp')
+		.get('aadvancedProgressBars')
 }
 
 /**
@@ -176,8 +181,6 @@ async function get_renpy_sh() {
  * starts renpy.sh with the appropriate arguments. resolves with the child
  * process if ren'py starts successfully
  *
- * will usually not reject unless something is very wrong.
- *
  * @param {Partial<Options>} options
  * @returns {Promise<child_process.ChildProcess>}
  */
@@ -234,15 +237,15 @@ async function launch_renpy({ mode, uri } = {}) {
 
 	const active_editor = vscode.window.activeTextEditor
 
+	// deduce what is the current file for this context
 	const renpy_file_in_workspace = await vscode.workspace
 		.findFiles('**/game/**/*.rpy', null, 1)
 		.then((files) => (files.length ? files[0].fsPath : null))
+	const uri_path = uri && uri.fsPath
+	const active_file = active_editor && active_editor.document.fileName
 
 	const current_file =
-		mode === 'launch'
-			? renpy_file_in_workspace
-			: (uri && uri.fsPath) ||
-			  (active_editor && active_editor.document.fileName)
+		mode === 'launch' ? renpy_file_in_workspace : uri_path || active_file
 
 	if (!current_file) {
 		vscode.window.showErrorMessage("No Ren'Py project in workspace")
@@ -290,37 +293,160 @@ async function launch_renpy({ mode, uri } = {}) {
 	logger.info('executing subshell:', cmd)
 
 	const process = child_process.exec(cmd)
-	// const process = child_process.exec('dfjdgkdjk')
+	logger.info('created process', process.pid)
 
-	return new Promise((resolve) => {
-		process.stderr.on('data', (data) => {
-			console.error('process stderr:', data)
-		})
-		process.stdout.on('data', (data) => {
-			// it's likely that at this point the game has started
-			logger.info('process stdout:', data)
-			resolve(process)
-		})
-		process.on('exit', (code) => {
-			logger.info('process exited with code:', code)
-
-			if (code === 0) {
-				resolve(process)
-				return
-			}
-
-			vscode.window
-				.showErrorMessage(
-					"Ren'Py process exited with errors",
-					'Reopen',
-					'Logs'
-				)
-				.then((selected) => {
-					if (selected === 'Reopen') launch_renpy({ mode, uri })
-					else if (selected === 'Logs') logger.show()
-				})
-		})
+	process.stderr.on('data', (data) => {
+		console.error('process stderr:', data)
 	})
+	process.stdout.on('data', (data) => {
+		logger.info('process stdout:', data)
+	})
+	process.on('exit', (code) => {
+		logger.info(`process ${process.pid} exited with code`, code)
+
+		if (code === 0) return
+
+		vscode.window
+			.showErrorMessage(
+				"Ren'Py process exited with errors",
+				'Reopen',
+				'Logs'
+			)
+			.then((selected) => {
+				if (selected === 'Reopen') launch_renpy({ mode, uri })
+				else if (selected === 'Logs') logger.show()
+			})
+	})
+
+	return process
+}
+
+/**
+ * @param {(options: Partial<Options>) => Promise<child_process.ChildProcess>} start_process
+ * @returns {(options: Partial<Options>) => Promise<void>}
+ */
+function associate_status_bar(start_process) {
+	const launch_status_bar = vscode.window.createStatusBarItem(
+		vscode.StatusBarAlignment.Left,
+		0
+	)
+	launch_status_bar.command = 'renpyWarp.launchOrQuit'
+	launch_status_bar.show()
+
+	/** @type {child_process.ChildProcess | undefined} */
+	let active_process = undefined
+
+	/** @type {NodeJS.Timeout | undefined} */
+	let timeout = undefined
+
+	function kill() {
+		if (active_process) {
+			logger.info('killing active process')
+			active_process.kill()
+		}
+
+		active_process = undefined
+		launch_status_bar.text = `$(play) Launch project`
+		clearTimeout(timeout)
+	}
+
+	kill()
+
+	return async (...args) => {
+		if (active_process) return kill()
+
+		if (advanced_progress_bars_enabled()) {
+			timeout = setTimeout(() => {
+				vscode.window
+					.showWarningMessage(
+						"Ren'Py process took too long to output anything meaningful. You may want to disable advanced progress bars in the settings.",
+						'Open Settings'
+					)
+					.then(() => {
+						vscode.commands.executeCommand(
+							'workbench.action.openSettings',
+							'renpyWarp.aadvancedProgressBars'
+						)
+					})
+
+				active_process = undefined // detatch process
+				kill()
+			}, 10000)
+
+			launch_status_bar.text = `$(sync~spin) Launching...`
+
+			active_process = await start_process(...args)
+
+			// educated guess: if we see stdout, ren'py has started.
+			//
+			// this relies on the developer to add a print() statement
+			// somewhere, as ren'py doesn't print anything when it starts.
+			//
+			// for now, this feature is locked behind a setting.
+			active_process.stdout.on('data', () => {
+				launch_status_bar.text = `$(debug-stop) Quit Ren'Py`
+				clearTimeout(timeout)
+			})
+		} else {
+			launch_status_bar.text = `$(sync~spin) Launching...`
+			active_process = await start_process(...args)
+			launch_status_bar.text = `$(debug-stop) Quit Ren'Py`
+		}
+
+		active_process.on('exit', kill)
+	}
+}
+
+/**
+ * @param {(options: Partial<Options>) => Promise<child_process.ChildProcess>} start_process
+ * @returns {(options: Partial<Options>) => void}
+ */
+function associate_progress_notification(start_process) {
+	return (...args) => {
+		vscode.window.withProgress(
+			{
+				location: vscode.ProgressLocation.Notification,
+				title: "Launching Ren'Py...",
+			},
+			() =>
+				new Promise(async (resolve) => {
+					const process = await start_process(...args)
+
+					if (!advanced_progress_bars_enabled()) {
+						resolve()
+					} else {
+						const timeout = setTimeout(() => {
+							vscode.window
+								.showWarningMessage(
+									"Ren'Py process took too long to output anything meaningful. You may want to disable advanced progress bars in the settings.",
+									'Open Settings'
+								)
+								.then(() => {
+									vscode.commands.executeCommand(
+										'workbench.action.openSettings',
+										'renpyWarp.aadvancedProgressBars'
+									)
+								})
+							cleanup()
+						}, 10000)
+
+						function cleanup() {
+							clearTimeout(timeout)
+							resolve()
+						}
+
+						// educated guess: if we see stdout, ren'py has started.
+						//
+						// this relies on the developer to add a print() statement
+						// somewhere, as ren'py doesn't print anything when it starts.
+						//
+						// for now, this feature is locked behind a setting.
+						process.stdout.on('data', cleanup)
+						process.on('exit', cleanup)
+					}
+				})
+		)
+	}
 }
 
 /**
@@ -330,61 +456,33 @@ function activate(context) {
 	logger = vscode.window.createOutputChannel("Ren'Py Warp to Line", {
 		log: true,
 	})
-
-	const launch_status_bar = vscode.window.createStatusBarItem(
-		vscode.StatusBarAlignment.Left,
-		0
-	)
-	launch_status_bar.command = 'renpyWarp.launch'
-	launch_status_bar.show()
-
-	/**
-	 * @param {(...args) => Promise<child_process.ChildProcess>} fn
-	 */
-	function associate_status_bar(fn) {
-		/** @type {child_process.ChildProcess | undefined} */
-		let active_process = undefined
-
-		function reset() {
-			if (active_process) {
-				logger.info('killing active process')
-				active_process.kill()
-			}
-
-			launch_status_bar.text = `$(play) Launch project`
-			active_process = undefined
-		}
-
-		reset()
-
-		return async (...args) => {
-			if (active_process) return reset()
-
-			try {
-				launch_status_bar.text = `$(sync~spin) Launching...`
-				active_process = await fn(...args)
-				launch_status_bar.text = `$(debug-stop) Quit Ren'Py`
-				active_process.on('exit', reset)
-			} catch (err) {
-				reset()
-			}
-		}
-	}
-
 	context.subscriptions.push(
-		vscode.commands.registerCommand('renpyWarp.warpToLine', (uri) =>
-			launch_renpy({ uri, mode: 'line' })
+		vscode.commands.registerCommand(
+			'renpyWarp.warpToLine',
+			associate_progress_notification((...args) =>
+				launch_renpy({ mode: 'line', ...args })
+			)
 		),
-		vscode.commands.registerCommand('renpyWarp.warpToFile', (uri) =>
-			launch_renpy({ uri, mode: 'file' })
+		vscode.commands.registerCommand(
+			'renpyWarp.warpToFile',
+			associate_progress_notification((...args) =>
+				launch_renpy({ mode: 'file', ...args })
+			)
 		),
 		vscode.commands.registerCommand(
 			'renpyWarp.launch',
-			associate_status_bar((uri) => launch_renpy({ uri, mode: 'launch' }))
+			associate_progress_notification((...args) =>
+				launch_renpy({ mode: 'launch', ...args })
+			)
+		)
+	),
+		vscode.commands.registerCommand(
+			'renpyWarp.launchOrQuit',
+			associate_status_bar((...args) =>
+				launch_renpy({ mode: 'launch', ...args })
+			)
 		),
-		launch_status_bar,
 		logger
-	)
 }
 
 function deactivate() {}

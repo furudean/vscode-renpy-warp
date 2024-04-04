@@ -117,6 +117,11 @@
 					"type": "string",
 					"default": "launcher/Visual Studio Code (System).edit.py",
 					"markdownDescription": "The Editor class to use when opening files from inside Ren'Py. Should be a relative or absolute path to an `.edit.py` file.\n\nRelative paths are resolved from the SDK path. For example, a valid value would be [`launcher/System Editor.edit.py`](https://github.com/renpy/renpy/blob/master/launcher/System%20Editor.edit.py).\n\nThis setting is equivalent to the environment variable [`RENPY_EDIT_PY`, as defined in Ren'Py's documentation](https://www.renpy.org/doc/html/editor.html)."
+				},
+				"renpyWarp.advancedProgressBars": {
+					"type": "boolean",
+					"default": false,
+					"markdownDescription": "Show more granular progress bars when launching the game\n\nThis feature is opt-in, as it requires the game to output something to standard output (for example, via `print()`) when it's considered ready."
 				}
 			}
 		}

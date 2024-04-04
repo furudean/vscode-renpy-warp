@@ -6,8 +6,17 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
--   Implement proper handling for processes, which updates the status bar in
-    real time
+-   Improve handling for processes, which updates the status bar in real time.
+    Once started, the status bar will change to reflect that, and you can also
+    quit the game from this menu. This is powered by a new undocumented command,
+    `launchOrQuit`, which is not meant to be called directly.
+-   To commands that aren't associated with the status bar, a notification will
+    show until the process is launched
+-   Adds an experimental setting, `renpyWarp.aadvancedProgressBars` which
+    will enhance notifications when Ren'Py is starting. It waits for your game
+    to output something to stdout when it's considered "ready". Ren'Py does not
+    do this by default, so this feature will be opt-in for now.
+-   Deletes the old extension icon from the repository
 
 ## 0.7.0 - 2024-03-29
 
