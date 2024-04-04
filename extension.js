@@ -67,7 +67,7 @@ function make_cmd(cmds) {
 function advanced_progress_bars_enabled() {
 	return vscode.workspace
 		.getConfiguration('renpyWarp')
-		.get('aadvancedProgressBars')
+		.get('advancedProgressBars')
 }
 
 /**
@@ -365,7 +365,7 @@ function associate_status_bar(start_process) {
 					.then(() => {
 						vscode.commands.executeCommand(
 							'workbench.action.openSettings',
-							'renpyWarp.aadvancedProgressBars'
+							'renpyWarp.advancedProgressBars'
 						)
 					})
 
@@ -424,7 +424,7 @@ function associate_progress_notification(start_process) {
 								.then(() => {
 									vscode.commands.executeCommand(
 										'workbench.action.openSettings',
-										'renpyWarp.aadvancedProgressBars'
+										'renpyWarp.advancedProgressBars'
 									)
 								})
 							cleanup()
