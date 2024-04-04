@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## Unreleased
+
+-   Implement proper handling for processes, which updates the status bar in
+    real time
+
 ## 0.7.0 - 2024-03-29
 
 -   Add a button to reopen the game with the same parameters if it crashes

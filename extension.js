@@ -9,6 +9,8 @@ const { quoteForShell } = require('puka')
 /** @type {vscode.LogOutputChannel} */
 let logger
 
+let clear_spinner_callback = () => {}
+
 class NoSDKError extends Error {
 	/**
 	 * @param {string} [message]
@@ -49,21 +51,6 @@ class BadEditorError extends Error {
  */
 function parse_path(str) {
 	return path.resolve(untildify(str))
-}
-
-/**
- * @param {string} cmd
- * @returns {Promise<string>}
- */
-function exec_shell(cmd) {
-	return new Promise((resolve, reject) => {
-		child_process.exec(cmd, (err, out) => {
-			if (err) {
-				return reject(err)
-			}
-			return resolve(out)
-		})
-	})
 }
 
 /**
@@ -180,9 +167,21 @@ async function get_renpy_sh() {
 }
 
 /**
- * @param {Partial<{mode: 'line' | 'file' | 'launch', uri: vscode.Uri}>} options
+ * @typedef {Object} Options
+ * @property {'line' | 'file' | 'launch'} mode
+ * @property {vscode.Uri} uri
  */
-async function main({ mode, uri } = {}) {
+
+/**
+ * starts renpy.sh with the appropriate arguments. resolves with the child
+ * process if ren'py starts successfully
+ *
+ * will usually not reject unless something is very wrong.
+ *
+ * @param {Partial<Options>} options
+ * @returns {Promise<child_process.ChildProcess>}
+ */
+async function launch_renpy({ mode, uri } = {}) {
 	/** @type {string} */
 	let renpy_sh
 
@@ -288,18 +287,40 @@ async function main({ mode, uri } = {}) {
 			])
 	}
 
-	try {
-		logger.info('executing subshell:', cmd)
-		await exec_shell(cmd)
-	} catch (err) {
-		logger.error(err)
-		vscode.window
-			.showErrorMessage("Ren'Py closed with errors", 'Reopen', 'Logs')
-			.then((selected) => {
-				if (selected === 'Reopen') main({ mode, uri })
-				else if (selected === 'Logs') logger.show()
-			})
-	}
+	logger.info('executing subshell:', cmd)
+
+	const process = child_process.exec(cmd)
+	// const process = child_process.exec('dfjdgkdjk')
+
+	return new Promise((resolve) => {
+		process.stderr.on('data', (data) => {
+			console.error('process stderr:', data)
+		})
+		process.stdout.on('data', (data) => {
+			// it's likely that at this point the game has started
+			logger.info('process stdout:', data)
+			resolve(process)
+		})
+		process.on('exit', (code) => {
+			logger.info('process exited with code:', code)
+
+			if (code === 0) {
+				resolve(process)
+				return
+			}
+
+			vscode.window
+				.showErrorMessage(
+					"Ren'Py process exited with errors",
+					'Reopen',
+					'Logs'
+				)
+				.then((selected) => {
+					if (selected === 'Reopen') launch_renpy({ mode, uri })
+					else if (selected === 'Logs') logger.show()
+				})
+		})
+	})
 }
 
 /**
@@ -315,38 +336,51 @@ function activate(context) {
 		0
 	)
 	launch_status_bar.command = 'renpyWarp.launch'
-	launch_status_bar.text = `$(play) Launch project`
 	launch_status_bar.show()
 
-	/** @type {NodeJS.Timeout} */
-	let launch_timeout
+	/**
+	 * @param {(...args) => Promise<child_process.ChildProcess>} fn
+	 */
+	function associate_status_bar(fn) {
+		/** @type {child_process.ChildProcess | undefined} */
+		let active_process = undefined
 
-	function has_spinner(fn) {
-		return (...args) => {
-			clearTimeout(launch_timeout)
+		function reset() {
+			if (active_process) {
+				logger.info('killing active process')
+				active_process.kill()
+			}
 
-			launch_status_bar.text = `$(sync~spin) Launching...`
+			launch_status_bar.text = `$(play) Launch project`
+			active_process = undefined
+		}
 
-			launch_timeout = setTimeout(() => {
-				launch_status_bar.text = `$(play) Launch project`
-			}, 2000)
+		reset()
 
-			return fn(...args)
+		return async (...args) => {
+			if (active_process) return reset()
+
+			try {
+				launch_status_bar.text = `$(sync~spin) Launching...`
+				active_process = await fn(...args)
+				launch_status_bar.text = `$(debug-stop) Quit Ren'Py`
+				active_process.on('exit', reset)
+			} catch (err) {
+				reset()
+			}
 		}
 	}
 
 	context.subscriptions.push(
-		vscode.commands.registerCommand(
-			'renpyWarp.warpToLine',
-			has_spinner((uri) => main({ uri, mode: 'line' }))
+		vscode.commands.registerCommand('renpyWarp.warpToLine', (uri) =>
+			launch_renpy({ uri, mode: 'line' })
 		),
-		vscode.commands.registerCommand(
-			'renpyWarp.warpToFile',
-			has_spinner((uri) => main({ uri, mode: 'file' }))
+		vscode.commands.registerCommand('renpyWarp.warpToFile', (uri) =>
+			launch_renpy({ uri, mode: 'file' })
 		),
 		vscode.commands.registerCommand(
 			'renpyWarp.launch',
-			has_spinner((uri) => main({ uri, mode: 'launch' }))
+			associate_status_bar((uri) => launch_renpy({ uri, mode: 'launch' }))
 		),
 		launch_status_bar,
 		logger
