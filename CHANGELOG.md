@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 
 This project adheres to [Semantic Versioning](http://semver.org/).
 
-## Unreleased
+## 0.8.0 - 2024-04-04
 
 -   Improve handling for processes, which updates the status bar in real time.
     Once started, the status bar will change to reflect that, and you can also
