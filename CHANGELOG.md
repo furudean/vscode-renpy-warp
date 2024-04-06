@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## Unreleased
+
+-   Fixes a few small bugs relating to error handling, leading to the extension
+    sometimes getting stuck in weird states
+
 ## 0.8.0 - 2024-04-04
 
 -   Improve handling for processes, which updates the status bar in real time.

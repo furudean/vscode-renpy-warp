@@ -198,39 +198,41 @@ async function launch_renpy({ mode, uri } = {}) {
 					`Invalid Ren'Py SDK path: ${err.sdk_path}`,
 					'Open Settings'
 				)
-				.then(() => {
+				.then((selection) => {
+					if (!selection) return
 					vscode.commands.executeCommand(
 						'workbench.action.openSettings',
 						'renpyWarp.sdkPath'
 					)
 				})
-			return
 		} else if (err instanceof NoSDKError) {
 			vscode.window
 				.showErrorMessage(
 					"Please set a Ren'Py SDK path in the settings",
 					'Open Settings'
 				)
-				.then(() => {
+				.then((selection) => {
+					if (!selection) return
+
 					vscode.commands.executeCommand(
 						'workbench.action.openSettings',
 						'renpyWarp.sdkPath'
 					)
 				})
-			return
 		} else if (err instanceof BadEditorError) {
 			vscode.window
 				.showErrorMessage(
 					`Invalid Ren'Py editor path: '${err.editor_path}'`,
 					'Open Settings'
 				)
-				.then(() => {
+				.then((selection) => {
+					if (!selection) return
+
 					vscode.commands.executeCommand(
 						'workbench.action.openSettings',
 						'renpyWarp.editor'
 					)
 				})
-			return
 		}
 		throw err
 	}
@@ -375,7 +377,11 @@ function associate_status_bar(start_process) {
 
 			launch_status_bar.text = `$(sync~spin) Launching...`
 
-			active_process = await start_process(...args)
+			try {
+				active_process = await start_process(...args)
+			} catch (err) {
+				return kill()
+			}
 
 			// educated guess: if we see stdout, ren'py has started.
 			//
@@ -389,7 +395,11 @@ function associate_status_bar(start_process) {
 			})
 		} else {
 			launch_status_bar.text = `$(sync~spin) Launching...`
-			active_process = await start_process(...args)
+			try {
+				active_process = await start_process(...args)
+			} catch (err) {
+				return kill()
+			}
 			launch_status_bar.text = `$(debug-stop) Quit Ren'Py`
 		}
 
@@ -410,7 +420,14 @@ function associate_progress_notification(start_process) {
 			},
 			() =>
 				new Promise(async (resolve) => {
-					const process = await start_process(...args)
+					/** @type {child_process.ChildProcess} */
+					let process
+					try {
+						process = await start_process(...args)
+					} catch (err) {
+						resolve()
+						return
+					}
 
 					if (!advanced_progress_bars_enabled()) {
 						resolve()
@@ -421,7 +438,8 @@ function associate_progress_notification(start_process) {
 									"Ren'Py process took too long to output anything meaningful. You may want to disable advanced progress bars in the settings.",
 									'Open Settings'
 								)
-								.then(() => {
+								.then((selection) => {
+									if (!selection) return
 									vscode.commands.executeCommand(
 										'workbench.action.openSettings',
 										'renpyWarp.advancedProgressBars'
