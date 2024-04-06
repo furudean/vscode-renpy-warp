@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 
 This project adheres to [Semantic Versioning](http://semver.org/).
 
-## Unreleased
+## 0.8.1 - 2024-04-06
 
 -   Fixes a few small bugs relating to error handling, leading to the extension
     sometimes getting stuck in weird states
