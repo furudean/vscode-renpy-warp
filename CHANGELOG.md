@@ -12,7 +12,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
     `launchOrQuit`, which is not meant to be called directly.
 -   To commands that aren't associated with the status bar, a notification will
     show until the process is launched
--   Adds an experimental setting, `renpyWarp.aadvancedProgressBars` which
+-   Adds an experimental setting, `renpyWarp.advancedProgressBars` which
     will enhance notifications when Ren'Py is starting. It waits for your game
     to output something to stdout when it's considered "ready". Ren'Py does not
     do this by default, so this feature will be opt-in for now.
