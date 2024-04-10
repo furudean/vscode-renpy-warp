@@ -6,8 +6,13 @@ const fs = require('node:fs/promises')
 const untildify = require('untildify')
 const { quoteForShell } = require('puka')
 
+const exec_prelude = "// this file is created by Ren'Py Warp to Line\n"
+
 /** @type {vscode.LogOutputChannel} */
 let logger
+
+/** @type {Set<child_process.ChildProcess>} */
+const processes = new Set()
 
 class NoSDKError extends Error {
 	/**
@@ -172,6 +177,39 @@ async function get_renpy_sh() {
 }
 
 /**
+ * determine if the current version of ren'py supports exec.py.
+ *
+ * an instance of ren'py must be running for this to work
+ *
+ * @returns {Promise<boolean>}
+ */
+async function supports_exec_py() {
+	const renpy_file_in_workspace = await vscode.workspace
+		.findFiles('**/game/**/*.rpy', null, 1)
+		.then((files) => (files.length ? files[0].fsPath : null))
+	const game_root = find_game_root(renpy_file_in_workspace)
+
+	if (!game_root) {
+		throw new Error('cannot find game root')
+	}
+
+	const exec_path = path.join(game_root, 'exec.py')
+
+	// write an exec file that does nothing and see if it disappears, which
+	// means the current version of ren'py supports exec
+	await fs.writeFile(exec_path, exec_prelude)
+	await new Promise((resolve) => setTimeout(resolve, 500))
+	const stat = await fs.stat(exec_path)
+
+	if (stat.isFile()) {
+		await fs.unlink(exec_path)
+		return false
+	} else {
+		return true
+	}
+}
+
+/**
  * @typedef {Object} Options
  * @property {'line' | 'file' | 'launch'} mode
  * @property {vscode.Uri} uri
@@ -294,17 +332,19 @@ async function launch_renpy({ mode, uri } = {}) {
 
 	logger.info('executing subshell:', cmd)
 
-	const process = child_process.exec(cmd)
-	logger.info('created process', process.pid)
+	const local_process = child_process.exec(cmd)
+	processes.add(local_process)
+	logger.info('created process', local_process.pid)
 
-	process.stderr.on('data', (data) => {
+	local_process.stderr.on('data', (data) => {
 		console.error('process stderr:', data)
 	})
-	process.stdout.on('data', (data) => {
+	local_process.stdout.on('data', (data) => {
 		logger.info('process stdout:', data)
 	})
-	process.on('exit', (code) => {
-		logger.info(`process ${process.pid} exited with code`, code)
+	local_process.on('exit', (code) => {
+		logger.info(`process ${local_process.pid} exited with code`, code)
+		processes.delete(local_process)
 
 		if (code === 0) return
 
@@ -320,7 +360,7 @@ async function launch_renpy({ mode, uri } = {}) {
 			})
 	})
 
-	return process
+	return local_process
 }
 
 /**
@@ -383,15 +423,11 @@ function associate_status_bar(start_process) {
 				return kill()
 			}
 
-			// educated guess: if we see stdout, ren'py has started.
-			//
-			// this relies on the developer to add a print() statement
-			// somewhere, as ren'py doesn't print anything when it starts.
-			//
-			// for now, this feature is locked behind a setting.
-			active_process.stdout.on('data', () => {
-				launch_status_bar.text = `$(debug-stop) Quit Ren'Py`
-				clearTimeout(timeout)
+			active_process.stdout.on('data', (data) => {
+				if (data === 'renpy-warp init signal') {
+					launch_status_bar.text = `$(debug-stop) Quit Ren'Py`
+					clearTimeout(timeout)
+				}
 			})
 		} else {
 			launch_status_bar.text = `$(sync~spin) Launching...`
@@ -420,10 +456,8 @@ function associate_progress_notification(start_process) {
 			},
 			() =>
 				new Promise(async (resolve) => {
-					/** @type {child_process.ChildProcess} */
-					let process
 					try {
-						process = await start_process(...args)
+						processes = await start_process(...args)
 					} catch (err) {
 						resolve()
 						return
@@ -459,8 +493,8 @@ function associate_progress_notification(start_process) {
 						// somewhere, as ren'py doesn't print anything when it starts.
 						//
 						// for now, this feature is locked behind a setting.
-						process.stdout.on('data', cleanup)
-						process.on('exit', cleanup)
+						processes.stdout.on('data', cleanup)
+						processes.on('exit', cleanup)
 					}
 				})
 		)
@@ -492,8 +526,7 @@ function activate(context) {
 			associate_progress_notification((...args) =>
 				launch_renpy({ mode: 'launch', ...args })
 			)
-		)
-	),
+		),
 		vscode.commands.registerCommand(
 			'renpyWarp.launchOrQuit',
 			associate_status_bar((...args) =>
@@ -501,6 +534,7 @@ function activate(context) {
 			)
 		),
 		logger
+	)
 }
 
 function deactivate() {}
