@@ -41,6 +41,11 @@
 				"title": "Launch project in Ren'Py",
 				"category": "Ren'Py Warp",
 				"icon": "$(play)"
+			},
+			{
+				"command": "renpyWarp.killAll",
+				"title": "Kill active Ren'Py instances",
+				"category": "Ren'Py Warp"
 			}
 		],
 		"menus": {
@@ -56,6 +61,10 @@
 				{
 					"command": "renpyWarp.launch",
 					"when": "workbenchState == 'folder' || editorLangId == renpy"
+				},
+				{
+					"command": "renpyWarp.killAll",
+					"when": "editorLangId == renpy"
 				}
 			],
 			"editor/title/run": [
@@ -102,6 +111,12 @@
 				"key": "alt+shift+l",
 				"mac": "cmd+shift+l",
 				"when": "workbenchState == 'folder' || editorLangId == renpy"
+			},
+			{
+				"command": "renpyWarp.killAll",
+				"key": "alt+shift+k",
+				"mac": "cmd+shift+k",
+				"when": "editorLangId == renpy"
 			}
 		],
 		"configuration": {
@@ -116,7 +131,7 @@
 				"renpyWarp.strategy": {
 					"type": "string",
 					"default": "Auto",
-					"markdownDescription": "How to treat any existing an existing Ren'Py instance when launching a command.",
+					"markdownDescription": "How to treat an existing Ren'Py instance when a warping command is issued.",
 					"order": 0,
 					"enum": [
 						"Auto",
@@ -126,7 +141,7 @@
 					"markdownEnumDescriptions": [
 						"Automatically choose based what features are available in your version of Ren'Py.\n\nIs slightly slower than the other options, as detection of features is required. If you know what features are available in your version of Ren'Py, you can choose a more specific strategy.",
 						"Launch a new instance of Ren'Py when a command is executed.",
-						"Use `renpy.warp_to_line()` in the open instance. This allows you to warp to a new line or file without restarting the game.\n\n**NOTE**: This requires you to use a version of Ren'Py that supports the `exec.py` feature. As of writing this is only available in nightly builds."
+						"Execute `renpy.warp_to_line()` inside the open instance. This allows you to warp to a new line or file without restarting the game.\n\n**NOTE**: This requires you to use a version of Ren'Py that supports the `exec.py` feature. As of writing this is only available in nightly builds."
 					]
 				},
 				"renpyWarp.editor": {

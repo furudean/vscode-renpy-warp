@@ -11,6 +11,7 @@ This extension contributes commands to the command palette.
 | `renpyWarp.warpToLine` | Open Ren'Py at the current line | <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>E</kbd> | <kbd>⌘</kbd>+<kbd>Shift</kbd>+<kbd>E</kbd> |
 | `renpyWarp.warpToFile` | Open Ren'Py at the current file | <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd> | <kbd>⌘</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd> |
 | `renpyWarp.launch`     | Launch the Ren'Py project       | <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>L</kbd> | <kbd>⌘</kbd>+<kbd>Shift</kbd>+<kbd>L</kbd> |
+| `renpyWarp.killAll`    | Kill running Ren'Py instances   | <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>K</kbd> | <kbd>⌘</kbd>+<kbd>Shift</kbd>+<kbd>K</kbd> |
 
 ## Triggers
 
@@ -30,14 +31,6 @@ The various commands added can be activated from the UI in Visual Studio Code.
 You must set <code codesetting="renpyWarp.sdkPath">renpyWarp.sdkPath</code> to a
 path where a Ren'Py SDK can be found. If you haven't done so, a prompt will appear
 to inform you to set it.
-
-<code
-codesetting="renpyWarp.advancedProgressBars">renpyWarp.advancedProgressBars</code>
-can be set to enhance the progress feedback used in this extension, but this
-requires your game to output something to standard output (stdout) when it's
-considered ready. If you don't do this, this feature will not work properly.
-This can most easily be achieved by adding an `init python:` block somewhere in
-an `.rpy` file that `print()`s some text.
 
 ## Troubleshooting
 

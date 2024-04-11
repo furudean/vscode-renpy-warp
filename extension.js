@@ -50,7 +50,7 @@ class ProcessManager {
 		status_bar.show()
 		if (this.length >= 1) {
 			status_bar.text = `$(debug-stop) Quit Ren'Py`
-			status_bar.command = 'renpyWarp.kill'
+			status_bar.command = 'renpyWarp.killAll'
 		} else {
 			status_bar.text = `$(play) Launch project`
 			status_bar.command = 'renpyWarp.launch'
@@ -256,7 +256,7 @@ async function exec_py(script, game_root) {
 
 		watcher.on('unlink', async (path) => {
 			if (!path.endsWith('exec.py')) return
-			// file was deleted by ren'py, probably executed successfully
+			// file was consumed by ren'py
 			logger.info('exec.py executed successfully')
 			await watcher.close()
 			resolve()
@@ -270,9 +270,9 @@ async function exec_py(script, game_root) {
 			const exec_py_file = await fs.stat(exec_path)
 
 			if (!exec_py_file.isFile()) {
-				// file has been deleted, probably executed ren'py, but not seen by watcher
+				// file has been consumed, probably executed ren'py
 				logger.warn(
-					'exec.py seemingly executed, but watcher did not see file deletion'
+					'exec.py seemingly consumed, but watcher did not see file deletion'
 				)
 				resolve()
 			} else {
@@ -382,7 +382,7 @@ async function launch_renpy({ mode, uri } = {}) {
 		).catch(() => {
 			vscode.window
 				.showErrorMessage(
-					"Failed to warp inside active window. Your Ren'Py version may not support this feature. Set the strategy to 'New Window' to fall back to opening a new window.",
+					"Failed to warp inside active window. Your Ren'Py version may not support this feature. You may want to change the strategy in settings.",
 					'Open Settings'
 				)
 				.then((selection) => {
@@ -448,10 +448,10 @@ async function launch_renpy({ mode, uri } = {}) {
 
 /**
  * @param {string} message
- * @param {(options: Partial<Options>) => Promise<child_process.ChildProcess>} start_process
+ * @param {(options: Partial<Options>) => Promise<child_process.ChildProcess>} run
  * @returns {(options: Partial<Options>) => void}
  */
-function associate_progress_notification(message, start_process) {
+function associate_progress_notification(message, run) {
 	return (...args) => {
 		vscode.window.withProgress(
 			{
@@ -459,7 +459,7 @@ function associate_progress_notification(message, start_process) {
 				title: message,
 			},
 			async () => {
-				await start_process(...args)
+				await run(...args)
 			}
 		)
 	}
@@ -498,13 +498,17 @@ function activate(context) {
 				launch_renpy({ mode: 'launch', ...args })
 			)
 		),
-		vscode.commands.registerCommand('renpyWarp.kill', () => pm.kill_all()),
+		vscode.commands.registerCommand('renpyWarp.killAll', () =>
+			pm.kill_all()
+		),
 		logger,
 		status_bar
 	)
 }
 
-function deactivate() {}
+function deactivate() {
+	pm.kill_all()
+}
 
 module.exports = {
 	activate,

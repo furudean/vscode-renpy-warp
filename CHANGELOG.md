@@ -12,6 +12,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 -   Kills the process with a slightly harsher SIGKILL, which bypasses the "are
     you sure" dialog on games
 -   Improved process management across the board
+-   Adds `renpyWarp.killAll`, which will kill all running Ren'Py instances
 
 ## 0.8.1 - 2024-04-06
 
