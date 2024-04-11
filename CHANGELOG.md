@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## Unreleased
+
+-   Does away with `renpyWarp.advancedProgressBars`
+-   Implements Ren'Py's `exec.py` to dynamically warp into an already open
+    process. `renpyWarp.strategy` controls whether or not this is enabled.
+-   Kills the process with a slightly harsher SIGKILL, which bypasses the "are
+    you sure" dialog on games
+-   Improved process management across the board
+-   Adds `renpyWarp.killAll`, which will kill all running Ren'Py instances
+
 ## 0.8.1 - 2024-04-06
 
 -   Fixes a few small bugs relating to error handling, leading to the extension
