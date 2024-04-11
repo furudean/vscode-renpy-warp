@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## Unreleased
+
+-   Adds a feature to sync the cursor in script to the Ren'Py window
+
 ## 0.9.0 - 2024-04-10
 
 -   Implements Ren'Py's `exec.py` to dynamically warp into an already open

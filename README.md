@@ -2,16 +2,19 @@
 
 Open your Ren'Py game at the current line or file in Visual Studio Code.
 
+Has a handful of features to synchronize your editor with your Ren'Py game.
+
 ## Commands
 
 This extension contributes commands to the command palette.
 
-| Command                | Description                     | Shortcut                                     | Shortcut (Mac)                             |
-| ---------------------- | ------------------------------- | -------------------------------------------- | ------------------------------------------ |
-| `renpyWarp.warpToLine` | Open Ren'Py at the current line | <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>E</kbd> | <kbd>⌘</kbd>+<kbd>Shift</kbd>+<kbd>E</kbd> |
-| `renpyWarp.warpToFile` | Open Ren'Py at the current file | <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd> | <kbd>⌘</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd> |
-| `renpyWarp.launch`     | Launch the Ren'Py project       | <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>L</kbd> | <kbd>⌘</kbd>+<kbd>Shift</kbd>+<kbd>L</kbd> |
-| `renpyWarp.killAll`    | Kill running Ren'Py instances   | <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>K</kbd> | <kbd>⌘</kbd>+<kbd>Shift</kbd>+<kbd>K</kbd> |
+| Command                        | Description                           | Shortcut                                     | Shortcut (Mac)                             |
+| ------------------------------ | ------------------------------------- | -------------------------------------------- | ------------------------------------------ |
+| `renpyWarp.warpToLine`         | Open Ren'Py at the current line       | <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>E</kbd> | <kbd>⌘</kbd>+<kbd>Shift</kbd>+<kbd>E</kbd> |
+| `renpyWarp.warpToFile`         | Open Ren'Py at the current file       | <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd> | <kbd>⌘</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd> |
+| `renpyWarp.launch`             | Launch the Ren'Py project             | <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>L</kbd> | <kbd>⌘</kbd>+<kbd>Shift</kbd>+<kbd>L</kbd> |
+| `renpyWarp.toggleFollowCursor` | Warp to selected line as cursor moves | <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>C</kbd> | <kbd>⌘</kbd>+<kbd>Shift</kbd>+<kbd>C</kbd> |
+| `renpyWarp.killAll`            | Kill running Ren'Py instances         | <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>K</kbd> | <kbd>⌘</kbd>+<kbd>Shift</kbd>+<kbd>K</kbd> |
 
 ## Triggers
 

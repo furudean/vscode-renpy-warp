@@ -6,6 +6,7 @@ const fs = require('node:fs/promises')
 const untildify = require('untildify')
 const { quoteForShell } = require('puka')
 const chokidar = require('chokidar')
+const p_throttle = require('p-throttle')
 
 /** @type {ProcessManager} */
 let pm
@@ -14,7 +15,12 @@ let pm
 let logger
 
 /** @type {vscode.StatusBarItem} */
-let status_bar
+let instance_status_bar
+
+/** @type {vscode.StatusBarItem} */
+let follow_cursor_status_bar
+
+let is_follow_cursor = false
 
 class ExecPyTimeoutError extends Error {
 	/**
@@ -49,16 +55,26 @@ class ProcessManager {
 		for (const process of this.processes) {
 			process.kill(9) // SIGKILL, bypasses "are you sure" dialog
 		}
+
+		if (is_follow_cursor) {
+			vscode.commands.executeCommand('renpyWarp.toggleFollowCursor')
+		}
 	}
 
-	update_status_bar() {
-		status_bar.show()
-		if (this.length >= 1) {
-			status_bar.text = `$(debug-stop) Quit Ren'Py`
-			status_bar.command = 'renpyWarp.killAll'
+	async update_status_bar() {
+		instance_status_bar.show()
+
+		if (this.length) {
+			instance_status_bar.text = `$(debug-stop) Quit Ren'Py`
+			instance_status_bar.command = 'renpyWarp.killAll'
+			instance_status_bar.tooltip = "Kill all running Ren'Py instances"
+
+			follow_cursor_status_bar.show()
 		} else {
-			status_bar.text = `$(play) Launch project`
-			status_bar.command = 'renpyWarp.launch'
+			instance_status_bar.text = `$(play) Launch project`
+			instance_status_bar.command = 'renpyWarp.launch'
+
+			follow_cursor_status_bar.hide()
 		}
 	}
 
@@ -96,6 +112,19 @@ function parse_path(str) {
 }
 
 /**
+ * @param {string} file
+ * @returns {Promise<boolean>}
+ */
+async function file_exists(file) {
+	try {
+		const stat = await fs.stat(file)
+		return stat.isFile()
+	} catch (err) {
+		return false
+	}
+}
+
+/**
  * @param {string[]} cmds
  * @returns {string}
  */
@@ -130,8 +159,12 @@ function find_game_root(filename, haystack = null, depth = 1) {
 		return path.resolve(haystack, '..') // return parent
 	}
 
-	if (haystack === workspace_root || depth >= 10) {
-		logger.info('exceeded recursion depth at', haystack)
+	if (
+		haystack === workspace_root ||
+		haystack === path.resolve('/') ||
+		depth >= 10
+	) {
+		logger.info('exceeded recursion depth at', filename, haystack)
 		return null
 	}
 
@@ -254,6 +287,13 @@ async function get_renpy_sh() {
  * @returns {Promise<void>}
  */
 async function exec_py(script, game_root) {
+	if (pm.length > 1) {
+		vscode.window.showErrorMessage(
+			"Multiple Ren'Py instances running. Cannot warp inside open Ren'Py window."
+		)
+		return
+	}
+
 	const exec_path = path.join(game_root, 'exec.py')
 	const exec_prelude =
 		"# This file is created by Ren'Py Warp to Line and can safely be deleted\n"
@@ -261,10 +301,14 @@ async function exec_py(script, game_root) {
 	return new Promise(async (resolve, reject) => {
 		const watcher = chokidar.watch(game_root)
 
+		/** @type {NodeJS.Timeout | undefined} */
+		let timeout
+
 		watcher.on('unlink', async (path) => {
 			if (!path.endsWith('exec.py')) return
 			// file was consumed by ren'py
 			logger.info('exec.py executed successfully')
+			clearTimeout(timeout)
 			await watcher.close()
 			resolve()
 		})
@@ -272,23 +316,20 @@ async function exec_py(script, game_root) {
 		logger.info(`writing exec.py: "${script}"`)
 		await fs.writeFile(exec_path, exec_prelude + script)
 
-		setTimeout(async () => {
+		timeout = setTimeout(async () => {
 			await watcher.close()
-			const exec_py_file = await fs.stat(exec_path)
 
-			if (!exec_py_file.isFile()) {
-				// file has been consumed, probably executed ren'py
-				logger.warn(
-					'exec.py seemingly consumed, but watcher did not see file deletion'
-				)
-				resolve()
-			} else {
-				// seemingly not executed at all
+			if (await file_exists(exec_path)) {
 				logger.error('exec.py timed out')
 				try {
 					await fs.unlink(exec_path) // delete the unconsumed file
 				} catch (err) {}
 				reject(new ExecPyTimeoutError())
+			} else {
+				logger.warn(
+					'exec.py seemingly consumed, but watcher did not see file deletion'
+				)
+				resolve()
 			}
 		}, 500)
 	})
@@ -299,6 +340,7 @@ async function exec_py(script, game_root) {
  *
  * an instance of ren'py must be running for this to work
  *
+ * @param {string} game_root
  * @returns {Promise<boolean>}
  */
 async function supports_exec_py(game_root) {
@@ -465,19 +507,60 @@ function activate(context) {
 		log: true,
 	})
 
-	status_bar = vscode.window.createStatusBarItem(
+	instance_status_bar = vscode.window.createStatusBarItem(
 		vscode.StatusBarAlignment.Left,
 		0
 	)
 
+	follow_cursor_status_bar = vscode.window.createStatusBarItem(
+		vscode.StatusBarAlignment.Left,
+		0
+	)
+
+	follow_cursor_status_bar.text = '$(pin) Follow cursor'
+	follow_cursor_status_bar.command = 'renpyWarp.toggleFollowCursor'
+	follow_cursor_status_bar.tooltip =
+		"When enabled, Ren'Py will warp to the line you're currently editing"
+
 	pm = new ProcessManager()
 
+	const throttle = p_throttle({
+		limit: 1,
+		interval: 100,
+	})
+
+	let last_warp_spec = null
+
+	const follow_cursor = throttle(async () => {
+		if (!is_follow_cursor) return
+		if (pm.length === 0) return
+
+		const file = vscode.window.activeTextEditor.document.uri.fsPath
+		const line = vscode.window.activeTextEditor.selection.active.line
+
+		const game_root = find_game_root(file)
+		const filename_relative = path.relative(
+			path.join(game_root, 'game/'),
+			file
+		)
+
+		const warp_spec = `${filename_relative}:${line + 1}`
+
+		if (warp_spec === last_warp_spec) return
+		last_warp_spec = warp_spec
+
+		await exec_py(`renpy.warp_to_line('${warp_spec}')`, game_root)
+	})
+
 	context.subscriptions.push(
+		logger,
+		instance_status_bar,
+
 		vscode.commands.registerCommand(
 			'renpyWarp.warpToLine',
 			associate_progress_notification('Warping to line...', () =>
 				launch_renpy({
-					file: vscode.window.activeTextEditor.document.fileName,
+					file: vscode.window.activeTextEditor.document.uri.fsPath,
 					line: vscode.window.activeTextEditor.selection.active.line,
 				})
 			)
@@ -487,7 +570,7 @@ function activate(context) {
 			'renpyWarp.warpToFile',
 			associate_progress_notification('Warping to file...', () =>
 				launch_renpy({
-					file: vscode.window.activeTextEditor.document.fileName,
+					file: vscode.window.activeTextEditor.document.uri.fsPath,
 					line: 0,
 				})
 			)
@@ -504,8 +587,40 @@ function activate(context) {
 			pm.kill_all()
 		),
 
-		logger,
-		status_bar
+		follow_cursor_status_bar,
+
+		vscode.commands.registerCommand(
+			'renpyWarp.toggleFollowCursor',
+			async () => {
+				if (pm.length === 0) return
+
+				if (!is_follow_cursor) {
+					const game_root = find_game_root(
+						vscode.window.activeTextEditor.document.uri.fsPath
+					)
+
+					if (!(await supports_exec_py(game_root))) {
+						vscode.window.showErrorMessage(
+							"Can only follow cursor if Ren'Py supports exec.py. Your Ren'Py version may not support this feature."
+						)
+						return
+					}
+
+					is_follow_cursor = true
+					follow_cursor_status_bar.text =
+						'$(pinned) Stop following cursor'
+					follow_cursor_status_bar.backgroundColor =
+						new vscode.ThemeColor('statusBarItem.warningBackground')
+					follow_cursor()
+				} else {
+					is_follow_cursor = false
+					follow_cursor_status_bar.text = '$(pin) Follow cursor'
+					follow_cursor_status_bar.backgroundColor = undefined
+				}
+			}
+		),
+
+		vscode.window.onDidChangeTextEditorSelection(follow_cursor)
 	)
 }
 

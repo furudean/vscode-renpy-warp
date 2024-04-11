@@ -46,6 +46,11 @@
 				"command": "renpyWarp.killAll",
 				"title": "Kill active Ren'Py instances",
 				"category": "Ren'Py Warp"
+			},
+			{
+				"command": "renpyWarp.toggleFollowCursor",
+				"title": "Toggle following cursor mode",
+				"category": "Ren'Py Warp"
 			}
 		],
 		"menus": {
@@ -117,6 +122,12 @@
 				"key": "alt+shift+k",
 				"mac": "cmd+shift+k",
 				"when": "editorLangId == renpy"
+			},
+			{
+				"command": "renpyWarp.toggleFollowCursor",
+				"key": "alt+shift+c",
+				"mac": "cmd+shift+c",
+				"when": "editorTextFocus && editorLangId == renpy"
 			}
 		],
 		"configuration": {
@@ -174,6 +185,7 @@
 	},
 	"dependencies": {
 		"chokidar": "^3.6.0",
+		"p-throttle": "^4.1.1",
 		"puka": "^1.0.1",
 		"untildify": "^4.0.0",
 		"upath": "^2.0.1"
