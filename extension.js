@@ -244,8 +244,12 @@ async function get_renpy_sh() {
 
 /**
  * Executes a Python script.
- * @param {string} script - python script to execute
- * @param {string} game_root - path to the game root
+ *
+ * @param {string} script
+ * python script to execute
+ *
+ * @param {string} game_root
+ * path to the game root
  *
  * @returns {Promise<void>}
  */
@@ -321,8 +325,11 @@ async function supports_exec_py(game_root) {
 
 /**
  * @typedef {Object} Options
- * @property {'line' | 'file' | 'launch'} mode
- * @property {vscode.Uri} uri
+ * @property {string} [file]
+ * fs path. if null, open first .rpy associated with workspace
+ *
+ * @property {number} [line]
+ * zero-indexed line number. if set, warp to line will be attempted
  */
 
 /**
@@ -332,55 +339,43 @@ async function supports_exec_py(game_root) {
  * if exec.py is supported, it will be used to warp to the line instead of
  * opening a new instance. in this case no child process is returned.
  *
- * @param {Partial<Options>} options
+ * @param {Options} options
  * @returns {Promise<child_process.ChildProcess | undefined>}
  */
-async function launch_renpy({ mode, uri } = {}) {
-	const active_editor = vscode.window.activeTextEditor
+async function launch_renpy({ file, line } = {}) {
+	logger.info('launch_renpy:', { fs_path: file, line })
 
-	// deduce what is the current file for this context
-	const renpy_file_in_workspace = await vscode.workspace
-		.findFiles('**/game/**/*.rpy', null, 1)
-		.then((files) => (files.length ? files[0].fsPath : null))
-	const uri_path = uri && uri.fsPath
-	const active_file = active_editor && active_editor.document.fileName
+	if (!file) {
+		file = await vscode.workspace
+			.findFiles('**/game/**/*.rpy', null, 1)
+			.then((files) => (files.length ? files[0].fsPath : null))
+	}
 
-	const current_file =
-		mode === 'launch' ? renpy_file_in_workspace : uri_path || active_file
-	logger.info('current file:', current_file)
-
-	if (!current_file) {
+	if (!file) {
 		vscode.window.showErrorMessage("No Ren'Py project in workspace")
 		return
 	}
 
-	const game_root = find_game_root(current_file)
+	const game_root = find_game_root(file)
 
 	if (!game_root) {
 		vscode.window.showErrorMessage(
 			'Unable to find "game" folder in parent directory. Not a Ren\'Py project?'
 		)
-		logger.info(`cannot find game root in ${current_file}`)
+		logger.info(`cannot find game root in ${file}`)
 		return
 	}
 
-	const filename_relative = path.relative(
-		path.join(game_root, 'game/'),
-		current_file
-	)
+	const filename_relative = path.relative(path.join(game_root, 'game/'), file)
 
-	const line_number =
-		mode === 'line'
-			? vscode.window.activeTextEditor.selection.active.line + 1
-			: 1
-
+	// warp in existing ren'py window
 	if (
 		pm.length &&
-		['line', 'file'].includes(mode) &&
+		line &&
 		(await determine_strategy(game_root)) === 'Replace'
 	) {
 		await exec_py(
-			`renpy.warp_to_line('${filename_relative}:${line_number}')`,
+			`renpy.warp_to_line('${filename_relative}:${line + 1}')`,
 			game_root
 		).catch(() => {
 			vscode.window
@@ -399,40 +394,34 @@ async function launch_renpy({ mode, uri } = {}) {
 		return
 	}
 
+	// open new ren'py window
 	const renpy_sh = await get_renpy_sh()
 
 	/** @type {string} */
 	let cmd
 
-	if (mode === 'launch') {
+	if (line === undefined) {
 		cmd = renpy_sh + ' ' + make_cmd([game_root])
 	} else {
 		cmd =
 			renpy_sh +
 			' ' +
-			make_cmd([
-				game_root,
-				'--warp',
-				`${filename_relative}:${line_number}`,
-			])
+			make_cmd([game_root, '--warp', `${filename_relative}:${line + 1}`])
 	}
 
 	logger.info('executing subshell:', cmd)
 
 	const this_process = child_process.exec(cmd)
-	pm.add(this_process)
 	logger.info('created process', this_process.pid)
 
-	this_process.stderr.on('data', (data) => {
-		console.error('process stderr:', data)
-	})
-	this_process.stdout.on('data', (data) => {
-		logger.info('process stdout:', data)
-	})
-	this_process.on('exit', (code) => {
-		logger.info(`process ${this_process.pid} exited with code`, code)
+	pm.add(this_process)
 
-		if (code === 0 || code === null) return // null if sigkill, usually intentional
+	this_process.stderr.on('data', console.error)
+	this_process.stdout.on('data', logger.info)
+	this_process.on('exit', (code) => {
+		logger.info(`process ${this_process.pid} exited with code ${code}`)
+
+		if (code === 0 || code === null) return // null if sigkill
 
 		vscode.window
 			.showErrorMessage(
@@ -441,7 +430,7 @@ async function launch_renpy({ mode, uri } = {}) {
 				'Logs'
 			)
 			.then((selected) => {
-				if (selected === 'Reopen') launch_renpy({ mode, uri })
+				if (selected === 'Reopen') launch_renpy({ file, line })
 				else if (selected === 'Logs') logger.show()
 			})
 	})
@@ -451,18 +440,18 @@ async function launch_renpy({ mode, uri } = {}) {
 
 /**
  * @param {string} message
- * @param {(options: Partial<Options>) => Promise<child_process.ChildProcess>} run
- * @returns {(options: Partial<Options>) => void}
+ * @param {() => Promise<any>} run
+ * @returns {() => void}
  */
 function associate_progress_notification(message, run) {
-	return (...args) => {
+	return () => {
 		vscode.window.withProgress(
 			{
 				location: vscode.ProgressLocation.Notification,
 				title: message,
 			},
 			async () => {
-				await run(...args)
+				await run()
 			}
 		)
 	}
@@ -486,25 +475,35 @@ function activate(context) {
 	context.subscriptions.push(
 		vscode.commands.registerCommand(
 			'renpyWarp.warpToLine',
-			associate_progress_notification('Warping to line...', (...args) =>
-				launch_renpy({ mode: 'line', ...args })
+			associate_progress_notification('Warping to line...', () =>
+				launch_renpy({
+					file: vscode.window.activeTextEditor.document.fileName,
+					line: vscode.window.activeTextEditor.selection.active.line,
+				})
 			)
 		),
+
 		vscode.commands.registerCommand(
 			'renpyWarp.warpToFile',
-			associate_progress_notification('Warping to file...', (...args) =>
-				launch_renpy({ mode: 'file', ...args })
+			associate_progress_notification('Warping to file...', () =>
+				launch_renpy({
+					file: vscode.window.activeTextEditor.document.fileName,
+					line: 0,
+				})
 			)
 		),
+
 		vscode.commands.registerCommand(
 			'renpyWarp.launch',
-			associate_progress_notification("Launching Ren'Py...", (...args) =>
-				launch_renpy({ mode: 'launch', ...args })
+			associate_progress_notification("Launching Ren'Py...", () =>
+				launch_renpy()
 			)
 		),
+
 		vscode.commands.registerCommand('renpyWarp.killAll', () =>
 			pm.kill_all()
 		),
+
 		logger,
 		status_bar
 	)
