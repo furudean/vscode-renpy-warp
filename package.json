@@ -115,14 +115,18 @@
 				},
 				"renpyWarp.strategy": {
 					"type": "string",
-					"default": "Launch New",
+					"default": "Auto",
+					"markdownDescription": "How to treat any existing an existing Ren'Py instance when launching a command.",
+					"order": 0,
 					"enum": [
-						"Launch New",
+						"Auto",
+						"New Window",
 						"Replace"
 					],
 					"markdownEnumDescriptions": [
-						"Launch a new instance of Ren'Py when a command is executed",
-						"Replace the current instance of Ren'Py with the new command by using `exec.py`"
+						"Automatically choose based what features are available in your version of Ren'Py.\n\nIs slightly slower than the other options, as detection of features is required. If you know what features are available in your version of Ren'Py, you can choose a more specific strategy.",
+						"Launch a new instance of Ren'Py when a command is executed.",
+						"Use `renpy.warp_to_line()` in the open instance. This allows you to warp to a new line or file without restarting the game.\n\n**NOTE**: This requires you to use a version of Ren'Py that supports the `exec.py` feature. As of writing this is only available in nightly builds."
 					]
 				},
 				"renpyWarp.editor": {
@@ -154,6 +158,7 @@
 		"typescript": "^5.3.3"
 	},
 	"dependencies": {
+		"chokidar": "^3.6.0",
 		"puka": "^1.0.1",
 		"untildify": "^4.0.0",
 		"upath": "^2.0.1"

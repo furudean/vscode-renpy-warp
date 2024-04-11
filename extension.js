@@ -5,47 +5,83 @@ const os = require('node:os')
 const fs = require('node:fs/promises')
 const untildify = require('untildify')
 const { quoteForShell } = require('puka')
-
-const exec_prelude = "// this file is created by Ren'Py Warp to Line\n"
+const chokidar = require('chokidar')
 
 /** @type {vscode.LogOutputChannel} */
 let logger
 
-/** @type {Set<child_process.ChildProcess>} */
-const processes = new Set()
+/** @type {vscode.StatusBarItem} */
+let status_bar
 
-class NoSDKError extends Error {
+class ExecPyTimeoutError extends Error {
 	/**
 	 * @param {string} [message]
 	 */
 	constructor(message) {
 		super(message)
-		this.name = 'NoSDKError'
+		this.name = 'ExecPyTimeoutError'
 	}
 }
 
-class BadSDKError extends Error {
-	/**
-	 * @param {string} [message]
-	 * @param {string} [sdk_path]
-	 */
-	constructor(message, sdk_path) {
-		super(message)
-		this.name = 'BadSDKError'
-		this.sdk_path = sdk_path
+class ProcessManager {
+	constructor() {
+		/** @type {Set<child_process.ChildProcess>} */
+		this.processes = new Set()
+	}
+
+	/** @param {child_process.ChildProcess} process */
+	add(process) {
+		this.processes.add(process)
+		this.update_status_bar()
+
+		process.on('exit', () => {
+			this.processes.delete(process)
+			this.update_status_bar()
+		})
+	}
+
+	kill_all() {
+		for (const process of this.processes) {
+			process.kill(9) // SIGKILL, bypasses "are you sure" dialog
+		}
+	}
+
+	update_status_bar() {
+		status_bar.show()
+		if (this.length >= 1) {
+			status_bar.text = `$(debug-stop) Quit Ren'Py`
+			status_bar.command = 'renpyWarp.kill'
+		} else {
+			status_bar.text = `$(play) Launch project`
+			status_bar.command = 'renpyWarp.launch'
+		}
+	}
+
+	get length() {
+		return this.processes.size
 	}
 }
 
-class BadEditorError extends Error {
-	/**
-	 * @param {string} [message]
-	 * @param {string} [editor_path]
-	 */
-	constructor(message, editor_path) {
-		super(message)
-		this.name = 'BadEditorError'
-		this.editor_path = editor_path
-	}
+const pm = new ProcessManager()
+
+/**
+ * @param {string} key
+ * @returns {any}
+ */
+function get_config(key) {
+	return vscode.workspace.getConfiguration('renpyWarp').get(key)
+}
+
+/**
+ * @param {string} game_root
+ * @returns {Promise<'Replace' | 'New Window'>}
+ */
+async function determine_strategy(game_root) {
+	return get_config('strategy') === 'Auto'
+		? (await supports_exec_py(game_root))
+			? 'Replace'
+			: 'New Window'
+		: get_config('strategy')
 }
 
 /**
@@ -66,13 +102,6 @@ function make_cmd(cmds) {
 		.map((i) => ' ' + quoteForShell(i))
 		.join('')
 		.trim()
-}
-
-/** @returns {boolean} */
-function advanced_progress_bars_enabled() {
-	return vscode.workspace
-		.getConfiguration('renpyWarp')
-		.get('advancedProgressBars')
 }
 
 /**
@@ -107,20 +136,31 @@ function find_game_root(filename, haystack = null, depth = 1) {
 }
 
 /**
- * @returns {Promise<string>}
+ * @returns {Promise<string | undefined>}
  */
 async function get_renpy_sh() {
 	const is_windows = os.platform() === 'win32'
 
 	/** @type {string} */
-	const sdk_path_setting = vscode.workspace
-		.getConfiguration('renpyWarp')
-		.get('sdkPath')
+	const sdk_path_setting = get_config('sdkPath')
 
 	logger.debug('raw sdk path:', sdk_path_setting)
 
 	if (!sdk_path_setting.trim()) {
-		throw new NoSDKError()
+		vscode.window
+			.showErrorMessage(
+				"Please set a Ren'Py SDK path in the settings",
+				'Open Settings'
+			)
+			.then((selection) => {
+				if (!selection) return
+
+				vscode.commands.executeCommand(
+					'workbench.action.openSettings',
+					'renpyWarp.sdkPath'
+				)
+			})
+		return
 	}
 
 	const expanded_sdk_path = parse_path(sdk_path_setting)
@@ -139,13 +179,23 @@ async function get_renpy_sh() {
 	try {
 		await fs.access(executable)
 	} catch (err) {
-		throw new BadSDKError('cannot find renpy.sh', expanded_sdk_path)
+		vscode.window
+			.showErrorMessage(
+				`Invalid Ren'Py SDK path: ${err.sdk_path}`,
+				'Open Settings'
+			)
+			.then((selection) => {
+				if (!selection) return
+				vscode.commands.executeCommand(
+					'workbench.action.openSettings',
+					'renpyWarp.strategy'
+				)
+			})
+		return
 	}
 
 	/** @type {string} */
-	const editor_setting = vscode.workspace
-		.getConfiguration('renpyWarp')
-		.get('editor')
+	const editor_setting = get_config('editor')
 
 	/** @type {string} */
 	let editor
@@ -160,7 +210,20 @@ async function get_renpy_sh() {
 	try {
 		await fs.access(editor)
 	} catch (err) {
-		throw new BadEditorError('cannot find editor', editor)
+		vscode.window
+			.showErrorMessage(
+				`Invalid Ren'Py editor path: '${err.editor_path}'`,
+				'Open Settings'
+			)
+			.then((selection) => {
+				if (!selection) return
+
+				vscode.commands.executeCommand(
+					'workbench.action.openSettings',
+					'renpyWarp.editor'
+				)
+			})
+		return
 	}
 
 	if (is_windows) {
@@ -177,35 +240,79 @@ async function get_renpy_sh() {
 }
 
 /**
+ * Executes a Python script.
+ * @param {string} script - python script to execute
+ * @param {string} game_root - path to the game root
+ *
+ * @returns {Promise<void>}
+ */
+async function exec_py(script, game_root) {
+	const exec_path = path.join(game_root, 'exec.py')
+	const exec_prelude =
+		"# This file is created by Ren'Py Warp to Line and can safely be deleted\n"
+
+	return new Promise(async (resolve, reject) => {
+		const watcher = chokidar.watch(game_root)
+
+		watcher.on('unlink', async (path) => {
+			if (!path.endsWith('exec.py')) return
+			// file was deleted by ren'py, probably executed successfully
+			logger.info('exec.py executed successfully')
+			await watcher.close()
+			resolve()
+		})
+
+		logger.info(`writing exec.py: "${script}"`)
+		await fs.writeFile(exec_path, exec_prelude + script)
+
+		setTimeout(async () => {
+			await watcher.close()
+			const exec_py_file = await fs.stat(exec_path)
+
+			if (!exec_py_file.isFile()) {
+				// file has been deleted, probably executed ren'py, but not seen by watcher
+				logger.warn(
+					'exec.py seemingly executed, but watcher did not see file deletion'
+				)
+				resolve()
+			} else {
+				// seemingly not executed at all
+				logger.error('exec.py timed out')
+				try {
+					await fs.unlink(exec_path) // delete the unconsumed file
+				} catch (err) {}
+				reject(new ExecPyTimeoutError())
+			}
+		}, 500)
+	})
+}
+
+/**
  * determine if the current version of ren'py supports exec.py.
  *
  * an instance of ren'py must be running for this to work
  *
  * @returns {Promise<boolean>}
  */
-async function supports_exec_py() {
-	const renpy_file_in_workspace = await vscode.workspace
-		.findFiles('**/game/**/*.rpy', null, 1)
-		.then((files) => (files.length ? files[0].fsPath : null))
-	const game_root = find_game_root(renpy_file_in_workspace)
+async function supports_exec_py(game_root) {
+	// write an exec file that does nothing and see if it executes, which
+	// means the current version of ren'py supports exec.py
 
-	if (!game_root) {
-		throw new Error('cannot find game root')
+	if (!pm.length) {
+		throw new Error('no renpy process running to test exec.py support')
 	}
 
-	const exec_path = path.join(game_root, 'exec.py')
-
-	// write an exec file that does nothing and see if it disappears, which
-	// means the current version of ren'py supports exec
-	await fs.writeFile(exec_path, exec_prelude)
-	await new Promise((resolve) => setTimeout(resolve, 500))
-	const stat = await fs.stat(exec_path)
-
-	if (stat.isFile()) {
-		await fs.unlink(exec_path)
-		return false
-	} else {
+	try {
+		await exec_py('', game_root)
+		logger.info('exec.py probably supported')
 		return true
+	} catch (err) {
+		if (err instanceof ExecPyTimeoutError) {
+			logger.info('exec.py not supported')
+			return false
+		}
+
+		throw err
 	}
 }
 
@@ -219,62 +326,13 @@ async function supports_exec_py() {
  * starts renpy.sh with the appropriate arguments. resolves with the child
  * process if ren'py starts successfully
  *
+ * if exec.py is supported, it will be used to warp to the line instead of
+ * opening a new instance. in this case no child process is returned.
+ *
  * @param {Partial<Options>} options
- * @returns {Promise<child_process.ChildProcess>}
+ * @returns {Promise<child_process.ChildProcess | undefined>}
  */
 async function launch_renpy({ mode, uri } = {}) {
-	/** @type {string} */
-	let renpy_sh
-
-	try {
-		renpy_sh = await get_renpy_sh()
-	} catch (err) {
-		logger.error(err)
-		if (err instanceof BadSDKError) {
-			vscode.window
-				.showErrorMessage(
-					`Invalid Ren'Py SDK path: ${err.sdk_path}`,
-					'Open Settings'
-				)
-				.then((selection) => {
-					if (!selection) return
-					vscode.commands.executeCommand(
-						'workbench.action.openSettings',
-						'renpyWarp.sdkPath'
-					)
-				})
-		} else if (err instanceof NoSDKError) {
-			vscode.window
-				.showErrorMessage(
-					"Please set a Ren'Py SDK path in the settings",
-					'Open Settings'
-				)
-				.then((selection) => {
-					if (!selection) return
-
-					vscode.commands.executeCommand(
-						'workbench.action.openSettings',
-						'renpyWarp.sdkPath'
-					)
-				})
-		} else if (err instanceof BadEditorError) {
-			vscode.window
-				.showErrorMessage(
-					`Invalid Ren'Py editor path: '${err.editor_path}'`,
-					'Open Settings'
-				)
-				.then((selection) => {
-					if (!selection) return
-
-					vscode.commands.executeCommand(
-						'workbench.action.openSettings',
-						'renpyWarp.editor'
-					)
-				})
-		}
-		throw err
-	}
-
 	const active_editor = vscode.window.activeTextEditor
 
 	// deduce what is the current file for this context
@@ -286,13 +344,12 @@ async function launch_renpy({ mode, uri } = {}) {
 
 	const current_file =
 		mode === 'launch' ? renpy_file_in_workspace : uri_path || active_file
+	logger.info('current file:', current_file)
 
 	if (!current_file) {
 		vscode.window.showErrorMessage("No Ren'Py project in workspace")
 		return
 	}
-
-	logger.info('current file:', current_file)
 
 	const game_root = find_game_root(current_file)
 
@@ -309,17 +366,44 @@ async function launch_renpy({ mode, uri } = {}) {
 		current_file
 	)
 
+	const line_number =
+		mode === 'line'
+			? vscode.window.activeTextEditor.selection.active.line + 1
+			: 1
+
+	if (
+		pm.length &&
+		['line', 'file'].includes(mode) &&
+		(await determine_strategy(game_root)) === 'Replace'
+	) {
+		await exec_py(
+			`renpy.warp_to_line('${filename_relative}:${line_number}')`,
+			game_root
+		).catch(() => {
+			vscode.window
+				.showErrorMessage(
+					"Failed to warp inside active window. Your Ren'Py version may not support this feature. Set the strategy to 'New Window' to fall back to opening a new window.",
+					'Open Settings'
+				)
+				.then((selection) => {
+					if (!selection) return
+					vscode.commands.executeCommand(
+						'workbench.action.openSettings',
+						'renpyWarp.strategy'
+					)
+				})
+		})
+		return
+	}
+
+	const renpy_sh = await get_renpy_sh()
+
 	/** @type {string} */
 	let cmd
 
 	if (mode === 'launch') {
 		cmd = renpy_sh + ' ' + make_cmd([game_root])
 	} else {
-		const line_number =
-			mode === 'line'
-				? vscode.window.activeTextEditor.selection.active.line + 1
-				: 1
-
 		cmd =
 			renpy_sh +
 			' ' +
@@ -332,21 +416,20 @@ async function launch_renpy({ mode, uri } = {}) {
 
 	logger.info('executing subshell:', cmd)
 
-	const local_process = child_process.exec(cmd)
-	processes.add(local_process)
-	logger.info('created process', local_process.pid)
+	const this_process = child_process.exec(cmd)
+	pm.add(this_process)
+	logger.info('created process', this_process.pid)
 
-	local_process.stderr.on('data', (data) => {
+	this_process.stderr.on('data', (data) => {
 		console.error('process stderr:', data)
 	})
-	local_process.stdout.on('data', (data) => {
+	this_process.stdout.on('data', (data) => {
 		logger.info('process stdout:', data)
 	})
-	local_process.on('exit', (code) => {
-		logger.info(`process ${local_process.pid} exited with code`, code)
-		processes.delete(local_process)
+	this_process.on('exit', (code) => {
+		logger.info(`process ${this_process.pid} exited with code`, code)
 
-		if (code === 0) return
+		if (code === 0 || code === null) return // null if sigkill, usually intentional
 
 		vscode.window
 			.showErrorMessage(
@@ -360,143 +443,24 @@ async function launch_renpy({ mode, uri } = {}) {
 			})
 	})
 
-	return local_process
+	return this_process
 }
 
 /**
- * @param {(options: Partial<Options>) => Promise<child_process.ChildProcess>} start_process
- * @returns {(options: Partial<Options>) => Promise<void>}
- */
-function associate_status_bar(start_process) {
-	const launch_status_bar = vscode.window.createStatusBarItem(
-		vscode.StatusBarAlignment.Left,
-		0
-	)
-	launch_status_bar.command = 'renpyWarp.launchOrQuit'
-	launch_status_bar.show()
-
-	/** @type {child_process.ChildProcess | undefined} */
-	let active_process = undefined
-
-	/** @type {NodeJS.Timeout | undefined} */
-	let timeout = undefined
-
-	function kill() {
-		if (active_process) {
-			logger.info('killing active process')
-			active_process.kill()
-		}
-
-		active_process = undefined
-		launch_status_bar.text = `$(play) Launch project`
-		clearTimeout(timeout)
-	}
-
-	kill()
-
-	return async (...args) => {
-		if (active_process) return kill()
-
-		if (advanced_progress_bars_enabled()) {
-			timeout = setTimeout(() => {
-				vscode.window
-					.showWarningMessage(
-						"Ren'Py process took too long to output anything meaningful. You may want to disable advanced progress bars in the settings.",
-						'Open Settings'
-					)
-					.then(() => {
-						vscode.commands.executeCommand(
-							'workbench.action.openSettings',
-							'renpyWarp.advancedProgressBars'
-						)
-					})
-
-				active_process = undefined // detatch process
-				kill()
-			}, 10000)
-
-			launch_status_bar.text = `$(sync~spin) Launching...`
-
-			try {
-				active_process = await start_process(...args)
-			} catch (err) {
-				return kill()
-			}
-
-			active_process.stdout.on('data', (data) => {
-				if (data === 'renpy-warp init signal') {
-					launch_status_bar.text = `$(debug-stop) Quit Ren'Py`
-					clearTimeout(timeout)
-				}
-			})
-		} else {
-			launch_status_bar.text = `$(sync~spin) Launching...`
-			try {
-				active_process = await start_process(...args)
-			} catch (err) {
-				return kill()
-			}
-			launch_status_bar.text = `$(debug-stop) Quit Ren'Py`
-		}
-
-		active_process.on('exit', kill)
-	}
-}
-
-/**
+ * @param {string} message
  * @param {(options: Partial<Options>) => Promise<child_process.ChildProcess>} start_process
  * @returns {(options: Partial<Options>) => void}
  */
-function associate_progress_notification(start_process) {
+function associate_progress_notification(message, start_process) {
 	return (...args) => {
 		vscode.window.withProgress(
 			{
 				location: vscode.ProgressLocation.Notification,
-				title: "Launching Ren'Py...",
+				title: message,
 			},
-			() =>
-				new Promise(async (resolve) => {
-					try {
-						processes = await start_process(...args)
-					} catch (err) {
-						resolve()
-						return
-					}
-
-					if (!advanced_progress_bars_enabled()) {
-						resolve()
-					} else {
-						const timeout = setTimeout(() => {
-							vscode.window
-								.showWarningMessage(
-									"Ren'Py process took too long to output anything meaningful. You may want to disable advanced progress bars in the settings.",
-									'Open Settings'
-								)
-								.then((selection) => {
-									if (!selection) return
-									vscode.commands.executeCommand(
-										'workbench.action.openSettings',
-										'renpyWarp.advancedProgressBars'
-									)
-								})
-							cleanup()
-						}, 10000)
-
-						function cleanup() {
-							clearTimeout(timeout)
-							resolve()
-						}
-
-						// educated guess: if we see stdout, ren'py has started.
-						//
-						// this relies on the developer to add a print() statement
-						// somewhere, as ren'py doesn't print anything when it starts.
-						//
-						// for now, this feature is locked behind a setting.
-						processes.stdout.on('data', cleanup)
-						processes.on('exit', cleanup)
-					}
-				})
+			async () => {
+				await start_process(...args)
+			}
 		)
 	}
 }
@@ -508,32 +472,35 @@ function activate(context) {
 	logger = vscode.window.createOutputChannel("Ren'Py Warp to Line", {
 		log: true,
 	})
+
+	status_bar = vscode.window.createStatusBarItem(
+		vscode.StatusBarAlignment.Left,
+		0
+	)
+	pm.update_status_bar()
+
 	context.subscriptions.push(
 		vscode.commands.registerCommand(
 			'renpyWarp.warpToLine',
-			associate_progress_notification((...args) =>
+			associate_progress_notification('Warping to line...', (...args) =>
 				launch_renpy({ mode: 'line', ...args })
 			)
 		),
 		vscode.commands.registerCommand(
 			'renpyWarp.warpToFile',
-			associate_progress_notification((...args) =>
+			associate_progress_notification('Warping to file...', (...args) =>
 				launch_renpy({ mode: 'file', ...args })
 			)
 		),
 		vscode.commands.registerCommand(
 			'renpyWarp.launch',
-			associate_progress_notification((...args) =>
+			associate_progress_notification("Launching Ren'Py...", (...args) =>
 				launch_renpy({ mode: 'launch', ...args })
 			)
 		),
-		vscode.commands.registerCommand(
-			'renpyWarp.launchOrQuit',
-			associate_status_bar((...args) =>
-				launch_renpy({ mode: 'launch', ...args })
-			)
-		),
-		logger
+		vscode.commands.registerCommand('renpyWarp.kill', () => pm.kill_all()),
+		logger,
+		status_bar
 	)
 }
 
