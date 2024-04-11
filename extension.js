@@ -7,6 +7,9 @@ const untildify = require('untildify')
 const { quoteForShell } = require('puka')
 const chokidar = require('chokidar')
 
+/** @type {ProcessManager} */
+let pm
+
 /** @type {vscode.LogOutputChannel} */
 let logger
 
@@ -27,6 +30,8 @@ class ProcessManager {
 	constructor() {
 		/** @type {Set<child_process.ChildProcess>} */
 		this.processes = new Set()
+
+		this.update_status_bar()
 	}
 
 	/** @param {child_process.ChildProcess} process */
@@ -61,8 +66,6 @@ class ProcessManager {
 		return this.processes.size
 	}
 }
-
-const pm = new ProcessManager()
 
 /**
  * @param {string} key
@@ -477,7 +480,8 @@ function activate(context) {
 		vscode.StatusBarAlignment.Left,
 		0
 	)
-	pm.update_status_bar()
+
+	pm = new ProcessManager()
 
 	context.subscriptions.push(
 		vscode.commands.registerCommand(
