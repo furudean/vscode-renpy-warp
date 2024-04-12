@@ -292,6 +292,8 @@ function get_exec_py(game_root) {
 			vscode.window.showErrorMessage(
 				"Multiple Ren'Py instances running. Cannot warp inside open Ren'Py window."
 			)
+			if (is_follow_cursor)
+				vscode.commands.executeCommand('renpyWarp.toggleFollowCursor')
 			return
 		}
 
@@ -413,7 +415,16 @@ async function launch_renpy({ file, line } = {}) {
 		line &&
 		(await determine_strategy(game_root)) === 'Replace'
 	) {
-		await get_exec_py(game_root)(
+		const exec_py = get_exec_py(game_root)
+
+		if (pm.length > 1) {
+			vscode.window.showErrorMessage(
+				"Multiple Ren'Py instances running. Cannot warp inside open Ren'Py window."
+			)
+			return
+		}
+
+		await exec_py(
 			`renpy.warp_to_line('${filename_relative}:${line + 1}')`
 		).catch(() => {
 			vscode.window
