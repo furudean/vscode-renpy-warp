@@ -516,7 +516,7 @@ function activate(context) {
 	follow_cursor_status_bar.text = '$(pin) Follow cursor'
 	follow_cursor_status_bar.command = 'renpyWarp.toggleFollowCursor'
 	follow_cursor_status_bar.tooltip =
-		"When enabled, Ren'Py will continuously warp to the line you're currently editing"
+		"When enabled, Ren'Py will continuously warp to the line being edited"
 
 	pm = new ProcessManager()
 
