@@ -1,8 +1,6 @@
 # Ren'Py Warp to Line
 
-Open your Ren'Py game at the current line or file in Visual Studio Code.
-
-Has a handful of features to synchronize your editor with your Ren'Py game.
+Open and sync your Ren'Py game at the current line or file in Visual Studio Code.
 
 ## Commands
 

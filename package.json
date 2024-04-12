@@ -2,7 +2,7 @@
 	"name": "renpyWarp",
 	"displayName": "Ren'Py Warp to Line",
 	"description": "Quickly open Ren'Py at current line",
-	"version": "0.10.1",
+	"version": "0.10.2",
 	"publisher": "PaisleySoftworks",
 	"icon": "images/eileen.png",
 	"engines": {
@@ -136,7 +136,7 @@
 				"renpyWarp.sdkPath": {
 					"type": "string",
 					"default": "",
-					"markdownDescription": "Path to the Ren'Py SDK. This is used to launch your game.\n\nThis should be an absolute path, or a path starting with `~` to indicate the home directory.",
+					"markdownDescription": "Path to the Ren'Py SDK. The extension will not work without this set.\n\nThis should be an absolute path, or a path starting with `~` to indicate the home directory.",
 					"order": 0
 				},
 				"renpyWarp.strategy": {
@@ -150,16 +150,16 @@
 						"Replace"
 					],
 					"markdownEnumDescriptions": [
-						"Automatically choose based what features are available in your version of Ren'Py.\n\nIs slightly slower than the other options, as detection of features is required. If you know what features are available in your version of Ren'Py, you can choose a more specific strategy.",
-						"Launch a new instance of Ren'Py when a command is executed.",
-						"Execute `renpy.warp_to_line()` inside the open instance. This allows you to warp to a new line or file without restarting the game.\n\n**NOTE**: This requires you to use a version of Ren'Py that supports the `exec.py` feature. As of writing this is only available in nightly builds."
+						"Automatically choose based what features are available in your version of Ren'Py.\n\nIs slightly slower than the other options, as detection of features is required. If you know what features are available, you can choose a more specific strategy.",
+						"Launch a new instance of Ren'Py when a command is executed. This works on all versions of Ren'Py.",
+						"Execute `renpy.warp_to_line()` inside the open instance. This allows you to warp to a new line or file without restarting the game.\n\n**NOTE**: This requires you to use a newer version of Ren'Py that supports the `exec.py` feature. As of writing this is only available in nightly builds."
 					]
 				},
 				"renpyWarp.followCursorExecInterval": {
 					"type": "integer",
 					"default": 40,
 					"order": 2,
-					"markdownDescription": "The interval in milliseconds to execute `renpy.warp_to_line()` when in follow cursor mode.\n\nThe lower the value, the more frequently the command is issued, which can feel more responsive.\n\nNeeds a restart to take effect."
+					"markdownDescription": "The interval in milliseconds to execute `renpy.warp_to_line()` when in follow cursor mode.\n\nThe lower the value, the more frequently the command is issued, which can feel more responsive at the cost of performance on slower hardware.\n\nNeeds a restart to take effect."
 				},
 				"renpyWarp.editor": {
 					"type": "string",

@@ -194,7 +194,7 @@ async function get_renpy_sh() {
 
 				vscode.commands.executeCommand(
 					'workbench.action.openSettings',
-					'renpyWarp.sdkPath'
+					'@ext:PaisleySoftworks.renpyWarp sdkPath'
 				)
 			})
 		return
@@ -218,14 +218,14 @@ async function get_renpy_sh() {
 	} catch (err) {
 		vscode.window
 			.showErrorMessage(
-				`Invalid Ren'Py SDK path: ${err.sdk_path}`,
+				`Invalid Ren'Py SDK path: ${sdk_path_setting}`,
 				'Open Settings'
 			)
 			.then((selection) => {
 				if (!selection) return
 				vscode.commands.executeCommand(
 					'workbench.action.openSettings',
-					'renpyWarp.strategy'
+					'@ext:PaisleySoftworks.renpyWarp sdkPath'
 				)
 			})
 		return
@@ -257,7 +257,7 @@ async function get_renpy_sh() {
 
 				vscode.commands.executeCommand(
 					'workbench.action.openSettings',
-					'renpyWarp.editor'
+					'@ext:PaisleySoftworks.renpyWarp editor'
 				)
 			})
 		return
@@ -436,7 +436,7 @@ async function launch_renpy({ file, line } = {}) {
 					if (!selection) return
 					vscode.commands.executeCommand(
 						'workbench.action.openSettings',
-						'renpyWarp.strategy'
+						'@ext:PaisleySoftworks.renpyWarp strategy'
 					)
 				})
 		})
@@ -445,6 +445,8 @@ async function launch_renpy({ file, line } = {}) {
 
 	// open new ren'py window
 	const renpy_sh = await get_renpy_sh()
+
+	if (!renpy_sh) return
 
 	/** @type {string} */
 	let cmd

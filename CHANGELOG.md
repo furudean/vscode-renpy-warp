@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## 0.10.2 - 2024-04-11
+
+-   Minor fixes to settings docs
+-   Fix an invalid link to a setting on an error message
+
 ## 0.10.1 - 2024-04-11
 
 -   Fix some edge cases with the cursor sync feature
