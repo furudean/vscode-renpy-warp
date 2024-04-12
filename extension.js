@@ -279,61 +279,57 @@ async function get_renpy_sh() {
 /**
  * Executes a Python script.
  *
- * @param {string} script
- * python script to execute
- *
  * @param {string} game_root
  * path to the game root
  *
- * @returns {Promise<void>}
+ * @returns {(script: string) => Promise<void>}
  */
-async function exec_py(script, game_root) {
-	if (pm.length > 1) {
-		vscode.window.showErrorMessage(
-			"Multiple Ren'Py instances running. Cannot warp inside open Ren'Py window."
-		)
-		return
-	}
+function get_exec_py(game_root) {
+	const watcher = chokidar.watch(game_root)
 
-	const exec_path = path.join(game_root, 'exec.py')
-	const exec_prelude =
-		"# This file is created by Ren'Py Warp to Line and can safely be deleted\n"
+	return function (script) {
+		if (pm.length > 1) {
+			vscode.window.showErrorMessage(
+				"Multiple Ren'Py instances running. Cannot warp inside open Ren'Py window."
+			)
+			return
+		}
 
-	return new Promise(async (resolve, reject) => {
-		const watcher = chokidar.watch(game_root)
+		const exec_path = path.join(game_root, 'exec.py')
+		const exec_prelude =
+			"# This file is created by Ren'Py Warp to Line and can safely be deleted\n"
 
-		/** @type {NodeJS.Timeout | undefined} */
-		let timeout
+		return new Promise(async (resolve, reject) => {
+			/** @type {NodeJS.Timeout | undefined} */
+			let timeout
 
-		watcher.on('unlink', async (path) => {
-			if (!path.endsWith('exec.py')) return
-			// file was consumed by ren'py
-			logger.info('exec.py executed successfully')
-			clearTimeout(timeout)
-			await watcher.close()
-			resolve()
-		})
-
-		logger.info(`writing exec.py: "${script}"`)
-		await fs.writeFile(exec_path, exec_prelude + script)
-
-		timeout = setTimeout(async () => {
-			await watcher.close()
-
-			if (await file_exists(exec_path)) {
-				logger.error('exec.py timed out')
-				try {
-					await fs.unlink(exec_path) // delete the unconsumed file
-				} catch (err) {}
-				reject(new ExecPyTimeoutError())
-			} else {
-				logger.warn(
-					'exec.py seemingly consumed, but watcher did not see file deletion'
-				)
+			watcher.once('unlink', async (path) => {
+				if (!path.endsWith('exec.py')) return
+				// file was consumed by ren'py
+				logger.info('exec.py executed successfully')
+				clearTimeout(timeout)
 				resolve()
-			}
-		}, 500)
-	})
+			})
+
+			logger.info(`writing exec.py: "${script}"`)
+			await fs.writeFile(exec_path, exec_prelude + script)
+
+			timeout = setTimeout(async () => {
+				if (await file_exists(exec_path)) {
+					logger.error('exec.py timed out')
+					try {
+						await fs.unlink(exec_path) // delete the unconsumed file
+					} catch (err) {}
+					reject(new ExecPyTimeoutError())
+				} else {
+					logger.warn(
+						'exec.py seemingly consumed, but watcher did not see file deletion'
+					)
+					resolve()
+				}
+			}, 500)
+		})
+	}
 }
 
 /**
@@ -353,7 +349,7 @@ async function supports_exec_py(game_root) {
 	}
 
 	try {
-		await exec_py('', game_root)
+		await get_exec_py(game_root)('')
 		logger.info('exec.py probably supported')
 		return true
 	} catch (err) {
@@ -417,9 +413,8 @@ async function launch_renpy({ file, line } = {}) {
 		line &&
 		(await determine_strategy(game_root)) === 'Replace'
 	) {
-		await exec_py(
-			`renpy.warp_to_line('${filename_relative}:${line + 1}')`,
-			game_root
+		await get_exec_py(game_root)(
+			`renpy.warp_to_line('${filename_relative}:${line + 1}')`
 		).catch(() => {
 			vscode.window
 				.showErrorMessage(
@@ -527,13 +522,21 @@ function activate(context) {
 
 	const throttle = p_throttle({
 		limit: 1,
-		interval: 100,
+		// renpy only reads exec.py every 100ms. but writing the file more
+		// frequently is more responsive
+		interval: get_config('followCursorExecInterval'),
 	})
 
-	let last_warp_spec = null
+	/** @type {(script: string) => Promise<void>} */
+	let exec_py
+
+	/** @type {vscode.Disposable} */
+	let text_editor_handle
+
+	/** @type {string | undefined} */
+	let last_warp_spec
 
 	const follow_cursor = throttle(async () => {
-		if (!is_follow_cursor) return
 		if (pm.length === 0) return
 
 		const file = vscode.window.activeTextEditor.document.uri.fsPath
@@ -550,7 +553,7 @@ function activate(context) {
 		if (warp_spec === last_warp_spec) return
 		last_warp_spec = warp_spec
 
-		await exec_py(`renpy.warp_to_line('${warp_spec}')`, game_root)
+		await exec_py(`renpy.warp_to_line('${warp_spec}')`)
 	})
 
 	context.subscriptions.push(
@@ -602,8 +605,21 @@ function activate(context) {
 
 				if (!is_follow_cursor) {
 					const game_root = find_game_root(
-						vscode.window.activeTextEditor.document.uri.fsPath
+						vscode.window.activeTextEditor
+							? vscode.window.activeTextEditor.document.uri.fsPath
+							: await vscode.workspace
+									.findFiles('**/game/**/*.rpy', null, 1)
+									.then((files) =>
+										files.length ? files[0].fsPath : null
+									)
 					)
+
+					if (!game_root) {
+						vscode.window.showErrorMessage(
+							"Unable to find game root. Not a Ren'Py project?"
+						)
+						return
+					}
 
 					if (!(await supports_exec_py(game_root))) {
 						vscode.window.showErrorMessage(
@@ -615,18 +631,30 @@ function activate(context) {
 					is_follow_cursor = true
 					follow_cursor_status_bar.text =
 						'$(pinned) Stop following cursor'
+					follow_cursor_status_bar.color = new vscode.ThemeColor(
+						'statusBarItem.warningForeground'
+					)
 					follow_cursor_status_bar.backgroundColor =
 						new vscode.ThemeColor('statusBarItem.warningBackground')
+
+					text_editor_handle =
+						vscode.window.onDidChangeTextEditorSelection(
+							follow_cursor
+						)
+					context.subscriptions.push(text_editor_handle)
+
+					exec_py = get_exec_py(game_root)
+
 					follow_cursor()
 				} else {
 					is_follow_cursor = false
 					follow_cursor_status_bar.text = '$(pin) Follow cursor'
 					follow_cursor_status_bar.backgroundColor = undefined
+					follow_cursor_status_bar.color = undefined
+					text_editor_handle.dispose()
 				}
 			}
-		),
-
-		vscode.window.onDidChangeTextEditorSelection(follow_cursor)
+		)
 	)
 }
 

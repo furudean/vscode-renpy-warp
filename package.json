@@ -143,7 +143,7 @@
 					"type": "string",
 					"default": "Auto",
 					"markdownDescription": "How to treat an existing Ren'Py instance when a warping command is issued.",
-					"order": 0,
+					"order": 1,
 					"enum": [
 						"Auto",
 						"New Window",
@@ -154,6 +154,12 @@
 						"Launch a new instance of Ren'Py when a command is executed.",
 						"Execute `renpy.warp_to_line()` inside the open instance. This allows you to warp to a new line or file without restarting the game.\n\n**NOTE**: This requires you to use a version of Ren'Py that supports the `exec.py` feature. As of writing this is only available in nightly builds."
 					]
+				},
+				"renpyWarp.followCursorExecInterval": {
+					"type": "integer",
+					"default": 40,
+					"order": 2,
+					"markdownDescription": "The interval in milliseconds to execute `renpy.warp_to_line()` when in follow cursor mode.\n\nThe lower the value, the more frequently the command is issued, which can feel more responsive.\n\nNeeds a restart to take effect."
 				},
 				"renpyWarp.editor": {
 					"type": "string",
