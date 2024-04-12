@@ -73,6 +73,7 @@ class ProcessManager {
 		} else {
 			instance_status_bar.text = `$(play) Launch project`
 			instance_status_bar.command = 'renpyWarp.launch'
+			instance_status_bar.tooltip = undefined
 
 			follow_cursor_status_bar.hide()
 		}
@@ -520,7 +521,7 @@ function activate(context) {
 	follow_cursor_status_bar.text = '$(pin) Follow cursor'
 	follow_cursor_status_bar.command = 'renpyWarp.toggleFollowCursor'
 	follow_cursor_status_bar.tooltip =
-		"When enabled, Ren'Py will warp to the line you're currently editing"
+		"When enabled, Ren'Py will continuously warp to the line you're currently editing"
 
 	pm = new ProcessManager()
 
