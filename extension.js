@@ -592,7 +592,12 @@ function activate(context) {
 		vscode.commands.registerCommand(
 			'renpyWarp.toggleFollowCursor',
 			async () => {
-				if (pm.length === 0) return
+				if (pm.length === 0) {
+					vscode.window.showErrorMessage(
+						"No Ren'Py instances running. Cannot follow cursor."
+					)
+					return
+				}
 
 				if (!is_follow_cursor) {
 					const game_root = find_game_root(
