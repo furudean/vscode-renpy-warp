@@ -45,9 +45,28 @@ class ProcessManager {
 		this.processes.add(process)
 		this.update_status_bar()
 
-		process.on('exit', () => {
+		process.stdout.on('data', (data) =>
+			logger.error(`process ${process.pid} stdout:`, data)
+		)
+		process.stderr.on('data', (data) =>
+			logger.error(`process ${process.pid} stderr:`, data)
+		)
+		process.on('exit', (code) => {
 			this.processes.delete(process)
 			this.update_status_bar()
+
+			logger.info(`process ${process.pid} exited with code ${code}`)
+
+			if (code) {
+				vscode.window
+					.showErrorMessage(
+						"Ren'Py process exited with errors",
+						'Logs'
+					)
+					.then((selected) => {
+						if (selected === 'Logs') logger.show()
+					})
+			}
 		})
 	}
 
@@ -61,7 +80,7 @@ class ProcessManager {
 		}
 	}
 
-	async update_status_bar() {
+	update_status_bar() {
 		instance_status_bar.show()
 
 		if (this.length) {
@@ -73,7 +92,7 @@ class ProcessManager {
 		} else {
 			instance_status_bar.text = `$(play) Launch project`
 			instance_status_bar.command = 'renpyWarp.launch'
-			instance_status_bar.tooltip = undefined
+			instance_status_bar.tooltip = "Launch new Ren'Py instance"
 
 			follow_cursor_status_bar.hide()
 		}
@@ -94,12 +113,12 @@ function get_config(key) {
 
 /**
  * @param {string} game_root
- * @returns {Promise<'Replace' | 'New Window'>}
+ * @returns {Promise<'New Window' | 'Replace Window' | 'Update Window'>}
  */
 async function determine_strategy(game_root) {
 	return get_config('strategy') === 'Auto'
 		? (await supports_exec_py(game_root))
-			? 'Replace'
+			? 'Update Window'
 			: 'New Window'
 		: get_config('strategy')
 }
@@ -277,7 +296,8 @@ async function get_renpy_sh() {
 }
 
 /**
- * Executes a Python script.
+ * sets up a watcher for the `exec.py` file and returns a function that can be
+ * called to write to it.
  *
  * @param {string} game_root
  * path to the game root
@@ -299,7 +319,7 @@ function get_exec_py(game_root) {
 
 		const exec_path = path.join(game_root, 'exec.py')
 		const exec_prelude =
-			"# This file is created by Ren'Py Warp to Line and can safely be deleted\n"
+			"# This file is created by Ren'Py Launch and Sync and can safely be deleted\n"
 
 		return new Promise(async (resolve, reject) => {
 			/** @type {NodeJS.Timeout | undefined} */
@@ -319,9 +339,9 @@ function get_exec_py(game_root) {
 			timeout = setTimeout(async () => {
 				if (await file_exists(exec_path)) {
 					logger.error('exec.py timed out')
-					try {
-						await fs.unlink(exec_path) // delete the unconsumed file
-					} catch (err) {}
+					// try {
+					// 	await fs.unlink(exec_path) // delete the unconsumed file
+					// } catch (err) {}
 					reject(new ExecPyTimeoutError())
 				} else {
 					logger.warn(
@@ -351,7 +371,8 @@ async function supports_exec_py(game_root) {
 	}
 
 	try {
-		await get_exec_py(game_root)('')
+		const exec_py = get_exec_py(game_root)
+		await exec_py('')
 		logger.info('exec.py probably supported')
 		return true
 	} catch (err) {
@@ -365,26 +386,25 @@ async function supports_exec_py(game_root) {
 }
 
 /**
- * @typedef {Object} Options
- * @property {string} [file]
- * fs path. if null, open first .rpy associated with workspace
+ * starts or warps depending on arguments and settings specified for the
+ * extension
  *
- * @property {number} [line]
+ * if strategy is `Update Window`, no new window is opened and the current one
+ * is updated instead.
+ *
+ * @param {object} [options]
+ * @param {string} [options.file]
+ * fs path representing the current editor. selects the file to warp to. if
+ * null, simply open ren'py and detect the project root
+ * @param {number} [options.line]
  * zero-indexed line number. if set, warp to line will be attempted
- */
-
-/**
- * starts renpy.sh with the appropriate arguments. resolves with the child
- * process if ren'py starts successfully
  *
- * if exec.py is supported, it will be used to warp to the line instead of
- * opening a new instance. in this case no child process is returned.
- *
- * @param {Options} options
  * @returns {Promise<child_process.ChildProcess | undefined>}
+ * resolves with the child process if a new instance was opened, otherwise
+ * undefined
  */
 async function launch_renpy({ file, line } = {}) {
-	logger.info('launch_renpy:', { fs_path: file, line })
+	logger.info('launch_renpy:', { file, line })
 
 	if (!file) {
 		file = await vscode.workspace
@@ -398,6 +418,7 @@ async function launch_renpy({ file, line } = {}) {
 	}
 
 	const game_root = find_game_root(file)
+	logger.debug('game root:', game_root)
 
 	if (!game_root) {
 		vscode.window.showErrorMessage(
@@ -413,7 +434,7 @@ async function launch_renpy({ file, line } = {}) {
 	if (
 		pm.length &&
 		line &&
-		(await determine_strategy(game_root)) === 'Replace'
+		(await determine_strategy(game_root)) === 'Update Window'
 	) {
 		const exec_py = get_exec_py(game_root)
 
@@ -465,26 +486,9 @@ async function launch_renpy({ file, line } = {}) {
 	const this_process = child_process.exec(cmd)
 	logger.info('created process', this_process.pid)
 
+	if (get_config('strategy') === 'Replace Window') pm.kill_all()
+
 	pm.add(this_process)
-
-	this_process.stderr.on('data', console.error)
-	this_process.stdout.on('data', logger.info)
-	this_process.on('exit', (code) => {
-		logger.info(`process ${this_process.pid} exited with code ${code}`)
-
-		if (code === 0 || code === null) return // null if sigkill
-
-		vscode.window
-			.showErrorMessage(
-				"Ren'Py process exited with errors",
-				'Reopen',
-				'Logs'
-			)
-			.then((selected) => {
-				if (selected === 'Reopen') launch_renpy({ file, line })
-				else if (selected === 'Logs') logger.show()
-			})
-	})
 
 	return this_process
 }
@@ -512,7 +516,16 @@ function associate_progress_notification(message, run) {
  * @param {vscode.ExtensionContext} context
  */
 function activate(context) {
-	logger = vscode.window.createOutputChannel("Ren'Py Warp to Line", {
+	/** @type {(script: string) => Promise<void>} */
+	let exec_py
+
+	/** @type {vscode.Disposable} */
+	let text_editor_handle
+
+	/** @type {string | undefined} */
+	let last_warp_spec
+
+	logger = vscode.window.createOutputChannel("Ren'Py Launch and Sync", {
 		log: true,
 	})
 
@@ -540,30 +553,20 @@ function activate(context) {
 		interval: get_config('followCursorExecInterval'),
 	})
 
-	/** @type {(script: string) => Promise<void>} */
-	let exec_py
-
-	/** @type {vscode.Disposable} */
-	let text_editor_handle
-
-	/** @type {string | undefined} */
-	let last_warp_spec
-
 	const follow_cursor = throttle(async () => {
 		if (pm.length === 0) return
 
 		const file = vscode.window.activeTextEditor.document.uri.fsPath
 		const line = vscode.window.activeTextEditor.selection.active.line
 
-		const game_root = find_game_root(file)
 		const filename_relative = path.relative(
-			path.join(game_root, 'game/'),
+			path.join(find_game_root(file), 'game/'),
 			file
 		)
 
 		const warp_spec = `${filename_relative}:${line + 1}`
 
-		if (warp_spec === last_warp_spec) return
+		if (warp_spec === last_warp_spec) return // no change
 		last_warp_spec = warp_spec
 
 		await exec_py(`renpy.warp_to_line('${warp_spec}')`)
@@ -616,28 +619,55 @@ function activate(context) {
 					return
 				}
 
-				if (!is_follow_cursor) {
-					const game_root = find_game_root(
-						vscode.window.activeTextEditor
-							? vscode.window.activeTextEditor.document.uri.fsPath
-							: await vscode.workspace
-									.findFiles('**/game/**/*.rpy', null, 1)
-									.then((files) =>
-										files.length ? files[0].fsPath : null
-									)
+				const game_root = find_game_root(
+					vscode.window.activeTextEditor
+						? vscode.window.activeTextEditor.document.uri.fsPath
+						: await vscode.workspace
+								.findFiles('**/game/**/*.rpy', null, 1)
+								.then((files) =>
+									files.length ? files[0].fsPath : null
+								)
+				)
+
+				if (!game_root) {
+					vscode.window.showErrorMessage(
+						"Unable to find game root. Not a Ren'Py project?"
 					)
+					return
+				}
 
-					if (!game_root) {
-						vscode.window.showErrorMessage(
-							"Unable to find game root. Not a Ren'Py project?"
+				if (
+					!['Auto', 'Update Window'].includes(get_config('strategy'))
+				) {
+					vscode.window
+						.showErrorMessage(
+							'Follow cursor is only supported with strategy set to "Update Window" or "Auto"',
+							'Open Settings'
 						)
-						return
-					}
+						.then((selection) => {
+							if (!selection) return
+							vscode.commands.executeCommand(
+								'workbench.action.openSettings',
+								'@ext:PaisleySoftworks.renpyWarp strategy'
+							)
+						})
+					return
+				}
 
+				if (!is_follow_cursor) {
 					if (!(await supports_exec_py(game_root))) {
-						vscode.window.showErrorMessage(
-							"Can only follow cursor if Ren'Py supports exec.py. Your Ren'Py version may not support this feature."
-						)
+						vscode.window
+							.showErrorMessage(
+								"Your Ren'Py version does not support following cursor. Please update Ren'Py or change the strategy in settings.",
+								'Open Settings'
+							)
+							.then((selection) => {
+								if (!selection) return
+								vscode.commands.executeCommand(
+									'workbench.action.openSettings',
+									'@ext:PaisleySoftworks.renpyWarp strategy'
+								)
+							})
 						return
 					}
 
