@@ -57,7 +57,7 @@ set to one of the following values:
    <dt>Update Window</dt>
    <dd>
       <blockquote>
-         ⚠️ Warning<br><br>
+         ⚠️ <b>Warning</b><br>
          This feature only works if the current version of Ren'Py supports
          reading commands from <code>exec.py</code>. As of writing, this is only
          available in nightly builds.
