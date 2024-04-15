@@ -56,17 +56,17 @@ set to one of the following values:
    </dd>
    <dt>Update Window</dt>
    <dd>
-      <p>
-      When a command is issued, replace an open editor by sending a
-      <code>renpy.warp_to_line()</code> command to the currently running Ren'Py instance.
-      </p>
       <blockquote>
          ⚠️ Warning<br>
          This feature only works if the current version of Ren'Py supports
          reading commands from <code>exec.py</code>. As of writing, this is only
          available in nightly builds.
       </blockquote>
-
+      <p>
+         When a command is issued, replace an open editor by sending a
+         <code>renpy.warp_to_line()</code> command to the currently running 
+         Ren'Py instance.
+      </p>
    </dd>
 </dl>
 
