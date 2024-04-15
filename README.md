@@ -65,7 +65,7 @@ set to one of the following values:
       <p>
          When a command is issued, replace an open editor by sending a
          <code>renpy.warp_to_line()</code> command to the currently running 
-         Ren'Py instance.
+         Ren'Py instance
       </p>
    </dd>
 </dl>
