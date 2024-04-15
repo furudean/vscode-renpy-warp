@@ -43,21 +43,21 @@ set to one of the following values:
 <dl>
    <dt>Auto</dt>
    <dd>
-      Automatically choose the best strategy based on what features are available.
+      Automatically choose the best strategy based on what features are available
    </dd>
    <dt>New window</dt>
    <dd>
-      Open a new Ren'Py instance when a command is issued.
+      Open a new Ren'Py instance when a command is issued
    </dd>
    <dt>Replace window</dt>
    <dd>
       Kill the currently running Ren'Py instance and open a new one when a 
-      command is issued.
+      command is issued
    </dd>
    <dt>Update Window</dt>
    <dd>
       <blockquote>
-         ⚠️ Warning<br>
+         ⚠️ Warning<br><br>
          This feature only works if the current version of Ren'Py supports
          reading commands from <code>exec.py</code>. As of writing, this is only
          available in nightly builds.
