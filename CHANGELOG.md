@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## Unreleased
+## 0.11.0 - 2024-04-16
 
 -   The extension is now called Ren'Py Launch and Sync
 -   `renpyWarp.strategy` has had its values updated for clarity. The new values
