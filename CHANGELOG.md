@@ -11,8 +11,10 @@ All notable changes to this project will be documented in this file.
     not to kill the process when a new command is issued.
 -   Test for `exec.py` support no longer cleans up the file it creates if it
     doesn't exist. Only Ren'Py should consume this file, otherwise the extension
-    will confuse itself.
--   `renpyWarp.sdkPath` will no longer sync with VSCode's settings sync feature.
+    can confuse itself.
+-   Machine-specific settings like `renpyWarp.sdkPath` will no longer sync with
+    VSCode's settings sync feature
+-   Stop using `chokidar` for watching files in favor of a more vanilla approach
 -   Numerous clarifications and improvements in documentation
 
 ## 0.10.2 - 2024-04-11
