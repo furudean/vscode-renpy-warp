@@ -5,7 +5,6 @@ const os = require('node:os')
 const fs = require('node:fs/promises')
 const untildify = require('untildify')
 const { quoteForShell } = require('puka')
-const chokidar = require('chokidar')
 const p_throttle = require('p-throttle')
 
 /** @type {ProcessManager} */
@@ -45,10 +44,36 @@ class ProcessManager {
 		this.processes.add(process)
 		this.update_status_bar()
 
-		process.on('exit', () => {
+		process.stdout.on('data', (data) =>
+			logger.error(`process ${process.pid} stdout:`, data)
+		)
+		process.stderr.on('data', (data) =>
+			logger.error(`process ${process.pid} stderr:`, data)
+		)
+		process.on('exit', (code) => {
 			this.processes.delete(process)
 			this.update_status_bar()
+
+			logger.info(`process ${process.pid} exited with code ${code}`)
+
+			if (code) {
+				vscode.window
+					.showErrorMessage(
+						"Ren'Py process exited with errors",
+						'Logs'
+					)
+					.then((selected) => {
+						if (selected === 'Logs') logger.show()
+					})
+			}
 		})
+
+		if (this.length > 1 && is_follow_cursor) {
+			vscode.commands.executeCommand('renpyWarp.toggleFollowCursor')
+			vscode.window.showInformationMessage(
+				"Follow cursor was disabled because multiple Ren'Py instances are running"
+			)
+		}
 	}
 
 	kill_all() {
@@ -56,12 +81,10 @@ class ProcessManager {
 			process.kill(9) // SIGKILL, bypasses "are you sure" dialog
 		}
 
-		if (is_follow_cursor) {
-			vscode.commands.executeCommand('renpyWarp.toggleFollowCursor')
-		}
+		this.update_status_bar()
 	}
 
-	async update_status_bar() {
+	update_status_bar() {
 		instance_status_bar.show()
 
 		if (this.length) {
@@ -73,9 +96,13 @@ class ProcessManager {
 		} else {
 			instance_status_bar.text = `$(play) Launch project`
 			instance_status_bar.command = 'renpyWarp.launch'
-			instance_status_bar.tooltip = undefined
+			instance_status_bar.tooltip = "Launch new Ren'Py instance"
 
 			follow_cursor_status_bar.hide()
+
+			if (is_follow_cursor) {
+				vscode.commands.executeCommand('renpyWarp.toggleFollowCursor')
+			}
 		}
 	}
 
@@ -94,12 +121,12 @@ function get_config(key) {
 
 /**
  * @param {string} game_root
- * @returns {Promise<'Replace' | 'New Window'>}
+ * @returns {Promise<'New Window' | 'Replace Window' | 'Update Window'>}
  */
 async function determine_strategy(game_root) {
 	return get_config('strategy') === 'Auto'
 		? (await supports_exec_py(game_root))
-			? 'Replace'
+			? 'Update Window'
 			: 'New Window'
 		: get_config('strategy')
 }
@@ -277,61 +304,39 @@ async function get_renpy_sh() {
 }
 
 /**
- * Executes a Python script.
+ * sets up a watcher for the `exec.py` file and returns a function that can be
+ * called to write to it.
+ *
+ * @param {string} script
+ * the script to write to `exec.py`
  *
  * @param {string} game_root
  * path to the game root
  *
- * @returns {(script: string) => Promise<void>}
+ * @returns {Promise<void>}
  */
-function get_exec_py(game_root) {
-	const watcher = chokidar.watch(game_root)
+function exec_py(script, game_root) {
+	const exec_path = path.join(game_root, 'exec.py')
 
-	return function (script) {
-		if (pm.length > 1) {
-			vscode.window.showErrorMessage(
-				"Multiple Ren'Py instances running. Cannot warp inside open Ren'Py window."
-			)
-			if (is_follow_cursor)
-				vscode.commands.executeCommand('renpyWarp.toggleFollowCursor')
-			return
+	const exec_prelude =
+		"# This file is created by Ren'Py Launch and Sync and can safely be deleted\n"
+
+	return new Promise(async (resolve, reject) => {
+		logger.info(`writing exec.py: "${script}"`)
+		await fs.writeFile(exec_path, exec_prelude + script)
+
+		let elapsed_ms = 0
+
+		while (await file_exists(exec_path)) {
+			if (elapsed_ms >= 500) return reject(new ExecPyTimeoutError())
+
+			await new Promise((resolve) => setTimeout(resolve, 50))
+			elapsed_ms += 50
 		}
 
-		const exec_path = path.join(game_root, 'exec.py')
-		const exec_prelude =
-			"# This file is created by Ren'Py Warp to Line and can safely be deleted\n"
-
-		return new Promise(async (resolve, reject) => {
-			/** @type {NodeJS.Timeout | undefined} */
-			let timeout
-
-			watcher.once('unlink', async (path) => {
-				if (!path.endsWith('exec.py')) return
-				// file was consumed by ren'py
-				logger.info('exec.py executed successfully')
-				clearTimeout(timeout)
-				resolve()
-			})
-
-			logger.info(`writing exec.py: "${script}"`)
-			await fs.writeFile(exec_path, exec_prelude + script)
-
-			timeout = setTimeout(async () => {
-				if (await file_exists(exec_path)) {
-					logger.error('exec.py timed out')
-					try {
-						await fs.unlink(exec_path) // delete the unconsumed file
-					} catch (err) {}
-					reject(new ExecPyTimeoutError())
-				} else {
-					logger.warn(
-						'exec.py seemingly consumed, but watcher did not see file deletion'
-					)
-					resolve()
-				}
-			}, 500)
-		})
-	}
+		logger.info("exec.py read by Ren'Py")
+		resolve()
+	})
 }
 
 /**
@@ -351,7 +356,7 @@ async function supports_exec_py(game_root) {
 	}
 
 	try {
-		await get_exec_py(game_root)('')
+		await exec_py('', game_root)
 		logger.info('exec.py probably supported')
 		return true
 	} catch (err) {
@@ -365,26 +370,25 @@ async function supports_exec_py(game_root) {
 }
 
 /**
- * @typedef {Object} Options
- * @property {string} [file]
- * fs path. if null, open first .rpy associated with workspace
+ * starts or warps depending on arguments and settings specified for the
+ * extension
  *
- * @property {number} [line]
+ * if strategy is `Update Window`, no new window is opened and the current one
+ * is updated instead.
+ *
+ * @param {object} [options]
+ * @param {string} [options.file]
+ * fs path representing the current editor. selects the file to warp to. if
+ * null, simply open ren'py and detect the project root
+ * @param {number} [options.line]
  * zero-indexed line number. if set, warp to line will be attempted
- */
-
-/**
- * starts renpy.sh with the appropriate arguments. resolves with the child
- * process if ren'py starts successfully
  *
- * if exec.py is supported, it will be used to warp to the line instead of
- * opening a new instance. in this case no child process is returned.
- *
- * @param {Options} options
  * @returns {Promise<child_process.ChildProcess | undefined>}
+ * resolves with the child process if a new instance was opened, otherwise
+ * undefined
  */
 async function launch_renpy({ file, line } = {}) {
-	logger.info('launch_renpy:', { fs_path: file, line })
+	logger.info('launch_renpy:', { file, line })
 
 	if (!file) {
 		file = await vscode.workspace
@@ -398,6 +402,7 @@ async function launch_renpy({ file, line } = {}) {
 	}
 
 	const game_root = find_game_root(file)
+	logger.debug('game root:', game_root)
 
 	if (!game_root) {
 		vscode.window.showErrorMessage(
@@ -413,10 +418,8 @@ async function launch_renpy({ file, line } = {}) {
 	if (
 		pm.length &&
 		line &&
-		(await determine_strategy(game_root)) === 'Replace'
+		(await determine_strategy(game_root)) === 'Update Window'
 	) {
-		const exec_py = get_exec_py(game_root)
-
 		if (pm.length > 1) {
 			vscode.window.showErrorMessage(
 				"Multiple Ren'Py instances running. Cannot warp inside open Ren'Py window."
@@ -425,7 +428,8 @@ async function launch_renpy({ file, line } = {}) {
 		}
 
 		await exec_py(
-			`renpy.warp_to_line('${filename_relative}:${line + 1}')`
+			`renpy.warp_to_line('${filename_relative}:${line + 1}')`,
+			game_root
 		).catch(() => {
 			vscode.window
 				.showErrorMessage(
@@ -440,6 +444,7 @@ async function launch_renpy({ file, line } = {}) {
 					)
 				})
 		})
+
 		return
 	}
 
@@ -465,44 +470,27 @@ async function launch_renpy({ file, line } = {}) {
 	const this_process = child_process.exec(cmd)
 	logger.info('created process', this_process.pid)
 
+	if (get_config('strategy') === 'Replace Window') pm.kill_all()
+
 	pm.add(this_process)
-
-	this_process.stderr.on('data', console.error)
-	this_process.stdout.on('data', logger.info)
-	this_process.on('exit', (code) => {
-		logger.info(`process ${this_process.pid} exited with code ${code}`)
-
-		if (code === 0 || code === null) return // null if sigkill
-
-		vscode.window
-			.showErrorMessage(
-				"Ren'Py process exited with errors",
-				'Reopen',
-				'Logs'
-			)
-			.then((selected) => {
-				if (selected === 'Reopen') launch_renpy({ file, line })
-				else if (selected === 'Logs') logger.show()
-			})
-	})
 
 	return this_process
 }
 
 /**
  * @param {string} message
- * @param {() => Promise<any>} run
- * @returns {() => void}
+ * @param {(uri: vscode.Uri) => Awaited<any>} run
+ * @returns {(uri: vscode.Uri) => void}
  */
 function associate_progress_notification(message, run) {
-	return () => {
+	return (uri) => {
 		vscode.window.withProgress(
 			{
 				location: vscode.ProgressLocation.Notification,
 				title: message,
 			},
 			async () => {
-				await run()
+				await run(uri)
 			}
 		)
 	}
@@ -512,7 +500,13 @@ function associate_progress_notification(message, run) {
  * @param {vscode.ExtensionContext} context
  */
 function activate(context) {
-	logger = vscode.window.createOutputChannel("Ren'Py Warp to Line", {
+	/** @type {vscode.Disposable} */
+	let text_editor_handle
+
+	/** @type {string | undefined} */
+	let last_warp_spec
+
+	logger = vscode.window.createOutputChannel("Ren'Py Launch and Sync", {
 		log: true,
 	})
 
@@ -540,20 +534,24 @@ function activate(context) {
 		interval: get_config('followCursorExecInterval'),
 	})
 
-	/** @type {(script: string) => Promise<void>} */
-	let exec_py
-
-	/** @type {vscode.Disposable} */
-	let text_editor_handle
-
-	/** @type {string | undefined} */
-	let last_warp_spec
-
 	const follow_cursor = throttle(async () => {
-		if (pm.length === 0) return
+		if (pm.length !== 1) {
+			logger.info(
+				'needs exactly one instance to follow... got',
+				pm.length
+			)
 
+			await vscode.commands.executeCommand('renpyWarp.toggleFollowCursor')
+			return
+		}
+
+		if (!vscode.window.activeTextEditor) return
+
+		const language_id = vscode.window.activeTextEditor.document.languageId
 		const file = vscode.window.activeTextEditor.document.uri.fsPath
 		const line = vscode.window.activeTextEditor.selection.active.line
+
+		if (language_id !== 'renpy') return
 
 		const game_root = find_game_root(file)
 		const filename_relative = path.relative(
@@ -563,10 +561,10 @@ function activate(context) {
 
 		const warp_spec = `${filename_relative}:${line + 1}`
 
-		if (warp_spec === last_warp_spec) return
+		if (warp_spec === last_warp_spec) return // no change
 		last_warp_spec = warp_spec
 
-		await exec_py(`renpy.warp_to_line('${warp_spec}')`)
+		await exec_py(`renpy.warp_to_line('${warp_spec}')`, game_root)
 	})
 
 	context.subscriptions.push(
@@ -575,28 +573,40 @@ function activate(context) {
 
 		vscode.commands.registerCommand(
 			'renpyWarp.warpToLine',
-			associate_progress_notification('Warping to line...', () =>
-				launch_renpy({
-					file: vscode.window.activeTextEditor.document.uri.fsPath,
-					line: vscode.window.activeTextEditor.selection.active.line,
-				})
+			associate_progress_notification(
+				'Warping to line...',
+				async () =>
+					await launch_renpy({
+						file: vscode.window.activeTextEditor.document.uri
+							.fsPath,
+						line: vscode.window.activeTextEditor.selection.active
+							.line,
+					})
 			)
 		),
 
 		vscode.commands.registerCommand(
 			'renpyWarp.warpToFile',
-			associate_progress_notification('Warping to file...', () =>
-				launch_renpy({
-					file: vscode.window.activeTextEditor.document.uri.fsPath,
-					line: 0,
-				})
+			associate_progress_notification(
+				'Warping to file...',
+				async (uri) => {
+					const fs_path = uri
+						? uri.fsPath
+						: vscode.window.activeTextEditor.document.uri.fsPath
+
+					await launch_renpy({
+						file: fs_path,
+						line: 0,
+					})
+				}
 			)
 		),
 
 		vscode.commands.registerCommand(
 			'renpyWarp.launch',
-			associate_progress_notification("Launching Ren'Py...", () =>
-				launch_renpy()
+			associate_progress_notification(
+				"Launching Ren'Py...",
+				async () => await launch_renpy()
 			)
 		),
 
@@ -609,14 +619,21 @@ function activate(context) {
 		vscode.commands.registerCommand(
 			'renpyWarp.toggleFollowCursor',
 			async () => {
-				if (pm.length === 0) {
-					vscode.window.showErrorMessage(
-						"No Ren'Py instances running. Cannot follow cursor."
-					)
-					return
-				}
-
 				if (!is_follow_cursor) {
+					if (pm.length === 0) {
+						vscode.window.showErrorMessage(
+							"No Ren'Py instances running. Cannot follow cursor."
+						)
+						return
+					}
+
+					if (pm.length > 1) {
+						vscode.window.showErrorMessage(
+							"Multiple Ren'Py instances running. Cannot follow cursor."
+						)
+						return
+					}
+
 					const game_root = find_game_root(
 						vscode.window.activeTextEditor
 							? vscode.window.activeTextEditor.document.uri.fsPath
@@ -633,10 +650,9 @@ function activate(context) {
 						)
 						return
 					}
-
 					if (!(await supports_exec_py(game_root))) {
 						vscode.window.showErrorMessage(
-							"Can only follow cursor if Ren'Py supports exec.py. Your Ren'Py version may not support this feature."
+							"Your Ren'Py version does not support following cursor"
 						)
 						return
 					}
@@ -655,8 +671,6 @@ function activate(context) {
 							follow_cursor
 						)
 					context.subscriptions.push(text_editor_handle)
-
-					exec_py = get_exec_py(game_root)
 
 					follow_cursor()
 				} else {

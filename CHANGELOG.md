@@ -2,7 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
-This project adheres to [Semantic Versioning](http://semver.org/).
+## Unreleased
+
+-   The extension is now called Ren'Py Launch and Sync
+-   `renpyWarp.strategy` has had its values updated for clarity. The new values
+    are `Auto`, `New Window`, `Replace Window`, and `Update Window`.
+    `Replace Window` is new, allowing you to choose whether or
+    not to kill the process when a new command is issued.
+-   Test for `exec.py` support no longer cleans up the file it creates if it
+    doesn't exist. Only Ren'Py should consume this file, otherwise the extension
+    can confuse itself.
+-   Machine-specific settings like `renpyWarp.sdkPath` will no longer sync with
+    VSCode's settings sync feature
+-   Stop using `chokidar` for watching files in favor of a more vanilla approach
+-   Numerous clarifications and improvements in documentation
 
 ## 0.10.2 - 2024-04-11
 
