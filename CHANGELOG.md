@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.12.0 - 2024-04-16
+
+-   No changes, just a version bump since the 0.11.0 was a pre-release
+
 ## 0.11.0 - 2024-04-16
 
 -   The extension is now called Ren'Py Launch and Sync
