@@ -75,9 +75,7 @@ class ProcessManager {
 			process.kill(9) // SIGKILL, bypasses "are you sure" dialog
 		}
 
-		if (is_follow_cursor) {
-			vscode.commands.executeCommand('renpyWarp.toggleFollowCursor')
-		}
+		this.update_status_bar()
 	}
 
 	update_status_bar() {
@@ -95,6 +93,11 @@ class ProcessManager {
 			instance_status_bar.tooltip = "Launch new Ren'Py instance"
 
 			follow_cursor_status_bar.hide()
+
+			if (is_follow_cursor) {
+				vscode.commands.executeCommand('renpyWarp.toggleFollowCursor')
+				// toggleFollowCursor also calls update_status_bar
+			}
 		}
 	}
 
@@ -324,6 +327,8 @@ function get_exec_py(game_root) {
 		return new Promise(async (resolve, reject) => {
 			/** @type {NodeJS.Timeout | undefined} */
 			let timeout
+
+			watcher.removeAllListeners()
 
 			watcher.once('unlink', async (path) => {
 				if (!path.endsWith('exec.py')) return
@@ -612,31 +617,30 @@ function activate(context) {
 		vscode.commands.registerCommand(
 			'renpyWarp.toggleFollowCursor',
 			async () => {
-				if (pm.length === 0) {
-					vscode.window.showErrorMessage(
-						"No Ren'Py instances running. Cannot follow cursor."
-					)
-					return
-				}
-
-				const game_root = find_game_root(
-					vscode.window.activeTextEditor
-						? vscode.window.activeTextEditor.document.uri.fsPath
-						: await vscode.workspace
-								.findFiles('**/game/**/*.rpy', null, 1)
-								.then((files) =>
-									files.length ? files[0].fsPath : null
-								)
-				)
-
-				if (!game_root) {
-					vscode.window.showErrorMessage(
-						"Unable to find game root. Not a Ren'Py project?"
-					)
-					return
-				}
-
 				if (!is_follow_cursor) {
+					if (pm.length === 0) {
+						vscode.window.showErrorMessage(
+							"No Ren'Py instances running. Cannot follow cursor."
+						)
+						return
+					}
+
+					const game_root = find_game_root(
+						vscode.window.activeTextEditor
+							? vscode.window.activeTextEditor.document.uri.fsPath
+							: await vscode.workspace
+									.findFiles('**/game/**/*.rpy', null, 1)
+									.then((files) =>
+										files.length ? files[0].fsPath : null
+									)
+					)
+
+					if (!game_root) {
+						vscode.window.showErrorMessage(
+							"Unable to find game root. Not a Ren'Py project?"
+						)
+						return
+					}
 					if (!(await supports_exec_py(game_root))) {
 						vscode.window
 							.showErrorMessage(
