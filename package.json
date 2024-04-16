@@ -82,19 +82,22 @@
 			"editor/context": [
 				{
 					"command": "renpyWarp.warpToLine",
-					"group": "renpywarp"
+					"group": "renpywarp",
+					"when": "editorLangId == renpy"
 				}
 			],
 			"editor/lineNumber/context": [
 				{
 					"command": "renpyWarp.warpToLine",
-					"group": "renpywarp"
+					"group": "renpywarp",
+					"when": "editorLangId == renpy"
 				}
 			],
 			"explorer/context": [
 				{
 					"command": "renpyWarp.warpToFile",
-					"group": "renpywarp"
+					"group": "renpywarp",
+					"when": "resourceExtname == '.rpy'"
 				}
 			]
 		},

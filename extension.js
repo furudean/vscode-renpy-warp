@@ -479,18 +479,18 @@ async function launch_renpy({ file, line } = {}) {
 
 /**
  * @param {string} message
- * @param {() => Promise<any>} run
- * @returns {() => void}
+ * @param {(uri: vscode.Uri) => Awaited<any>} run
+ * @returns {(uri: vscode.Uri) => void}
  */
 function associate_progress_notification(message, run) {
-	return () => {
+	return (uri) => {
 		vscode.window.withProgress(
 			{
 				location: vscode.ProgressLocation.Notification,
 				title: message,
 			},
 			async () => {
-				await run()
+				await run(uri)
 			}
 		)
 	}
@@ -545,8 +545,13 @@ function activate(context) {
 			return
 		}
 
+		if (!vscode.window.activeTextEditor) return
+
+		const language_id = vscode.window.activeTextEditor.document.languageId
 		const file = vscode.window.activeTextEditor.document.uri.fsPath
 		const line = vscode.window.activeTextEditor.selection.active.line
+
+		if (language_id !== 'renpy') return
 
 		const game_root = find_game_root(file)
 		const filename_relative = path.relative(
@@ -568,28 +573,40 @@ function activate(context) {
 
 		vscode.commands.registerCommand(
 			'renpyWarp.warpToLine',
-			associate_progress_notification('Warping to line...', () =>
-				launch_renpy({
-					file: vscode.window.activeTextEditor.document.uri.fsPath,
-					line: vscode.window.activeTextEditor.selection.active.line,
-				})
+			associate_progress_notification(
+				'Warping to line...',
+				async () =>
+					await launch_renpy({
+						file: vscode.window.activeTextEditor.document.uri
+							.fsPath,
+						line: vscode.window.activeTextEditor.selection.active
+							.line,
+					})
 			)
 		),
 
 		vscode.commands.registerCommand(
 			'renpyWarp.warpToFile',
-			associate_progress_notification('Warping to file...', () =>
-				launch_renpy({
-					file: vscode.window.activeTextEditor.document.uri.fsPath,
-					line: 0,
-				})
+			associate_progress_notification(
+				'Warping to file...',
+				async (uri) => {
+					const fs_path = uri
+						? uri.fsPath
+						: vscode.window.activeTextEditor.document.uri.fsPath
+
+					await launch_renpy({
+						file: fs_path,
+						line: 0,
+					})
+				}
 			)
 		),
 
 		vscode.commands.registerCommand(
 			'renpyWarp.launch',
-			associate_progress_notification("Launching Ren'Py...", () =>
-				launch_renpy()
+			associate_progress_notification(
+				"Launching Ren'Py...",
+				async () => await launch_renpy()
 			)
 		),
 
@@ -634,18 +651,9 @@ function activate(context) {
 						return
 					}
 					if (!(await supports_exec_py(game_root))) {
-						vscode.window
-							.showErrorMessage(
-								"Your Ren'Py version does not support following cursor. Please update Ren'Py or change the strategy in settings.",
-								'Open Settings'
-							)
-							.then((selection) => {
-								if (!selection) return
-								vscode.commands.executeCommand(
-									'workbench.action.openSettings',
-									'@ext:PaisleySoftworks.renpyWarp strategy'
-								)
-							})
+						vscode.window.showErrorMessage(
+							"Your Ren'Py version does not support following cursor"
+						)
 						return
 					}
 
