@@ -636,24 +636,6 @@ function activate(context) {
 					return
 				}
 
-				if (
-					!['Auto', 'Update Window'].includes(get_config('strategy'))
-				) {
-					vscode.window
-						.showErrorMessage(
-							'Follow cursor is only supported with strategy set to "Update Window" or "Auto"',
-							'Open Settings'
-						)
-						.then((selection) => {
-							if (!selection) return
-							vscode.commands.executeCommand(
-								'workbench.action.openSettings',
-								'@ext:PaisleySoftworks.renpyWarp strategy'
-							)
-						})
-					return
-				}
-
 				if (!is_follow_cursor) {
 					if (!(await supports_exec_py(game_root))) {
 						vscode.window
