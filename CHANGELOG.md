@@ -2,10 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
-## Unreleased
+## 0.13.0 - 2024-04-18
 
--   Improve detection of consumed `exec.py` files by reading and writing stdout
-    instead of watching for file IO
+-   Improve detection of consumed `exec.py` files by reading to and writing
+    stdout
+-   Improved logging
 
 ## 0.12.0 - 2024-04-16
 
