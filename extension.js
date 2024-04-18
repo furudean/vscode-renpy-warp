@@ -595,6 +595,7 @@ function activate(context) {
 	context.subscriptions.push(
 		logger,
 		instance_status_bar,
+		follow_cursor_status_bar,
 
 		vscode.commands.registerCommand(
 			'renpyWarp.warpToLine',
@@ -638,8 +639,6 @@ function activate(context) {
 		vscode.commands.registerCommand('renpyWarp.killAll', () =>
 			pm.kill_all()
 		),
-
-		follow_cursor_status_bar,
 
 		vscode.commands.registerCommand(
 			'renpyWarp.toggleFollowCursor',
