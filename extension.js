@@ -335,7 +335,6 @@ function exec_py(script, game_root) {
 	return new Promise(async (resolve, reject) => {
 		pm.at(0).stdout.once('data', (data) => {
 			if (data.includes(script_hash)) {
-				logger.info('exec.py consumed')
 				resolve()
 			}
 		})
@@ -367,7 +366,7 @@ async function supports_exec_py(game_root) {
 
 	try {
 		await exec_py('', game_root)
-		logger.info('exec.py probably supported')
+		logger.info('exec.py is supported')
 		return true
 	} catch (err) {
 		if (err instanceof ExecPyTimeoutError) {
@@ -574,7 +573,12 @@ function activate(context) {
 		if (warp_spec === last_warp_spec) return // no change
 		last_warp_spec = warp_spec
 
-		await exec_py(`renpy.warp_to_line('${warp_spec}')`, game_root)
+		try {
+			await exec_py(`renpy.warp_to_line('${warp_spec}')`, game_root)
+			logger.info('warped to', warp_spec)
+		} catch (err) {
+			logger.debug('failed to warp:', err)
+		}
 	})
 
 	context.subscriptions.push(
