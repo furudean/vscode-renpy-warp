@@ -511,6 +511,8 @@ function associate_progress_notification(message, run) {
 						await run(uri)
 						resolve()
 					} catch (err) {
+						logger.error(err)
+						logger.show()
 						reject(err)
 					}
 				}
