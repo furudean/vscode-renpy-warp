@@ -487,8 +487,8 @@ async function launch_renpy({ file, line } = {}) {
  * @returns {(uri: vscode.Uri | undefined) => Promise<void>}
  */
 function associate_progress_notification(message, run) {
-	return (uri) =>
-		new Promise((resolve, reject) => {
+	return function (uri) {
+		return new Promise((resolve, reject) => {
 			vscode.window.withProgress(
 				{
 					location: vscode.ProgressLocation.Notification,
@@ -506,6 +506,7 @@ function associate_progress_notification(message, run) {
 				}
 			)
 		})
+	}
 }
 
 /**
