@@ -372,9 +372,9 @@ async function supports_exec_py(game_root) {
 		if (err instanceof ExecPyTimeoutError) {
 			logger.info('exec.py not supported')
 			return false
+		} else {
+			throw err
 		}
-
-		throw err
 	}
 }
 
@@ -455,8 +455,10 @@ async function launch_renpy({ file, line } = {}) {
 							'@ext:PaisleySoftworks.renpyWarp strategy'
 						)
 					})
+				return
+			} else {
+				throw err
 			}
-			throw err
 		}
 
 		return
@@ -588,7 +590,13 @@ function activate(context) {
 			await exec_py(`renpy.warp_to_line('${warp_spec}')`, game_root)
 			logger.info('warped to', warp_spec)
 		} catch (err) {
-			logger.debug('failed to warp:', err)
+			if (err instanceof ExecPyTimeoutError) {
+				// this will happen if the user switches files too quickly, as the
+				// old file is replaced before its consumed by renpy
+				logger.debug('failed to warp:', err)
+			} else {
+				throw err
+			}
 		}
 	})
 
