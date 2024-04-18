@@ -5,6 +5,8 @@ All notable changes to this project will be documented in this file.
 ## Unreleased
 
 -   Handle errors more gracefully
+-   Instead of calculating a non-unique hash, use a timestamp to make the
+    `exec.py` signature
 
 ## 0.13.0 - 2024-04-18
 

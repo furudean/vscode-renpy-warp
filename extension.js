@@ -148,18 +148,6 @@ function parse_path(str) {
 }
 
 /**
- * @param {string} str
- * @returns {number}
- */
-function hash_string(str) {
-	let hash = 0
-	for (let i = 0; i < str.length; ++i)
-		hash = Math.imul(31, hash) + str.charCodeAt(i)
-
-	return hash | 0
-}
-
-/**
  * @param {string[]} cmds
  * @returns {string}
  */
@@ -327,20 +315,20 @@ async function get_renpy_sh() {
 function exec_py(script, game_root) {
 	const exec_path = path.join(game_root, 'exec.py')
 
-	const script_hash = hash_string(script)
+	const signature = 'executing script at ' + Date.now()
 	const exec_prelude =
-		"# This file is created by Ren'Py Launch and Sync and can safely be deleted\n#\n" +
-		`print('executing hash ${script_hash}')\n`
+		"# This file is created by Ren'Py Launch and Sync and can safely be deleted\n#\n\n" +
+		`print('${signature}')\n`
 
 	return new Promise(async (resolve, reject) => {
 		pm.at(0).stdout.once('data', (data) => {
-			if (data.includes(script_hash)) {
+			if (data.includes(signature)) {
 				resolve()
 			}
 		})
 
 		logger.info(`writing exec.py: "${script}"`)
-		await fs.writeFile(exec_path, exec_prelude + script)
+		await fs.writeFile(exec_path, exec_prelude + script + '\n')
 
 		setTimeout(() => {
 			reject(new ExecPyTimeoutError())
