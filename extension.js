@@ -45,7 +45,7 @@ class ProcessManager {
 		this.update_status_bar()
 
 		process.stdout.on('data', (data) =>
-			logger.error(`process ${process.pid} stdout:`, data)
+			logger.debug(`process ${process.pid} stdout:`, data)
 		)
 		process.stderr.on('data', (data) =>
 			logger.error(`process ${process.pid} stderr:`, data)
@@ -74,6 +74,14 @@ class ProcessManager {
 				"Follow cursor was disabled because multiple Ren'Py instances are running"
 			)
 		}
+	}
+
+	/**
+	 * @param {number} index
+	 * @returns {child_process.ChildProcess | undefined}
+	 */
+	at(index) {
+		return Array.from(this.processes)[index]
 	}
 
 	kill_all() {
@@ -140,16 +148,15 @@ function parse_path(str) {
 }
 
 /**
- * @param {string} file
- * @returns {Promise<boolean>}
+ * @param {string} str
+ * @returns {number}
  */
-async function file_exists(file) {
-	try {
-		const stat = await fs.stat(file)
-		return stat.isFile()
-	} catch (err) {
-		return false
-	}
+function hash_string(str) {
+	let hash = 0
+	for (let i = 0; i < str.length; ++i)
+		hash = Math.imul(31, hash) + str.charCodeAt(i)
+
+	return hash | 0
 }
 
 /**
@@ -171,12 +178,6 @@ function make_cmd(cmds) {
  * @returns {string | null}
  */
 function find_game_root(filename, haystack = null, depth = 1) {
-	const workspace_root =
-		vscode.workspace.workspaceFolders &&
-		vscode.workspace.workspaceFolders[0]
-			? vscode.workspace.workspaceFolders[0].uri.fsPath
-			: null
-
 	if (haystack) {
 		haystack = path.resolve(haystack, '..')
 	} else {
@@ -186,6 +187,12 @@ function find_game_root(filename, haystack = null, depth = 1) {
 	if (path.basename(haystack) === 'game') {
 		return path.resolve(haystack, '..') // return parent
 	}
+
+	const workspace_root =
+		vscode.workspace.workspaceFolders &&
+		vscode.workspace.workspaceFolders[0]
+			? vscode.workspace.workspaceFolders[0].uri.fsPath
+			: null
 
 	if (
 		haystack === workspace_root ||
@@ -304,8 +311,10 @@ async function get_renpy_sh() {
 }
 
 /**
- * sets up a watcher for the `exec.py` file and returns a function that can be
- * called to write to it.
+ * writes a script to `exec.py` in the game root and waits for ren'py to read it
+ *
+ * rejects with `ExecPyTimeoutError` if ren'py does not read the file within
+ * 500ms
  *
  * @param {string} script
  * the script to write to `exec.py`
@@ -318,24 +327,25 @@ async function get_renpy_sh() {
 function exec_py(script, game_root) {
 	const exec_path = path.join(game_root, 'exec.py')
 
+	const script_hash = hash_string(script)
 	const exec_prelude =
-		"# This file is created by Ren'Py Launch and Sync and can safely be deleted\n"
+		"# This file is created by Ren'Py Launch and Sync and can safely be deleted\n#\n" +
+		`print('executing hash ${script_hash}')\n`
 
 	return new Promise(async (resolve, reject) => {
+		pm.at(0).stdout.once('data', (data) => {
+			if (data.includes(script_hash)) {
+				logger.info('exec.py consumed')
+				resolve()
+			}
+		})
+
 		logger.info(`writing exec.py: "${script}"`)
 		await fs.writeFile(exec_path, exec_prelude + script)
 
-		let elapsed_ms = 0
-
-		while (await file_exists(exec_path)) {
-			if (elapsed_ms >= 500) return reject(new ExecPyTimeoutError())
-
-			await new Promise((resolve) => setTimeout(resolve, 50))
-			elapsed_ms += 50
-		}
-
-		logger.info("exec.py read by Ren'Py")
-		resolve()
+		setTimeout(() => {
+			reject(new ExecPyTimeoutError())
+		}, 500)
 	})
 }
 
