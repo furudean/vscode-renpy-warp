@@ -436,23 +436,28 @@ async function launch_renpy({ file, line } = {}) {
 			return
 		}
 
-		await exec_py(
-			`renpy.warp_to_line('${filename_relative}:${line + 1}')`,
-			game_root
-		).catch(() => {
-			vscode.window
-				.showErrorMessage(
-					"Failed to warp inside active window. Your Ren'Py version may not support this feature. You may want to change the strategy in settings.",
-					'Open Settings'
-				)
-				.then((selection) => {
-					if (!selection) return
-					vscode.commands.executeCommand(
-						'workbench.action.openSettings',
-						'@ext:PaisleySoftworks.renpyWarp strategy'
+		try {
+			await exec_py(
+				`renpy.warp_to_line('${filename_relative}:${line + 1}')`,
+				game_root
+			)
+		} catch (err) {
+			if (err instanceof ExecPyTimeoutError) {
+				vscode.window
+					.showErrorMessage(
+						"Failed to warp inside active window. Your Ren'Py version may not support this feature. You may want to change the strategy in settings.",
+						'Open Settings'
 					)
-				})
-		})
+					.then((selection) => {
+						if (!selection) return
+						vscode.commands.executeCommand(
+							'workbench.action.openSettings',
+							'@ext:PaisleySoftworks.renpyWarp strategy'
+						)
+					})
+			}
+			throw err
+		}
 
 		return
 	}
@@ -488,21 +493,27 @@ async function launch_renpy({ file, line } = {}) {
 
 /**
  * @param {string} message
- * @param {(uri: vscode.Uri) => Awaited<any>} run
- * @returns {(uri: vscode.Uri) => void}
+ * @param {(uri: vscode.Uri | undefined) => Awaited<any>} run
+ * @returns {(uri: vscode.Uri | undefined) => Promise<void>}
  */
 function associate_progress_notification(message, run) {
-	return (uri) => {
-		vscode.window.withProgress(
-			{
-				location: vscode.ProgressLocation.Notification,
-				title: message,
-			},
-			async () => {
-				await run(uri)
-			}
-		)
-	}
+	return (uri) =>
+		new Promise((resolve, reject) => {
+			vscode.window.withProgress(
+				{
+					location: vscode.ProgressLocation.Notification,
+					title: message,
+				},
+				async () => {
+					try {
+						await run(uri)
+						resolve()
+					} catch (err) {
+						reject(err)
+					}
+				}
+			)
+		})
 }
 
 /**

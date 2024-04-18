@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## Unreleased
+
+-   Handle errors more gracefully
+
 ## 0.13.0 - 2024-04-18
 
 -   Improve detection of consumed `exec.py` files by reading to and writing
