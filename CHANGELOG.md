@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## Unreleased
+## 0.14.0 - 2024-04-20
 
 -   Handle errors more gracefully
 -   Instead of calculating a non-unique hash, use a timestamp to make the
