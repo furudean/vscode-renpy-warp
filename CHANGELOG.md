@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## Unreleased
+
+-   Log process output to a separate channel than extension output
+
 ## 0.14.0 - 2024-04-20
 
 -   Handle errors more gracefully

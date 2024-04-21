@@ -13,6 +13,9 @@ let pm
 /** @type {vscode.LogOutputChannel} */
 let logger
 
+/** @type {vscode.OutputChannel} */
+let process_out_channel
+
 /** @type {vscode.StatusBarItem} */
 let instance_status_bar
 
@@ -44,12 +47,8 @@ class ProcessManager {
 		this.processes.add(process)
 		this.update_status_bar()
 
-		process.stdout.on('data', (data) =>
-			logger.debug(`process ${process.pid} stdout:`, data)
-		)
-		process.stderr.on('data', (data) =>
-			logger.error(`process ${process.pid} stderr:`, data)
-		)
+		process.stdout.on('data', process_out_channel.append)
+		process.stderr.on('data', process_out_channel.append)
 		process.on('exit', (code) => {
 			this.processes.delete(process)
 			this.update_status_bar()
@@ -63,7 +62,7 @@ class ProcessManager {
 						'Logs'
 					)
 					.then((selected) => {
-						if (selected === 'Logs') logger.show()
+						if (selected === 'Logs') process_out_channel.show()
 					})
 			}
 		})
@@ -519,9 +518,16 @@ function activate(context) {
 	/** @type {string | undefined} */
 	let last_warp_spec
 
-	logger = vscode.window.createOutputChannel("Ren'Py Launch and Sync", {
-		log: true,
-	})
+	logger = vscode.window.createOutputChannel(
+		"Ren'Py Launch and Sync - Extension",
+		{
+			log: true,
+		}
+	)
+
+	process_out_channel = vscode.window.createOutputChannel(
+		"Ren'Py Launch and Sync - Process Output"
+	)
 
 	instance_status_bar = vscode.window.createStatusBarItem(
 		vscode.StatusBarAlignment.Left,
@@ -593,6 +599,7 @@ function activate(context) {
 
 	context.subscriptions.push(
 		logger,
+		process_out_channel,
 		instance_status_bar,
 		follow_cursor_status_bar,
 
