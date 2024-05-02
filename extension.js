@@ -101,7 +101,7 @@ class ProcessManager {
 
 			follow_cursor_status_bar.show()
 		} else {
-			instance_status_bar.text = `$(play) Launch project`
+			instance_status_bar.text = `$(play) Launch Project`
 			instance_status_bar.command = 'renpyWarp.launch'
 			instance_status_bar.tooltip = "Launch new Ren'Py instance"
 
@@ -539,7 +539,7 @@ function activate(context) {
 		0
 	)
 
-	follow_cursor_status_bar.text = '$(pin) Follow cursor'
+	follow_cursor_status_bar.text = '$(pin) Follow Cursor'
 	follow_cursor_status_bar.command = 'renpyWarp.toggleFollowCursor'
 	follow_cursor_status_bar.tooltip =
 		"When enabled, Ren'Py will continuously warp to the line being edited"
@@ -689,7 +689,7 @@ function activate(context) {
 
 					is_follow_cursor = true
 					follow_cursor_status_bar.text =
-						'$(pinned) Stop following cursor'
+						'$(pinned) Stop Following Cursor'
 					follow_cursor_status_bar.color = new vscode.ThemeColor(
 						'statusBarItem.warningForeground'
 					)
@@ -705,7 +705,7 @@ function activate(context) {
 					follow_cursor()
 				} else {
 					is_follow_cursor = false
-					follow_cursor_status_bar.text = '$(pin) Follow cursor'
+					follow_cursor_status_bar.text = '$(pin) Follow Cursor'
 					follow_cursor_status_bar.backgroundColor = undefined
 					follow_cursor_status_bar.color = undefined
 					text_editor_handle.dispose()
