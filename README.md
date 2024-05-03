@@ -59,8 +59,8 @@ set to one of the following values:
       <blockquote>
          ⚠️ <b>Warning</b><br>
          This feature only works if the current version of Ren'Py supports
-         reading commands from <code>exec.py</code>. As of writing, this is only
-         available in nightly builds.
+         reading commands from <code>exec.py</code>. This means you need Ren'Py
+         8.3.0 or one of the nightly builds.
       </blockquote>
       <p>
          When a command is issued, replace an open editor by sending a

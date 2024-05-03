@@ -344,14 +344,12 @@ function exec_py(script, game_root) {
  * @returns {Promise<boolean>}
  */
 async function supports_exec_py(game_root) {
-	// write an exec file that does nothing and see if it executes, which
-	// means the current version of ren'py supports exec.py
-
 	if (!pm.length) {
 		throw new Error('no renpy process running to test exec.py support')
 	}
 
 	try {
+		// write an exec file that does nothing to see if ren'py reads it
 		await exec_py('', game_root)
 		logger.info('exec.py is supported')
 		return true
@@ -682,7 +680,7 @@ function activate(context) {
 					}
 					if (!(await supports_exec_py(game_root))) {
 						vscode.window.showErrorMessage(
-							"Your Ren'Py version does not support following cursor. Must be on Ren'Py nightly."
+							"Your Ren'Py version does not support following cursor. Ren'Py version must be 8.3.0 or nightly."
 						)
 						return
 					}

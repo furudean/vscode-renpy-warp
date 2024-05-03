@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## Unreleased
+
+-   Tell users what Ren'Py version they need.
+
 ## 0.15.0 - 2024-05-03
 
 -   Log process output to a separate channel than extension output
