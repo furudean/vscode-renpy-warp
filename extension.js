@@ -682,14 +682,13 @@ function activate(context) {
 					}
 					if (!(await supports_exec_py(game_root))) {
 						vscode.window.showErrorMessage(
-							"Your Ren'Py version does not support following cursor"
+							"Your Ren'Py version does not support following cursor. Must be on Ren'Py nightly."
 						)
 						return
 					}
 
 					is_follow_cursor = true
-					follow_cursor_status_bar.text =
-						'$(pinned) Stop Following Cursor'
+					follow_cursor_status_bar.text = '$(pinned) Following Cursor'
 					follow_cursor_status_bar.color = new vscode.ThemeColor(
 						'statusBarItem.warningForeground'
 					)
