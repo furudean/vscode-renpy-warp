@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## Unreleased
+## 0.15.0 - 2024-05-03
 
 -   Log process output to a separate channel than extension output
 -   Change status bar text strings to be capitalized similar to other extensions
