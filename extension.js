@@ -6,6 +6,7 @@ const fs = require('node:fs/promises')
 const untildify = require('untildify')
 const { quoteForShell } = require('puka')
 const p_throttle = require('p-throttle')
+const tmp = require('tmp-promise')
 
 /** @type {ProcessManager} */
 let pm
@@ -320,6 +321,11 @@ function exec_py(script, game_root) {
 		`print('${signature}')\n`
 
 	return new Promise(async (resolve, reject) => {
+		const { path: tmp_path } = await tmp.file()
+
+		// write the script file atomically, as is recommended by ren'py
+		await fs.writeFile(tmp_path, exec_prelude + script + '\n')
+
 		pm.at(0).stdout.once('data', (data) => {
 			if (data.includes(signature)) {
 				resolve()
@@ -327,7 +333,7 @@ function exec_py(script, game_root) {
 		})
 
 		logger.info(`writing exec.py: "${script}"`)
-		await fs.writeFile(exec_path, exec_prelude + script + '\n')
+		await fs.rename(tmp_path, exec_path)
 
 		setTimeout(() => {
 			reject(new ExecPyTimeoutError())

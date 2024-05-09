@@ -198,6 +198,7 @@
 	"dependencies": {
 		"p-throttle": "^4.1.1",
 		"puka": "^1.0.1",
+		"tmp-promise": "^3.0.3",
 		"untildify": "^4.0.0",
 		"upath": "^2.0.1"
 	}
