@@ -321,10 +321,10 @@ function exec_py(script, game_root) {
 		`print('${signature}')\n`
 
 	return new Promise(async (resolve, reject) => {
-		const { path: tmp_path } = await tmp.file()
+		const tmp_file = await tmp.file()
 
 		// write the script file atomically, as is recommended by ren'py
-		await fs.writeFile(tmp_path, exec_prelude + script + '\n')
+		await fs.writeFile(tmp_file.path, exec_prelude + script + '\n')
 
 		pm.at(0).stdout.once('data', (data) => {
 			if (data.includes(signature)) {
@@ -333,11 +333,12 @@ function exec_py(script, game_root) {
 		})
 
 		logger.info(`writing exec.py: "${script}"`)
-		await fs.rename(tmp_path, exec_path)
+		await fs.rename(tmp_file.path, exec_path)
 
 		setTimeout(() => {
 			reject(new ExecPyTimeoutError())
 		}, 500)
+		await tmp_file.cleanup()
 	})
 }
 
