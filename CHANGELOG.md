@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## Unreleased
+## 0.16.0 - 2024-05-11
 
 -   Tell users what Ren'Py version they need.
 -   `exec.py` writes are now atomic, as recommended by the Ren'Py documentation
