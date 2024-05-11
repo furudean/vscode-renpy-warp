@@ -337,7 +337,7 @@ function exec_py(script, game_root) {
 
 		setTimeout(() => {
 			reject(new ExecPyTimeoutError())
-		}, 500)
+		}, 200)
 		tmp_file.cleanup()
 	})
 }

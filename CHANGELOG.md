@@ -5,6 +5,8 @@ All notable changes to this project will be documented in this file.
 ## Unreleased
 
 -   Tell users what Ren'Py version they need.
+-   `exec.py` writes are now atomic, as recommended by the Ren'Py documentation
+-   Waits 200ms for execution instead of 500ms
 
 ## 0.15.0 - 2024-05-03
 
