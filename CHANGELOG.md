@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## Unreleased
+## 0.17.0 - 2024-05-15
 
 -   Clean up the `exec.py` file if feature test fails
 
