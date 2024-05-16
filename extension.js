@@ -690,7 +690,7 @@ function activate(context) {
 					}
 					if (!(await supports_exec_py(game_root))) {
 						vscode.window.showErrorMessage(
-							"Your Ren'Py version does not support following cursor. Ren'Py version must be 8.3.0 or nightly."
+							"Your Ren'Py version does not support following cursor. Ren'Py version must be 8.3.0 or newer (or nightly build)."
 						)
 						return
 					}
