@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## Unreleased
+
+-   Clean up the `exec.py` file if feature test fails
+
 ## 0.16.0 - 2024-05-11
 
 -   Tell users what Ren'Py version they need.

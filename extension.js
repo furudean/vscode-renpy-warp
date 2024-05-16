@@ -301,8 +301,8 @@ async function get_renpy_sh() {
 /**
  * writes a script to `exec.py` in the game root and waits for ren'py to read it
  *
- * rejects with `ExecPyTimeoutError` if ren'py does not read the file within
- * 500ms
+ * rejects with `ExecPyTimeoutError` if ren'py does not read the file in a
+ * reasonable time
  *
  * @param {string} script
  * the script to write to `exec.py`
@@ -363,6 +363,9 @@ async function supports_exec_py(game_root) {
 	} catch (err) {
 		if (err instanceof ExecPyTimeoutError) {
 			logger.info('exec.py not supported')
+
+			await fs.unlink(path.join(game_root, 'exec.py'))
+
 			return false
 		} else {
 			throw err
