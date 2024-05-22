@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## Unreleased
+## 0.18.0 - 2024-05-21
 
 -   Now sniffs for the Ren'Py version with `renpy.sh` instead of `exec.py` to
     determine what features are available
