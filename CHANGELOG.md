@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## Unreleased
+## 0.19.0 - 2024-05-22
 
 -   Adds post-launch scripts via `renpyWarp.launchScript`, allowing you to run
     Python scripts after launching the game (On Ren'Py 8.3.0+)
