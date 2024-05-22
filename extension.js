@@ -209,6 +209,20 @@ async function get_renpy_sh() {
 	logger.debug('raw sdk path:', sdk_path_setting)
 
 	if (!sdk_path_setting.trim()) {
+		vscode.window
+			.showErrorMessage(
+				"Please set a Ren'Py SDK path in the settings",
+				'Open Settings'
+			)
+			.then((selection) => {
+				if (!selection) return
+
+				vscode.commands.executeCommand(
+					'workbench.action.openSettings',
+					'@ext:PaisleySoftworks.renpyWarp sdkPath'
+				)
+			})
+
 		return
 	}
 
@@ -410,23 +424,7 @@ async function launch_renpy({ file, line } = {}) {
 	}
 
 	const renpy_sh = await get_renpy_sh()
-
-	if (!renpy_sh) {
-		vscode.window
-			.showErrorMessage(
-				"Please set a Ren'Py SDK path in the settings",
-				'Open Settings'
-			)
-			.then((selection) => {
-				if (!selection) return
-
-				vscode.commands.executeCommand(
-					'workbench.action.openSettings',
-					'@ext:PaisleySoftworks.renpyWarp sdkPath'
-				)
-			})
-		return
-	}
+	if (!renpy_sh) return
 
 	const is_supports_exec_py = supports_exec_py(renpy_sh)
 
@@ -701,23 +699,7 @@ function activate(context) {
 					}
 
 					const renpy_sh = await get_renpy_sh()
-
-					if (!renpy_sh) {
-						vscode.window
-							.showErrorMessage(
-								"Please set a Ren'Py SDK path in the settings",
-								'Open Settings'
-							)
-							.then((selection) => {
-								if (!selection) return
-
-								vscode.commands.executeCommand(
-									'workbench.action.openSettings',
-									'@ext:PaisleySoftworks.renpyWarp sdkPath'
-								)
-							})
-						return
-					}
+					if (!renpy_sh) return
 
 					if (!supports_exec_py(renpy_sh)) {
 						vscode.window.showErrorMessage(
