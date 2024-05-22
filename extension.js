@@ -8,6 +8,9 @@ const { quoteForShell } = require('puka')
 const p_throttle = require('p-throttle')
 const tmp = require('tmp-promise')
 
+const RENPY_VERSION_REGEX =
+	/^(?<major>\d+)\.(?<minor>\d+)\.(?<patch>\d+)(?:\.(?<rest>.*))?$/
+
 /** @type {ProcessManager} */
 let pm
 
@@ -128,12 +131,12 @@ function get_config(key) {
 }
 
 /**
- * @param {string} game_root
- * @returns {Promise<'New Window' | 'Replace Window' | 'Update Window'>}
+ * @param {boolean} is_supports_exec_py
+ * @returns {'New Window' | 'Replace Window' | 'Update Window'}
  */
-async function determine_strategy(game_root) {
+function determine_strategy(is_supports_exec_py) {
 	return get_config('strategy') === 'Auto'
-		? (await supports_exec_py(game_root))
+		? is_supports_exec_py
 			? 'Update Window'
 			: 'New Window'
 		: get_config('strategy')
@@ -206,19 +209,6 @@ async function get_renpy_sh() {
 	logger.debug('raw sdk path:', sdk_path_setting)
 
 	if (!sdk_path_setting.trim()) {
-		vscode.window
-			.showErrorMessage(
-				"Please set a Ren'Py SDK path in the settings",
-				'Open Settings'
-			)
-			.then((selection) => {
-				if (!selection) return
-
-				vscode.commands.executeCommand(
-					'workbench.action.openSettings',
-					'@ext:PaisleySoftworks.renpyWarp sdkPath'
-				)
-			})
 		return
 	}
 
@@ -310,9 +300,12 @@ async function get_renpy_sh() {
  * @param {string} game_root
  * path to the game root
  *
+ * @param {number} [timeout_ms]
+ * time in milliseconds to wait for ren'py to read the file
+ *
  * @returns {Promise<void>}
  */
-function exec_py(script, game_root) {
+function exec_py(script, game_root, timeout_ms = 200) {
 	const exec_path = path.join(game_root, 'exec.py')
 
 	const signature = 'executing script at ' + Date.now()
@@ -337,40 +330,39 @@ function exec_py(script, game_root) {
 
 		setTimeout(() => {
 			reject(new ExecPyTimeoutError())
-		}, 200)
+		}, timeout_ms)
 		tmp_file.cleanup()
 	})
 }
 
 /**
- * determine if the current version of ren'py supports exec.py.
- *
- * an instance of ren'py must be running for this to work
- *
- * @param {string} game_root
- * @returns {Promise<boolean>}
+ * @param {string} renpy_sh
+ * base renpy.sh command
  */
-async function supports_exec_py(game_root) {
-	if (!pm.length) {
-		throw new Error('no renpy process running to test exec.py support')
-	}
+function get_version(renpy_sh) {
+	return child_process
+		.execSync(renpy_sh + ' --version')
+		.toString('utf-8')
+		.trim()
+		.replace("Ren'Py ", '')
+}
 
-	try {
-		// write an exec file that does nothing to see if ren'py reads it
-		await exec_py('', game_root)
-		logger.info('exec.py is supported')
-		return true
-	} catch (err) {
-		if (err instanceof ExecPyTimeoutError) {
-			logger.info('exec.py not supported')
+/**
+ * determine if the current version of ren'py supports exec.py
+ *
+ * @param {string} renpy_sh
+ * base renpy.sh command
+ *
+ * @returns {boolean}
+ */
+function supports_exec_py(renpy_sh) {
+	const version = get_version(renpy_sh)
 
-			await fs.unlink(path.join(game_root, 'exec.py'))
+	logger.info("ren'py version:", version)
 
-			return false
-		} else {
-			throw err
-		}
-	}
+	const { major, minor } = RENPY_VERSION_REGEX.exec(version).groups
+
+	return Number(major) >= 8 && Number(minor) >= 3
 }
 
 /**
@@ -406,6 +398,7 @@ async function launch_renpy({ file, line } = {}) {
 	}
 
 	const game_root = find_game_root(file)
+	const filename_relative = path.relative(path.join(game_root, 'game/'), file)
 	logger.debug('game root:', game_root)
 
 	if (!game_root) {
@@ -416,13 +409,32 @@ async function launch_renpy({ file, line } = {}) {
 		return
 	}
 
-	const filename_relative = path.relative(path.join(game_root, 'game/'), file)
+	const renpy_sh = await get_renpy_sh()
+
+	if (!renpy_sh) {
+		vscode.window
+			.showErrorMessage(
+				"Please set a Ren'Py SDK path in the settings",
+				'Open Settings'
+			)
+			.then((selection) => {
+				if (!selection) return
+
+				vscode.commands.executeCommand(
+					'workbench.action.openSettings',
+					'@ext:PaisleySoftworks.renpyWarp sdkPath'
+				)
+			})
+		return
+	}
+
+	const is_supports_exec_py = supports_exec_py(renpy_sh)
 
 	// warp in existing ren'py window
 	if (
 		pm.length &&
 		line &&
-		(await determine_strategy(game_root)) === 'Update Window'
+		determine_strategy(is_supports_exec_py) === 'Update Window'
 	) {
 		if (pm.length > 1) {
 			vscode.window.showErrorMessage(
@@ -440,7 +452,7 @@ async function launch_renpy({ file, line } = {}) {
 			if (err instanceof ExecPyTimeoutError) {
 				vscode.window
 					.showErrorMessage(
-						"Failed to warp inside active window. Your Ren'Py version may not support this feature. You may want to change the strategy in settings.",
+						'Failed to warp inside active window. You may want to change the strategy in settings.',
 						'Open Settings'
 					)
 					.then((selection) => {
@@ -460,9 +472,6 @@ async function launch_renpy({ file, line } = {}) {
 	}
 
 	// open new ren'py window
-	const renpy_sh = await get_renpy_sh()
-
-	if (!renpy_sh) return
 
 	/** @type {string} */
 	let cmd
@@ -484,6 +493,25 @@ async function launch_renpy({ file, line } = {}) {
 	if (get_config('strategy') === 'Replace Window') pm.kill_all()
 
 	pm.add(this_process)
+
+	if (is_supports_exec_py) {
+		logger.info('using exec.py for accurate progress bar')
+		try {
+			await exec_py('', game_root, 10000)
+			logger.info('clear progress bar')
+		} catch (err) {
+			if (err instanceof ExecPyTimeoutError) {
+				logger.warn(
+					'exec.py not read by renpy in time for progress bar'
+				)
+				await fs.unlink(path.join(game_root, 'exec.py'))
+			} else {
+				throw err
+			}
+		}
+	} else {
+		logger.info('using early progress bar')
+	}
 
 	return this_process
 }
@@ -672,25 +700,30 @@ function activate(context) {
 						return
 					}
 
-					const game_root = find_game_root(
-						vscode.window.activeTextEditor
-							? vscode.window.activeTextEditor.document.uri.fsPath
-							: await vscode.workspace
-									.findFiles('**/game/**/*.rpy', null, 1)
-									.then((files) =>
-										files.length ? files[0].fsPath : null
-									)
-					)
+					const renpy_sh = await get_renpy_sh()
 
-					if (!game_root) {
-						vscode.window.showErrorMessage(
-							"Unable to find game root. Not a Ren'Py project?"
-						)
+					if (!renpy_sh) {
+						vscode.window
+							.showErrorMessage(
+								"Please set a Ren'Py SDK path in the settings",
+								'Open Settings'
+							)
+							.then((selection) => {
+								if (!selection) return
+
+								vscode.commands.executeCommand(
+									'workbench.action.openSettings',
+									'@ext:PaisleySoftworks.renpyWarp sdkPath'
+								)
+							})
 						return
 					}
-					if (!(await supports_exec_py(game_root))) {
+
+					if (!supports_exec_py(renpy_sh)) {
 						vscode.window.showErrorMessage(
-							"Your Ren'Py version does not support following cursor. Ren'Py version must be 8.3.0 or newer (or nightly build)."
+							`Ren'Py version must be 8.3.0 or newer to follow cursor (8.3.0<=${get_version(
+								renpy_sh
+							)})`
 						)
 						return
 					}

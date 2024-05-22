@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## Unreleased
+
+-   Now sniffs for the Ren'Py version with `renpy.sh` instead of `exec.py` to
+    determine what features are available
+-   The progress bar has been made more accurate in Ren'Py versions >=8.3.0, by
+    utilizing an optional check for `exec.py` script
+
 ## 0.17.0 - 2024-05-15
 
 -   Clean up the `exec.py` file if feature test fails
