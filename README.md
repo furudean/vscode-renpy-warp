@@ -33,6 +33,8 @@ You must set <code codesetting="renpyWarp.sdkPath">renpyWarp.sdkPath</code> to a
 directory where the Ren'Py SDK can be found. If you haven't done so, a prompt
 will appear to inform you to set it.
 
+### Strategy
+
 You may want to customize what to do with an open Ren'Py instance when a new
 command is issued. In Renpy Launch and Sync, this is called a "strategy".
 
