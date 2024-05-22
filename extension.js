@@ -511,6 +511,13 @@ async function launch_renpy({ file, line } = {}) {
 		logger.info('using early progress bar')
 	}
 
+	const launch_script = get_config('launchScript')
+
+	if (launch_script) {
+		logger.info('executing launch script:', launch_script)
+		await exec_py(launch_script, game_root)
+	}
+
 	return this_process
 }
 

@@ -171,6 +171,12 @@
 					"minimum": 1,
 					"markdownDescription": "The interval in milliseconds to execute `renpy.warp_to_line()` when in follow cursor mode.\n\nThe lower the value, the more frequently the command is issued, which can feel more responsive at the cost of increased processing.\n\nNeeds a restart to take effect.",
 					"scope": "machine-overridable"
+				},
+				"renpyWarp.launchScript": {
+					"type": "string",
+					"default": "",
+					"editPresentation": "multilineText",
+					"markdownDescription": "Python code to execute in a newly created Ren'Py instance. Requires Python 8.3.0 or later."
 				}
 			}
 		}
