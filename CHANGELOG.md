@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.20.0 - 2024-05-22
+
+-   Raises the timeout for the `exec.py` feature test to 1 second
+
 ## 0.19.0 - 2024-05-22
 
 -   Adds post-launch scripts via `renpyWarp.launchScript`, allowing you to run

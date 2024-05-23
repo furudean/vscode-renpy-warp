@@ -319,7 +319,7 @@ async function get_renpy_sh() {
  *
  * @returns {Promise<void>}
  */
-function exec_py(script, game_root, timeout_ms = 200) {
+function exec_py(script, game_root, timeout_ms = 1000) {
 	const exec_path = path.join(game_root, 'exec.py')
 
 	const signature = 'executing script at ' + Date.now()
