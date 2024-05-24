@@ -710,7 +710,7 @@ function activate(context) {
 
 					if (!supports_exec_py(renpy_sh)) {
 						vscode.window.showErrorMessage(
-							`Ren'Py version must be 8.3.0 or newer to follow cursor (8.3.0<=${get_version(
+							`Ren'Py version must be 8.3.0 or newer to follow cursor (Current is ${get_version(
 								renpy_sh
 							)})`
 						)
