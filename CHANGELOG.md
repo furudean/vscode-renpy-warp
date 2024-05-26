@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## Unreleased
+
+-   Adds a setting `renpyWarp.focusWindowOnWarp` to control whether or not the
+    Ren'Py window should be focused is focused when warping occurs
+
 ## 0.20.0 - 2024-05-22
 
 -   Raises the timeout for the `exec.py` feature test to 1 second

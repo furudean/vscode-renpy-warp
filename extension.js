@@ -7,6 +7,7 @@ const untildify = require('untildify')
 const { quoteForShell } = require('puka')
 const p_throttle = require('p-throttle')
 const tmp = require('tmp-promise')
+const { windowManager } = require('node-window-manager')
 
 const RENPY_VERSION_REGEX =
 	/^(?<major>\d+)\.(?<minor>\d+)\.(?<patch>\d+)(?:\.(?<rest>.*))?$/
@@ -146,7 +147,7 @@ function determine_strategy(is_supports_exec_py) {
  * @param {string} str
  * @returns {string}
  */
-function parse_path(str) {
+function resolve_path(str) {
 	return path.resolve(untildify(str))
 }
 
@@ -198,11 +199,11 @@ function find_game_root(filename, haystack = null, depth = 1) {
 }
 
 /**
+ * Returns the path to the Ren'Py SDK as specified in the settings
+ *
  * @returns {Promise<string | undefined>}
  */
-async function get_renpy_sh() {
-	const is_windows = os.platform() === 'win32'
-
+async function get_sdk_path() {
 	/** @type {string} */
 	const sdk_path_setting = get_config('sdkPath')
 
@@ -226,9 +227,37 @@ async function get_renpy_sh() {
 		return
 	}
 
-	const expanded_sdk_path = parse_path(sdk_path_setting)
+	const parsed_path = resolve_path(sdk_path_setting)
 
-	logger.debug('expanded sdk path:', expanded_sdk_path)
+	try {
+		await fs.access(parsed_path)
+	} catch (err) {
+		vscode.window
+			.showErrorMessage(
+				`Invalid Ren'Py SDK path: ${sdk_path_setting}`,
+				'Open Settings'
+			)
+			.then((selection) => {
+				if (!selection) return
+				vscode.commands.executeCommand(
+					'workbench.action.openSettings',
+					'@ext:PaisleySoftworks.renpyWarp sdkPath'
+				)
+			})
+		return
+	}
+
+	return parsed_path
+}
+
+/**
+ * @returns {Promise<string | undefined>}
+ */
+async function get_renpy_sh() {
+	const is_windows = os.platform() === 'win32'
+	const sdk_path = await get_sdk_path()
+
+	if (!sdk_path) return
 
 	// on windows, we call python.exe and pass renpy.py as an argument
 	// on all other systems, we call renpy.sh directly
@@ -237,14 +266,14 @@ async function get_renpy_sh() {
 		? 'lib/py3-windows-x86_64/python.exe'
 		: 'renpy.sh'
 
-	const executable = path.join(expanded_sdk_path, executable_name)
+	const executable = path.join(sdk_path, executable_name)
 
 	try {
 		await fs.access(executable)
 	} catch (err) {
 		vscode.window
 			.showErrorMessage(
-				`Invalid Ren'Py SDK path: ${sdk_path_setting}`,
+				`Invalid Ren'Py SDK path: ${sdk_path}`,
 				'Open Settings'
 			)
 			.then((selection) => {
@@ -264,10 +293,10 @@ async function get_renpy_sh() {
 	let editor
 
 	if (path.isAbsolute(editor_setting)) {
-		editor = parse_path(editor_setting)
+		editor = resolve_path(editor_setting)
 	} else {
 		// relative path to launcher
-		editor = path.resolve(expanded_sdk_path, editor_setting)
+		editor = path.resolve(sdk_path, editor_setting)
 	}
 
 	try {
@@ -290,7 +319,7 @@ async function get_renpy_sh() {
 	}
 
 	if (is_windows) {
-		const win_renpy_path = path.join(expanded_sdk_path, 'renpy.py')
+		const win_renpy_path = path.join(sdk_path, 'renpy.py')
 		// set RENPY_EDIT_PY=editor.edit.py && python.exe renpy.py
 		return (
 			`set "RENPY_EDIT_PY=${editor}" && ` +
@@ -463,6 +492,31 @@ async function launch_renpy({ file, line } = {}) {
 				return
 			} else {
 				throw err
+			}
+		}
+
+		if (get_config('focusWindowOnWarp')) {
+			const matching_window = windowManager
+				.getWindows()
+				.find((win) => win.processId === pm.at(0).pid)
+
+			logger.info('matching window:', matching_window)
+
+			if (matching_window) {
+				const has_accessibility = windowManager.requestAccessibility()
+
+				if (has_accessibility) {
+					matching_window.bringToTop()
+				} else {
+					vscode.window.showInformationMessage(
+						"Accessibility permissions have been requested. These are required to focus the Ren'Py window. You may need to restart Visual Studio Code for this to take effect."
+					)
+				}
+			} else {
+				logger.error(
+					'no matching window found',
+					windowManager.getWindows()
+				)
 			}
 		}
 

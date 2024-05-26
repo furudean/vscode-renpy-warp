@@ -155,10 +155,16 @@
 					],
 					"markdownEnumDescriptions": [
 						"Automatically choose based what features are available in your version of Ren'Py.\n\nIf  `exec.py` is supported, this will use \"Update Window\". Otherwise, it will use \"New Window\".",
-						"Execute `renpy.warp_to_line()` in the open instance.\n\nThis requires you to use a version of Ren'Py that supports the `exec.py` feature. As of writing, this only works in nightly builds.",
+						"Execute `renpy.warp_to_line()` in the open instance.\n\nThis requires Ren'Py version 8.3.0 or higher.",
 						"Launch a new instance when a command is executed.",
 						"Kill the existing instance and launch a new one."
 					]
+				},
+				"renpyWarp.focusWindowOnWarp": {
+					"type": "boolean",
+					"default": false,
+					"order": 2,
+					"markdownDescription": "Focus the Ren'Py window after a warp command is executed.\n\nNot supported on Linux. Requires accessibility permissions to be granted to Visual Studio Code on macOS."
 				},
 				"renpyWarp.editor": {
 					"type": "string",
@@ -202,6 +208,7 @@
 		"typescript": "^5.3.3"
 	},
 	"dependencies": {
+		"node-window-manager": "^2.2.4",
 		"p-throttle": "^4.1.1",
 		"puka": "^1.0.1",
 		"tmp-promise": "^3.0.3",
