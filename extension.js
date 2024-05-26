@@ -11,6 +11,8 @@ const { windowManager } = require('node-window-manager')
 const { promisify } = require('util')
 const pidtree = promisify(require('pidtree'))
 
+const IS_WINDOWS = os.platform() === 'win32'
+
 const RENPY_VERSION_REGEX =
 	/^(?<major>\d+)\.(?<minor>\d+)\.(?<patch>\d+)(?:\.(?<rest>.*))?$/
 
@@ -256,7 +258,6 @@ async function get_sdk_path() {
  * @returns {Promise<string | undefined>}
  */
 async function get_renpy_sh() {
-	const is_windows = os.platform() === 'win32'
 	const sdk_path = await get_sdk_path()
 
 	if (!sdk_path) return
@@ -264,7 +265,7 @@ async function get_renpy_sh() {
 	// on windows, we call python.exe and pass renpy.py as an argument
 	// on all other systems, we call renpy.sh directly
 	// https://www.renpy.org/doc/html/cli.html#command-line-interface
-	const executable_name = is_windows
+	const executable_name = IS_WINDOWS
 		? 'lib/py3-windows-x86_64/python.exe'
 		: 'renpy.sh'
 
@@ -320,7 +321,7 @@ async function get_renpy_sh() {
 		return
 	}
 
-	if (is_windows) {
+	if (IS_WINDOWS) {
 		const win_renpy_path = path.join(sdk_path, 'renpy.py')
 		// set RENPY_EDIT_PY=editor.edit.py && python.exe renpy.py
 		return (
@@ -390,6 +391,39 @@ function get_version(renpy_sh) {
 		.toString('utf-8')
 		.trim()
 		.replace("Ren'Py ", '')
+}
+
+/**
+ * @param {number} pid
+ */
+async function focus_window(pid) {
+	// windows creates subprocesses for each window, so we need to find
+	// the subprocess associated with the parent process we created
+	const pids = [pid, ...(await pidtree(pid))]
+	const matching_windows = windowManager
+		.getWindows()
+		.filter((win) => pids.includes(win.processId))
+
+	logger.info('matching windows:', matching_windows)
+
+	if (!matching_windows) {
+		logger.error('no matching window found', windowManager.getWindows())
+		return
+	}
+
+	const has_accessibility = windowManager.requestAccessibility()
+
+	if (has_accessibility) {
+		matching_windows.forEach((win) => {
+			// bring all windows to top. windows creates many
+			// subprocesses and figuring out the right one is not straightforward
+			win.bringToTop()
+		})
+	} else {
+		vscode.window.showInformationMessage(
+			"Accessibility permissions have been requested. These are required to focus the Ren'Py window. You may need to restart Visual Studio Code for this to take effect."
+		)
+	}
 }
 
 /**
@@ -498,33 +532,7 @@ async function launch_renpy({ file, line } = {}) {
 		}
 
 		if (get_config('focusWindowOnWarp')) {
-			// windows creates subprocesses for each window, so we need to find
-			// the subprocess associated with the process id we created
-			const pids = await pidtree(pm.at(0).pid)
-			const matching_windows = windowManager
-				.getWindows()
-				.filter((win) => pids.includes(win.processId))
-
-			logger.info('matching windows:', matching_windows)
-
-			if (matching_windows) {
-				const has_accessibility = windowManager.requestAccessibility()
-
-				if (has_accessibility) {
-					matching_windows.forEach((win) => {
-						win.bringToTop()
-					})
-				} else {
-					vscode.window.showInformationMessage(
-						"Accessibility permissions have been requested. These are required to focus the Ren'Py window. You may need to restart Visual Studio Code for this to take effect."
-					)
-				}
-			} else {
-				logger.error(
-					'no matching window found',
-					windowManager.getWindows()
-				)
-			}
+			await focus_window(pm.at(0).pid)
 		}
 
 		return
