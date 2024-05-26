@@ -210,6 +210,7 @@
 	"dependencies": {
 		"node-window-manager": "^2.2.4",
 		"p-throttle": "^4.1.1",
+		"pidtree": "^0.6.0",
 		"puka": "^1.0.1",
 		"tmp-promise": "^3.0.3",
 		"untildify": "^4.0.0",

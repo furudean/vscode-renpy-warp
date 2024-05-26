@@ -8,6 +8,8 @@ const { quoteForShell } = require('puka')
 const p_throttle = require('p-throttle')
 const tmp = require('tmp-promise')
 const { windowManager } = require('node-window-manager')
+const { promisify } = require('util')
+const pidtree = promisify(require('pidtree'))
 
 const RENPY_VERSION_REGEX =
 	/^(?<major>\d+)\.(?<minor>\d+)\.(?<patch>\d+)(?:\.(?<rest>.*))?$/
@@ -496,18 +498,22 @@ async function launch_renpy({ file, line } = {}) {
 		}
 
 		if (get_config('focusWindowOnWarp')) {
-			const sdk_path = await get_sdk_path()
-			const matching_window = windowManager
+			// windows creates subprocesses for each window, so we need to find
+			// the subprocess associated with the process id we created
+			const pids = await pidtree(pm.at(0).pid)
+			const matching_windows = windowManager
 				.getWindows()
-				.find((win) => win.path.startsWith(sdk_path))
+				.filter((win) => pids.includes(win.processId))
 
-			logger.info('matching window:', matching_window)
+			logger.info('matching windows:', matching_windows)
 
-			if (matching_window) {
+			if (matching_windows) {
 				const has_accessibility = windowManager.requestAccessibility()
 
 				if (has_accessibility) {
-					matching_window.bringToTop()
+					matching_windows.forEach((win) => {
+						win.bringToTop()
+					})
 				} else {
 					vscode.window.showInformationMessage(
 						"Accessibility permissions have been requested. These are required to focus the Ren'Py window. You may need to restart Visual Studio Code for this to take effect."
