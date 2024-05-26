@@ -496,9 +496,10 @@ async function launch_renpy({ file, line } = {}) {
 		}
 
 		if (get_config('focusWindowOnWarp')) {
+			const sdk_path = await get_sdk_path()
 			const matching_window = windowManager
 				.getWindows()
-				.find((win) => win.processId === pm.at(0).pid)
+				.find((win) => win.path.startsWith(sdk_path))
 
 			logger.info('matching window:', matching_window)
 
