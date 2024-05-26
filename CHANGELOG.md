@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## Unreleased
+## 0.21.0 - 2024-05-26
 
 -   Adds a setting `renpyWarp.focusWindowOnWarp` to control whether or not the
     Ren'Py window should be focused is focused when warping occurs
