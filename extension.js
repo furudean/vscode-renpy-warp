@@ -496,7 +496,7 @@ async function launch_renpy({ file, line } = {}) {
 	// warp in existing ren'py window
 	if (
 		pm.length &&
-		line &&
+		Number.isInteger(line) &&
 		determine_strategy(is_supports_exec_py) === 'Update Window'
 	) {
 		if (pm.length > 1) {

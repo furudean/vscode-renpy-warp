@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## Unreleased
+
+-   Fixes a bug where `renpyWarp.launchToFile` would always open a new window
+    regardless of the setting of `renpyWarp.strategy`
+
 ## 0.21.0 - 2024-05-26
 
 -   Adds a setting `renpyWarp.focusWindowOnWarp` to control whether or not the
