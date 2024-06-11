@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file.
 
 -   Fixes a bug where `renpyWarp.launchToFile` would always open a new window
     regardless of the setting of `renpyWarp.strategy`
+-   Clean up exec.py event handlers a bit more gracefully
 
 ## 0.21.0 - 2024-05-26
 

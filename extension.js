@@ -352,6 +352,7 @@ async function get_renpy_sh() {
  * @returns {Promise<void>}
  */
 function exec_py(script, game_root, timeout_ms = 1000) {
+	const process = pm.at(0)
 	const exec_path = path.join(game_root, 'exec.py')
 
 	const signature = 'executing script at ' + Date.now()
@@ -365,16 +366,20 @@ function exec_py(script, game_root, timeout_ms = 1000) {
 		// write the script file atomically, as is recommended by ren'py
 		await fs.writeFile(tmp_file.path, exec_prelude + script + '\n')
 
-		pm.at(0).stdout.once('data', (data) => {
-			if (data.includes(signature)) {
-				resolve()
-			}
-		})
+		/** @param {string} data */
+		function listener(data) {
+			if (!data.includes(signature)) return
+			process.stdout.removeListener('data', listener)
+			resolve()
+		}
+
+		process.stdout.on('data', listener)
 
 		logger.info(`writing exec.py: "${script}"`)
 		await fs.rename(tmp_file.path, exec_path)
 
 		setTimeout(() => {
+			process.stdout.removeListener('data', listener)
 			reject(new ExecPyTimeoutError())
 		}, timeout_ms)
 		tmp_file.cleanup()
