@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## Unreleased
+## 0.22.0 - 2024-06-12
 
 -   Fixes a bug where `renpyWarp.launchToFile` would always open a new window
     regardless of the setting of `renpyWarp.strategy`
