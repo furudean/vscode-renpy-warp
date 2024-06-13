@@ -351,7 +351,7 @@ async function get_renpy_sh() {
  *
  * @returns {Promise<void>}
  */
-function exec_py(script, game_root, timeout_ms = 1000) {
+function exec_py(script, game_root, timeout_ms = 5000) {
 	const process = pm.at(0)
 	const exec_path = path.join(game_root, 'exec.py')
 
@@ -585,11 +585,13 @@ async function launch_renpy({ file, line } = {}) {
 		logger.info('using early progress bar')
 	}
 
-	const launch_script = get_config('launchScript')
+	const launch_script = get_config('launchScript').trim()
 
-	if (launch_script) {
+	if (is_supports_exec_py && launch_script) {
 		logger.info('executing launch script:', launch_script)
 		await exec_py(launch_script, game_root)
+	} else {
+		logger.info('skipping launch script')
 	}
 
 	return this_process
