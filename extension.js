@@ -600,12 +600,13 @@ async function launch_renpy({ file, line } = {}) {
 }
 
 /**
+ * @template T
  * @param {string} message
- * @param {(uri: vscode.Uri | undefined) => Awaited<any>} run
- * @returns {(uri: vscode.Uri | undefined) => Promise<void>}
+ * @param {(...args: any[]) => Promise<T>} run
+ * @returns {(...args: any[]) => Promise<T>}
  */
 function associate_progress_notification(message, run) {
-	return function (uri) {
+	return function (...args) {
 		return new Promise((resolve, reject) => {
 			vscode.window.withProgress(
 				{
@@ -614,8 +615,8 @@ function associate_progress_notification(message, run) {
 				},
 				async () => {
 					try {
-						await run(uri)
-						resolve()
+						const result = await run(...args)
+						resolve(result)
 					} catch (err) {
 						logger.error(err)
 						logger.show()
@@ -740,6 +741,7 @@ function activate(context) {
 			'renpyWarp.warpToFile',
 			associate_progress_notification(
 				'Warping to file...',
+				/** @param {vscode.Uri} uri */
 				async (uri) => {
 					const fs_path = uri
 						? uri.fsPath
@@ -769,20 +771,6 @@ function activate(context) {
 			'renpyWarp.toggleFollowCursor',
 			async () => {
 				if (!is_follow_cursor) {
-					if (pm.length === 0) {
-						vscode.window.showErrorMessage(
-							"No Ren'Py instances running. Cannot follow cursor."
-						)
-						return
-					}
-
-					if (pm.length > 1) {
-						vscode.window.showErrorMessage(
-							"Multiple Ren'Py instances running. Cannot follow cursor."
-						)
-						return
-					}
-
 					const renpy_sh = await get_renpy_sh()
 					if (!renpy_sh) return
 
@@ -795,6 +783,13 @@ function activate(context) {
 						return
 					}
 
+					if (pm.length > 1) {
+						vscode.window.showErrorMessage(
+							"Multiple Ren'Py instances running. Cannot follow cursor."
+						)
+						return
+					}
+
 					is_follow_cursor = true
 					follow_cursor_status_bar.text = '$(pinned) Following Cursor'
 					follow_cursor_status_bar.color = new vscode.ThemeColor(
@@ -802,6 +797,23 @@ function activate(context) {
 					)
 					follow_cursor_status_bar.backgroundColor =
 						new vscode.ThemeColor('statusBarItem.warningBackground')
+
+					if (pm.length === 0) {
+						const launch = associate_progress_notification(
+							"Launching Ren'Py...",
+							() => launch_renpy()
+						)
+
+						try {
+							await launch()
+						} catch (err) {
+							logger.error(err)
+							vscode.commands.executeCommand(
+								'renpyWarp.toggleFollowCursor'
+							)
+							return
+						}
+					}
 
 					text_editor_handle =
 						vscode.window.onDidChangeTextEditorSelection(
