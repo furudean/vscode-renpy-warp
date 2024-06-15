@@ -428,7 +428,7 @@ async function focus_window(pid) {
 		})
 	} else {
 		vscode.window.showInformationMessage(
-			"Accessibility permissions have been requested. These are required to focus the Ren'Py window. You may need to restart Visual Studio Code for this to take effect."
+			"Accessibility permissions have been requested. These are used to focus the Ren'Py window. You may need to restart Visual Studio Code for this to take effect."
 		)
 	}
 }
