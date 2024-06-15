@@ -236,6 +236,7 @@ async function get_sdk_path() {
 	try {
 		await fs.access(parsed_path)
 	} catch (err) {
+		logger.warn('invalid sdk path:', err)
 		vscode.window
 			.showErrorMessage(
 				`Invalid Ren'Py SDK path: ${sdk_path_setting}`,
@@ -274,6 +275,7 @@ async function get_renpy_sh() {
 	try {
 		await fs.access(executable)
 	} catch (err) {
+		logger.warn('invalid renpy.sh path:', err)
 		vscode.window
 			.showErrorMessage(
 				`Invalid Ren'Py SDK path: ${sdk_path}`,

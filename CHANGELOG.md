@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## Unreleased
+
+-   Bump packages
+
 ## 0.22.0 - 2024-06-12
 
 -   Fixes a bug where `renpyWarp.launchToFile` would always open a new window
