@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## Unreleased
+## 0.23.0 - 2024-06-16
 
 -   Bump packages
 -   Launches the game if not open when `renpyWarp.toggleFollowCursor` is
