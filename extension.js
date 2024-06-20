@@ -685,7 +685,7 @@ function activate(context) {
 			last_warp_spec = `${game_path}:${line}`
 
 			const doc = await vscode.workspace.openTextDocument(abs_path)
-			vscode.window.showTextDocument(doc)
+			await vscode.window.showTextDocument(doc)
 
 			if (
 				editor.document.uri.fsPath === abs_path &&
