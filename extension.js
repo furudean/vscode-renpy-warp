@@ -667,19 +667,19 @@ function activate(context) {
 	let last_warp_spec
 
 	/**
-	 * @param {string} data
+	 * @param {string} renpy_stdout
 	 */
-	async function sync_editor_with_renpy(data) {
+	async function sync_editor_with_renpy(renpy_stdout) {
 		const editor = vscode.window.activeTextEditor
 
 		if (
 			is_follow_cursor &&
-			data.startsWith('RENPY_WARP_CURRENT_LINE:') &&
+			renpy_stdout.startsWith('RENPY_WARP_CURRENT_LINE:') &&
 			["Ren'Py updates Visual Studio Code", 'Update both'].includes(
 				get_config('followCursorMode')
 			)
 		) {
-			const [, abs_path, game_path, line] = data.trim().split(':')
+			const [, abs_path, game_path, line] = renpy_stdout.trim().split(':')
 			const zero_indexed_line = Number(line) - 1
 
 			last_warp_spec = `${game_path}:${line}`
