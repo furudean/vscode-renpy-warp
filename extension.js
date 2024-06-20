@@ -667,6 +667,9 @@ function activate(context) {
 	let last_warp_spec
 
 	/**
+	 * This function is called whenever Ren'Py outputs a line to stdout. A
+	 * special script is injected into Ren'Py that will output this spec.
+	 *
 	 * @param {string} renpy_stdout
 	 */
 	async function sync_editor_with_renpy(renpy_stdout) {
@@ -680,6 +683,7 @@ function activate(context) {
 			const [, abs_path, game_path, line] = renpy_stdout.trim().split(':')
 			const zero_indexed_line = Number(line) - 1
 
+			// prevent feedback loop with warp to cursor
 			last_warp_spec = `${game_path}:${line}`
 
 			const doc = await vscode.workspace.openTextDocument(abs_path)
