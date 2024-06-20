@@ -673,36 +673,38 @@ function activate(context) {
 	 * @param {string} renpy_stdout
 	 */
 	async function sync_editor_with_renpy(renpy_stdout) {
+		if (!is_follow_cursor) return
+		if (!renpy_stdout.startsWith('RENPY_WARP_CURRENT_LINE:')) return
 		if (
-			is_follow_cursor &&
-			renpy_stdout.startsWith('RENPY_WARP_CURRENT_LINE:') &&
-			["Ren'Py updates Visual Studio Code", 'Update both'].includes(
+			!["Ren'Py updates Visual Studio Code", 'Update both'].includes(
 				get_config('followCursorMode')
 			)
-		) {
-			const [, abs_path, game_path, line] = renpy_stdout.trim().split(':')
-			const zero_indexed_line = Number(line) - 1
+		)
+			return
 
-			// prevent feedback loop with warp to cursor
-			//
-			// TODO: this will still happen if renpy warps to a different line
-			// than the one requested.
-			last_warp_spec = `${game_path}:${line}`
+		const [, abs_path, game_path, line] = renpy_stdout.trim().split(':')
+		const zero_indexed_line = Number(line) - 1
 
-			const doc = await vscode.workspace.openTextDocument(abs_path)
-			await vscode.window.showTextDocument(doc)
-			const editor = vscode.window.activeTextEditor
+		// prevent feedback loop with warp to cursor
+		//
+		// TODO: this will still happen if renpy warps to a different line
+		// than the one requested.
+		last_warp_spec = `${game_path}:${line}`
 
-			// if the cursor is already on the correct line, don't munge it
-			if (editor.selection.start.line === zero_indexed_line) return
+		const doc = await vscode.workspace.openTextDocument(abs_path)
+		await vscode.window.showTextDocument(doc)
+		const editor = vscode.window.activeTextEditor
 
-			const end_of_line =
-				editor.document.lineAt(zero_indexed_line).range.end.character
-			const pos = new vscode.Position(zero_indexed_line, end_of_line)
-			const selection = new vscode.Selection(pos, pos)
+		const end_of_line =
+			editor.document.lineAt(zero_indexed_line).range.end.character
+		const pos = new vscode.Position(zero_indexed_line, end_of_line)
+		const selection = new vscode.Selection(pos, pos)
 
+		editor.revealRange(selection)
+
+		// if the cursor is already on the correct line, don't munge it
+		if (editor.selection.start.line !== zero_indexed_line) {
 			editor.selection = selection
-			editor.revealRange(selection)
 		}
 	}
 
