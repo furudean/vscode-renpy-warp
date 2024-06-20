@@ -16,6 +16,24 @@ const IS_WINDOWS = os.platform() === 'win32'
 const RENPY_VERSION_REGEX =
 	/^(?<major>\d+)\.(?<minor>\d+)\.(?<patch>\d+)(?:\.(?<rest>.*))?$/
 
+const EDITOR_SYNC_SCRIPT = `
+def say_current_line(event, interact=True, **kwargs):
+	import re
+	import os
+
+	if not interact:
+		return
+
+	if event == "begin":
+		filename, line = renpy.get_filename_line()
+		filename_without_game = re.sub(r"^game/", "", filename)
+
+		filename_abs_path = os.path.join(config.gamedir, filename_without_game)
+		print(f"RENPY_WARP_CURRENT_LINE:{filename_abs_path}:{filename_without_game}:{line}")
+
+config.all_character_callbacks.append(say_current_line)
+`
+
 /** @type {ProcessManager} */
 let pm
 
@@ -44,9 +62,13 @@ class ExecPyTimeoutError extends Error {
 }
 
 class ProcessManager {
-	constructor() {
+	/**
+	 * @param {{ stdout_callback?: ((data: string) => void) }} options
+	 */
+	constructor({ stdout_callback }) {
 		/** @type {Set<child_process.ChildProcess>} */
 		this.processes = new Set()
+		this.stdout_callback = stdout_callback || (() => {})
 
 		this.update_status_bar()
 	}
@@ -56,8 +78,12 @@ class ProcessManager {
 		this.processes.add(process)
 		this.update_status_bar()
 
-		process.stdout.on('data', process_out_channel.append)
+		process.stdout.on('data', (data) => {
+			process_out_channel.append(data)
+			this.stdout_callback(data)
+		})
 		process.stderr.on('data', process_out_channel.append)
+
 		process.on('exit', (code) => {
 			this.processes.delete(process)
 			this.update_status_bar()
@@ -589,11 +615,13 @@ async function launch_renpy({ file, line } = {}) {
 
 	const launch_script = get_config('launchScript').trim()
 
-	if (is_supports_exec_py && launch_script) {
-		logger.info('executing launch script:', launch_script)
-		await exec_py(launch_script, game_root)
-	} else {
-		logger.info('skipping launch script')
+	if (is_supports_exec_py) {
+		if (launch_script) {
+			logger.info('executing launch script:', launch_script)
+			await exec_py(launch_script, game_root)
+		}
+
+		await exec_py(EDITOR_SYNC_SCRIPT, game_root)
 	}
 
 	return this_process
@@ -638,6 +666,45 @@ function activate(context) {
 	/** @type {string | undefined} */
 	let last_warp_spec
 
+	/**
+	 * @param {string} data
+	 */
+	async function sync_editor(data) {
+		const editor = vscode.window.activeTextEditor
+
+		if (
+			is_follow_cursor &&
+			data.startsWith('RENPY_WARP_CURRENT_LINE:') &&
+			["Ren'Py updates Visual Studio Code", 'Update both'].includes(
+				get_config('followCursorMode')
+			)
+		) {
+			const [, filename_abs_path, filename_relative, line] = data
+				.trim()
+				.split(':')
+			const zero_line = Number(line) - 1
+
+			last_warp_spec = `${filename_relative}:${line}`
+
+			if (
+				editor.document.uri.fsPath === filename_abs_path &&
+				editor.selection.start.line === zero_line
+			)
+				return
+
+			const doc = await vscode.workspace.openTextDocument(
+				filename_abs_path
+			)
+			vscode.window.showTextDocument(doc)
+
+			const end = editor.document.lineAt(zero_line).range.end.character
+			const new_position = new vscode.Position(zero_line, end)
+			editor.selection = new vscode.Selection(new_position, new_position)
+
+			editor.revealRange(editor.selection)
+		}
+	}
+
 	logger = vscode.window.createOutputChannel(
 		"Ren'Py Launch and Sync - Extension",
 		{
@@ -662,9 +729,11 @@ function activate(context) {
 	follow_cursor_status_bar.text = '$(pin) Follow Cursor'
 	follow_cursor_status_bar.command = 'renpyWarp.toggleFollowCursor'
 	follow_cursor_status_bar.tooltip =
-		"When enabled, Ren'Py will continuously warp to the line being edited"
+		"When enabled, keep editor cursor and Ren'Py in sync"
 
-	pm = new ProcessManager()
+	pm = new ProcessManager({
+		stdout_callback: sync_editor,
+	})
 
 	const throttle = p_throttle({
 		limit: 1,
@@ -684,11 +753,13 @@ function activate(context) {
 			return
 		}
 
-		if (!vscode.window.activeTextEditor) return
+		const editor = vscode.window.activeTextEditor
 
-		const language_id = vscode.window.activeTextEditor.document.languageId
-		const file = vscode.window.activeTextEditor.document.uri.fsPath
-		const line = vscode.window.activeTextEditor.selection.active.line
+		if (!editor) return
+
+		const language_id = editor.document.languageId
+		const file = editor.document.uri.fsPath
+		const line = editor.selection.active.line
 
 		if (language_id !== 'renpy') return
 
@@ -817,11 +888,25 @@ function activate(context) {
 
 					text_editor_handle =
 						vscode.window.onDidChangeTextEditorSelection(
-							follow_cursor
+							async (event) => {
+								if (
+									[
+										"Visual Studio Code updates Ren'Py",
+										'Update both',
+									].includes(
+										get_config('followCursorMode')
+									) &&
+									event.kind !==
+										vscode.TextEditorSelectionChangeKind
+											.Command
+								) {
+									await follow_cursor()
+								}
+							}
 						)
 					context.subscriptions.push(text_editor_handle)
 
-					follow_cursor()
+					await follow_cursor()
 				} else {
 					is_follow_cursor = false
 					follow_cursor_status_bar.text = '$(pin) Follow Cursor'
