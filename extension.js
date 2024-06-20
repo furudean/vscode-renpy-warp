@@ -684,6 +684,9 @@ function activate(context) {
 			const zero_indexed_line = Number(line) - 1
 
 			// prevent feedback loop with warp to cursor
+			//
+			// TODO: this will still happen if renpy warps to a different line
+			// than the one requested.
 			last_warp_spec = `${game_path}:${line}`
 
 			const doc = await vscode.workspace.openTextDocument(abs_path)
