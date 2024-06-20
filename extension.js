@@ -669,7 +669,7 @@ function activate(context) {
 	/**
 	 * @param {string} data
 	 */
-	async function sync_editor(data) {
+	async function sync_editor_with_renpy(data) {
 		const editor = vscode.window.activeTextEditor
 
 		if (
@@ -679,29 +679,27 @@ function activate(context) {
 				get_config('followCursorMode')
 			)
 		) {
-			const [, filename_abs_path, filename_relative, line] = data
-				.trim()
-				.split(':')
-			const zero_line = Number(line) - 1
+			const [, abs_path, game_path, line] = data.trim().split(':')
+			const zero_indexed_line = Number(line) - 1
 
-			last_warp_spec = `${filename_relative}:${line}`
+			last_warp_spec = `${game_path}:${line}`
+
+			const doc = await vscode.workspace.openTextDocument(abs_path)
+			vscode.window.showTextDocument(doc)
 
 			if (
-				editor.document.uri.fsPath === filename_abs_path &&
-				editor.selection.start.line === zero_line
+				editor.document.uri.fsPath === abs_path &&
+				editor.selection.start.line === zero_indexed_line
 			)
 				return
 
-			const doc = await vscode.workspace.openTextDocument(
-				filename_abs_path
-			)
-			vscode.window.showTextDocument(doc)
+			const end_of_line =
+				editor.document.lineAt(zero_indexed_line).range.end.character
+			const pos = new vscode.Position(zero_indexed_line, end_of_line)
+			const selection = new vscode.Selection(pos, pos)
 
-			const end = editor.document.lineAt(zero_line).range.end.character
-			const new_position = new vscode.Position(zero_line, end)
-			editor.selection = new vscode.Selection(new_position, new_position)
-
-			editor.revealRange(editor.selection)
+			editor.selection = selection
+			editor.revealRange(selection)
 		}
 	}
 
@@ -732,7 +730,7 @@ function activate(context) {
 		"When enabled, keep editor cursor and Ren'Py in sync"
 
 	pm = new ProcessManager({
-		stdout_callback: sync_editor,
+		stdout_callback: sync_editor_with_renpy,
 	})
 
 	const throttle = p_throttle({
@@ -742,7 +740,7 @@ function activate(context) {
 		interval: get_config('followCursorExecInterval'),
 	})
 
-	const follow_cursor = throttle(async () => {
+	const warp_renpy_to_cursor = throttle(async () => {
 		if (pm.length !== 1) {
 			logger.info(
 				'needs exactly one instance to follow... got',
@@ -872,7 +870,7 @@ function activate(context) {
 					if (pm.length === 0) {
 						const launch = associate_progress_notification(
 							"Launching Ren'Py...",
-							() => launch_renpy()
+							async () => await launch_renpy()
 						)
 
 						try {
@@ -900,13 +898,20 @@ function activate(context) {
 										vscode.TextEditorSelectionChangeKind
 											.Command
 								) {
-									await follow_cursor()
+									await warp_renpy_to_cursor()
 								}
 							}
 						)
 					context.subscriptions.push(text_editor_handle)
 
-					await follow_cursor()
+					if (
+						[
+							"Visual Studio Code updates Ren'Py",
+							'Update both',
+						].includes(get_config('followCursorMode'))
+					) {
+						await warp_renpy_to_cursor()
+					}
 				} else {
 					is_follow_cursor = false
 					follow_cursor_status_bar.text = '$(pin) Follow Cursor'
