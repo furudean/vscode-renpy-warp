@@ -670,8 +670,6 @@ function activate(context) {
 	 * @param {string} renpy_stdout
 	 */
 	async function sync_editor_with_renpy(renpy_stdout) {
-		const editor = vscode.window.activeTextEditor
-
 		if (
 			is_follow_cursor &&
 			renpy_stdout.startsWith('RENPY_WARP_CURRENT_LINE:') &&
@@ -686,12 +684,10 @@ function activate(context) {
 
 			const doc = await vscode.workspace.openTextDocument(abs_path)
 			await vscode.window.showTextDocument(doc)
+			const editor = vscode.window.activeTextEditor
 
-			if (
-				editor.document.uri.fsPath === abs_path &&
-				editor.selection.start.line === zero_indexed_line
-			)
-				return
+			// if the cursor is already on the correct line, don't munge it
+			if (editor.selection.start.line === zero_indexed_line) return
 
 			const end_of_line =
 				editor.document.lineAt(zero_indexed_line).range.end.character
