@@ -604,7 +604,6 @@ async function launch_renpy({ file, line } = {}) {
 				logger.warn(
 					'exec.py not read by renpy in time for progress bar'
 				)
-				await fs.unlink(path.join(game_root, 'exec.py'))
 			} else {
 				throw err
 			}
@@ -616,12 +615,20 @@ async function launch_renpy({ file, line } = {}) {
 	const launch_script = get_config('launchScript').trim()
 
 	if (is_supports_exec_py) {
-		if (launch_script) {
-			logger.info('executing launch script:', launch_script)
-			await exec_py(launch_script, game_root)
-		}
+		try {
+			if (launch_script) {
+				logger.info('executing launch script:', launch_script)
+				await exec_py(launch_script, game_root)
+			}
 
-		await exec_py(EDITOR_SYNC_SCRIPT, game_root)
+			await exec_py(EDITOR_SYNC_SCRIPT, game_root)
+		} catch (err) {
+			if (err instanceof ExecPyTimeoutError) {
+				logger.warn('failed to execute extra scripts in time')
+			} else {
+				throw err
+			}
+		}
 	}
 
 	return this_process
