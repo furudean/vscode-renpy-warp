@@ -60,9 +60,8 @@ set to one of the following values:
    <dd>
       <blockquote>
          ⚠️ <b>Warning</b><br>
-         This feature only works if the current version of Ren'Py supports
-         reading commands from <code>exec.py</code>. This means you need Ren'Py
-         8.3.0 or a recent nightly builds.
+         This feature only works with Ren'Py 8.3.0 or higher, or a recent 
+         nightly build.
       </blockquote>
       <p>
          When a command is issued, replace an open editor by sending a
@@ -73,6 +72,10 @@ set to one of the following values:
 </dl>
 
 ### Follow Cursor
+
+> ⚠️ **Warning**<br>
+> This feature only works with Ren'Py 8.3.0 or higher, or a recent
+> nightly build.
 
 Renpy Launch and Sync can keep its cursor in sync with the Ren'Py game. The
 direction of this sync can be controlled with the setting
