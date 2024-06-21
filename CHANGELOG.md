@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## Unreleased
+## 0.24.0 - 2024-06-20
 
 -   Overhaul of the _Follow Cursor_ feature, now can sync the cursor to the
     Ren'Py window. This is configurable via `renpyWarp.followCursorMode` and by
