@@ -96,7 +96,7 @@ direction of this sync can be controlled with the setting
    </dd>
 </dl>
 
-## Focus Window on Warp
+### Focus Window on Warp
 
 When a warp occurs, you may want the Ren'Py window to be focused. This can be
 configured with the setting
