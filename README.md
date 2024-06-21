@@ -80,11 +80,20 @@ direction of this sync can be controlled with the setting
 
 <dl>
    <dt><strong>Ren'Py updates Visual Studio Code</strong></dt>
-   <dd>The editor will move its cursor to match the current line of dialogue in the game.</dd>
+   <dd>
+      The editor will move its cursor to match the current line of dialogue in 
+      the game.
+   </dd>
    <dt><strong>Visual Studio Code updates Ren'Py</strong></dt>
-   <dd>Ren'Py will warp to the line being edited.</dd>
+   <dd>
+      Ren'Py will warp to the line being edited. Your game must be compatible
+      with warping for this to work correctly.
+   </dd>
    <dt><strong>Update both</strong></dt>
-   <dd>Try and keep both in sync. Because of how warping works, this can be a bit janky.</dd>
+   <dd>
+      Try and keep both in sync with each other. Because of how warping works, 
+      this can be a bit janky, causing a feedback loop.
+   </dd>
 </dl>
 
 ## Troubleshooting
