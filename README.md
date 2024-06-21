@@ -96,6 +96,18 @@ direction of this sync can be controlled with the setting
    </dd>
 </dl>
 
+## Focus Window on Warp
+
+When a warp occurs, you may want the Ren'Py window to be focused. This can be
+configured with the setting
+<code codesetting="renpyWarp.focusWindowOnWarp">renpyWarp.focusWindowOnWarp</code>.
+
+You might be prompted to allow Visual Studio Code to control other applications
+when this setting is enabled. After allowing this, restart Visual Studio Code to
+apply the changes.
+
+![The accessibility prompt on macOs](images/accessibility.png)
+
 ## Troubleshooting
 
 In order to use the current line/file feature, your game must be compatible with
