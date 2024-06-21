@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## Unreleased
+
+-   Overhaul of the _Follow Cursor_ feature, now can sync the cursor to the
+    Ren'Py window. This is configurable via `renpyWarp.followCursorMode` and by
+    default is set to "Ren'Py updates Visual Studio Code". The old behavior can
+    be restored by setting it to "Visual Studio Code updates Ren'Py".
+
 ## 0.23.0 - 2024-06-16
 
 -   Bump packages
