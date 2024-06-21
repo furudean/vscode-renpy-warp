@@ -43,20 +43,20 @@ The strategy is controlled with the setting
 set to one of the following values:
 
 <dl>
-   <dt>Auto</dt>
+   <dt><strong>Auto</strong></dt>
    <dd>
       Automatically choose the best strategy based on what features are available
    </dd>
-   <dt>New window</dt>
+   <dt><strong>New window</strong></dt>
    <dd>
       Open a new Ren'Py instance when a command is issued
    </dd>
-   <dt>Replace window</dt>
+   <dt><strong>Replace window</strong></dt>
    <dd>
       Kill the currently running Ren'Py instance and open a new one when a 
       command is issued
    </dd>
-   <dt>Update Window</dt>
+   <dt><strong>Update Window</strong></dt>
    <dd>
       <blockquote>
          ⚠️ <b>Warning</b><br>
@@ -69,6 +69,30 @@ set to one of the following values:
          <code>renpy.warp_to_line()</code> command to the currently running 
          Ren'Py instance
       </p>
+   </dd>
+</dl>
+
+### Follow Cursor
+
+Renpy Launch and Sync can keep its cursor in sync with the Ren'Py game. The
+direction of this sync can be controlled with the setting
+<code codesetting="renpyWarp.followCursorMode">renpyWarp.followCursorMode</code>
+
+<dl>
+   <dt><strong>Ren'Py updates Visual Studio Code</strong></dt>
+   <dd>
+      The editor will move its cursor to match the current line of dialogue in 
+      the game.
+   </dd>
+   <dt><strong>Visual Studio Code updates Ren'Py</strong></dt>
+   <dd>
+      Ren'Py will warp to the line being edited. Your game must be compatible
+      with warping for this to work correctly.
+   </dd>
+   <dt><strong>Update both</strong></dt>
+   <dd>
+      Try and keep both in sync with each other. Because of how warping works, 
+      this can be a bit janky, causing a feedback loop.
    </dd>
 </dl>
 

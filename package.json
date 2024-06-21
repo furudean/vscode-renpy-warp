@@ -160,10 +160,26 @@
 						"Kill the existing instance and launch a new one."
 					]
 				},
+				"renpyWarp.followCursorMode": {
+					"type": "string",
+					"order": 2,
+					"markdownDescription": "When in follow cursor mode, what should be kept in sync?",
+					"default": "Ren'Py updates Visual Studio Code",
+					"enum": [
+						"Ren'Py updates Visual Studio Code",
+						"Visual Studio Code updates Ren'Py",
+						"Update both"
+					],
+					"markdownEnumDescriptions": [
+						"Editor will sync with current line in Ren'Py.",
+						"Ren'Py will sync with current line in the editor.",
+						"Try and keep both in sync.\n\n**Note**: Because of how warping works, this can be a bit janky."
+					]
+				},
 				"renpyWarp.focusWindowOnWarp": {
 					"type": "boolean",
 					"default": false,
-					"order": 2,
+					"order": 3,
 					"markdownDescription": "Focus the Ren'Py window after a warp command is executed.\n\nNot supported on Linux. Requires accessibility permissions to be granted to Visual Studio Code on macOS."
 				},
 				"renpyWarp.editor": {
