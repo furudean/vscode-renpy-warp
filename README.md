@@ -60,7 +60,7 @@ set to one of the following values:
    <dd>
       <blockquote>
          ⚠️ <b>Warning</b><br>
-         This feature only works with Ren'Py 8.3.0 or higher, or a recent 
+         This feature only works with Ren'Py 8.3.0 or newer, or a recent 
          nightly build.
       </blockquote>
       <p>
@@ -74,7 +74,7 @@ set to one of the following values:
 ### Follow Cursor
 
 > ⚠️ **Warning**<br>
-> This feature only works with Ren'Py 8.3.0 or higher, or a recent
+> This feature only works with Ren'Py 8.3.0 or newer, or a recent
 > nightly build.
 
 Renpy Launch and Sync can keep its cursor in sync with the Ren'Py game. The
@@ -98,6 +98,8 @@ direction of this sync can be controlled with the setting
       this can be a bit janky, causing a feedback loop.
    </dd>
 </dl>
+
+Cursor syncing can be turned on by default with the setting <code codesetting="renpyWarp.followCursorOnLaunch">renpyWarp.followCursorOnLaunch</code>.
 
 ### Focus Window on Warp
 
