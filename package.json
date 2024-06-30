@@ -163,7 +163,7 @@
 				"renpyWarp.followCursorMode": {
 					"type": "string",
 					"order": 2,
-					"markdownDescription": "When in follow cursor mode, what should be kept in sync?",
+					"markdownDescription": "When in _Follow Cursor_ mode, what should be kept in sync?",
 					"default": "Ren'Py updates Visual Studio Code",
 					"enum": [
 						"Ren'Py updates Visual Studio Code",
@@ -180,7 +180,7 @@
 					"type": "boolean",
 					"default": false,
 					"order": 3,
-					"markdownDescription": "Automatically enter follow cursor mode when launching Ren'Py"
+					"markdownDescription": "Automatically enter _Follow Cursor_ mode when launching Ren'Py (if supported)"
 				},
 				"renpyWarp.focusWindowOnWarp": {
 					"type": "boolean",
@@ -197,7 +197,7 @@
 					"type": "integer",
 					"default": 40,
 					"minimum": 1,
-					"markdownDescription": "The interval in milliseconds to execute `renpy.warp_to_line()` when in follow cursor mode.\n\nThe lower the value, the more frequently the command is issued, which can feel more responsive at the cost of increased processing.\n\nNeeds a restart to take effect.",
+					"markdownDescription": "The interval in milliseconds to execute `renpy.warp_to_line()` when in _Follow Cursor_ mode.\n\nThe lower the value, the more frequently the command is issued, which can feel more responsive at the cost of increased processing.\n\nNeeds a restart to take effect.",
 					"scope": "machine-overridable"
 				},
 				"renpyWarp.launchScript": {
