@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## Unreleased
+
+-   Improves the reliabilty of the _Follow Cursor_ feature by re-injecting the
+    script when Ren'Py is reloaded
+-   Only conditionally inject the script if it's not already present, avoiding
+    infinite recursion
+
 ## 0.24.0 - 2024-06-20
 
 -   Overhaul of the _Follow Cursor_ feature, now can sync the cursor to the

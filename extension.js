@@ -17,7 +17,7 @@ const RENPY_VERSION_REGEX =
 	/^(?<major>\d+)\.(?<minor>\d+)\.(?<patch>\d+)(?:\.(?<rest>.*))?$/
 
 const EDITOR_SYNC_SCRIPT = `
-def say_current_line(event, interact=True, **kwargs):
+def renpy_warp_say_current_line(event, interact=True, **kwargs):
 	import re
 	import os
 
@@ -29,9 +29,20 @@ def say_current_line(event, interact=True, **kwargs):
 		filename_without_game = re.sub(r"^game/", "", filename)
 
 		filename_abs_path = os.path.join(config.gamedir, filename_without_game)
-		print(f"RENPY_WARP_CURRENT_LINE:{filename_abs_path}:{filename_without_game}:{line}")
+		print(
+			f"RENPY_WARP_SIGNAL_CURRENT_LINE:{filename_abs_path}:{filename_without_game}:{line}",
+			flush=True
+		)
 
-config.all_character_callbacks.append(say_current_line)
+try:
+	renpy_warp_sync_script_loaded
+except NameError:
+	config.all_character_callbacks.append(renpy_warp_say_current_line)
+
+	renpy_warp_sync_script_loaded = True
+	print("injected sync script")
+else:
+	print("sync script already loaded")
 `
 
 /** @type {ProcessManager} */
@@ -63,38 +74,49 @@ class ExecPyTimeoutError extends Error {
 
 class ProcessManager {
 	/**
-	 * @param {{ stdout_callback?: ((data: string) => void) }} options
+	 * @typedef {object} StdoutCallbackOptions
+	 * @property {string} data
+	 * @property {string} game_root
+	 * @property {boolean} is_supports_exec_py
+	 */
+
+	/**
+	 * @param {{ stdout_callback?: ((arg0: StdoutCallbackOptions) => Promise<void>) }} options
 	 */
 	constructor({ stdout_callback }) {
 		/** @type {Set<child_process.ChildProcess>} */
 		this.processes = new Set()
-		this.stdout_callback = stdout_callback || (() => {})
+		/** @type {((arg0: StdoutCallbackOptions) => Promise<void>)} */
+		this.stdout_callback = stdout_callback || (async () => {})
 
 		this.update_status_bar()
 	}
 
-	/** @param {child_process.ChildProcess} process */
-	add(process) {
+	/**
+	 * @param {{process: child_process.ChildProcess, game_root: string, is_supports_exec_py: boolean}} arg0
+	 */
+	add({ process, game_root, is_supports_exec_py }) {
 		this.processes.add(process)
 		this.update_status_bar()
 
-		process.stdout.on('data', (data) => {
+		process.stdout.on('data', async (data) => {
 			process_out_channel.append(data)
-			this.stdout_callback(data)
+			await this.stdout_callback({ data, game_root, is_supports_exec_py })
 		})
 		process.stderr.on('data', process_out_channel.append)
 
 		process.on('exit', (code) => {
+			logger.info(`process ${process.pid} exited with code ${code}`)
+
 			this.processes.delete(process)
 			this.update_status_bar()
-
-			logger.info(`process ${process.pid} exited with code ${code}`)
 
 			if (code) {
 				vscode.window
 					.showErrorMessage(
 						"Ren'Py process exited with errors",
-						'Logs'
+						'Logs',
+						'Ok'
 					)
 					.then((selected) => {
 						if (selected === 'Logs') process_out_channel.show()
@@ -386,7 +408,7 @@ function exec_py(script, game_root, timeout_ms = 5000) {
 	const signature = 'executing script at ' + Date.now()
 	const exec_prelude =
 		"# This file is created by Ren'Py Launch and Sync and can safely be deleted\n#\n\n" +
-		`print('${signature}')\n`
+		`print('${signature}', flush=True)\n`
 
 	return new Promise(async (resolve, reject) => {
 		const tmp_file = await tmp.file()
@@ -403,7 +425,7 @@ function exec_py(script, game_root, timeout_ms = 5000) {
 
 		process.stdout.on('data', listener)
 
-		logger.info(`writing exec.py: "${script}"`)
+		logger.debug(`writing exec.py: "${script}"`)
 		await fs.rename(tmp_file.path, exec_path)
 
 		setTimeout(() => {
@@ -456,6 +478,29 @@ async function focus_window(pid) {
 		vscode.window.showInformationMessage(
 			"Accessibility permissions have been requested. These are used to focus the Ren'Py window. You may need to restart Visual Studio Code for this to take effect."
 		)
+	}
+}
+
+/**
+ * @param {string} game_root
+ */
+async function inject_sync_script(game_root) {
+	logger.info('injecting sync script')
+	try {
+		await exec_py(EDITOR_SYNC_SCRIPT, game_root)
+		logger.info('sync script injected successfully')
+	} catch (error) {
+		logger.error('failed to inject sync script. error below')
+		logger.error(error)
+		vscode.window
+			.showErrorMessage(
+				'Failed to inject sync script. Follow cursor feature will not work for the open window.',
+				'Logs',
+				'Ok'
+			)
+			.then((selection) => {
+				if (selection === 'Logs') logger.show()
+			})
 	}
 }
 
@@ -592,7 +637,11 @@ async function launch_renpy({ file, line } = {}) {
 
 	if (get_config('strategy') === 'Replace Window') pm.kill_all()
 
-	pm.add(this_process)
+	pm.add({
+		process: this_process,
+		game_root,
+		is_supports_exec_py,
+	})
 
 	if (is_supports_exec_py) {
 		logger.info('using exec.py for accurate progress bar')
@@ -621,7 +670,7 @@ async function launch_renpy({ file, line } = {}) {
 				await exec_py(launch_script, game_root)
 			}
 
-			await exec_py(EDITOR_SYNC_SCRIPT, game_root)
+			await inject_sync_script(game_root)
 		} catch (err) {
 			if (err instanceof ExecPyTimeoutError) {
 				logger.warn('failed to execute extra scripts in time')
@@ -674,14 +723,24 @@ function activate(context) {
 	let last_warp_spec
 
 	/**
-	 * This function is called whenever Ren'Py outputs a line to stdout. A
-	 * special script is injected into Ren'Py that will output this spec.
+	 * @typedef {object} SyncEditorWithRenpyOptions
 	 *
-	 * @param {string} renpy_stdout
+	 * @property {string} abs_path
+	 * absolute path to the file
+	 *
+	 * @property {string} local_path
+	 * path relative from the game folder (e.g. `script.rpy`)
+	 *
+	 * @property {number} line
+	 * 0-indexed line number
 	 */
-	async function sync_editor_with_renpy(renpy_stdout) {
+
+	/**
+	 * @param {SyncEditorWithRenpyOptions} arg0
+	 * @returns {Promise<void>}
+	 */
+	async function sync_editor_with_renpy({ abs_path, local_path, line }) {
 		if (!is_follow_cursor) return
-		if (!renpy_stdout.startsWith('RENPY_WARP_CURRENT_LINE:')) return
 		if (
 			!["Ren'Py updates Visual Studio Code", 'Update both'].includes(
 				get_config('followCursorMode')
@@ -689,28 +748,26 @@ function activate(context) {
 		)
 			return
 
-		const [, abs_path, game_path, line] = renpy_stdout.trim().split(':')
-		const zero_indexed_line = Number(line) - 1
+		logger.info(`syncing editor to ${local_path}:${line}`)
 
 		// prevent feedback loop with warp to cursor
 		//
 		// TODO: this will still happen if renpy warps to a different line
 		// than the one requested.
-		last_warp_spec = `${game_path}:${line}`
+		last_warp_spec = `${local_path}:${line}`
 
 		const doc = await vscode.workspace.openTextDocument(abs_path)
 		await vscode.window.showTextDocument(doc)
 		const editor = vscode.window.activeTextEditor
 
-		const end_of_line =
-			editor.document.lineAt(zero_indexed_line).range.end.character
-		const pos = new vscode.Position(zero_indexed_line, end_of_line)
+		const end_of_line = editor.document.lineAt(line).range.end.character
+		const pos = new vscode.Position(line, end_of_line)
 		const selection = new vscode.Selection(pos, pos)
 
 		editor.revealRange(selection)
 
 		// if the cursor is already on the correct line, don't munge it
-		if (editor.selection.start.line !== zero_indexed_line) {
+		if (editor.selection.start.line !== line) {
 			editor.selection = selection
 		}
 	}
@@ -742,7 +799,27 @@ function activate(context) {
 		"When enabled, keep editor cursor and Ren'Py in sync"
 
 	pm = new ProcessManager({
-		stdout_callback: sync_editor_with_renpy,
+		stdout_callback({ data, game_root, is_supports_exec_py }) {
+			if (data.startsWith('RENPY_WARP_SIGNAL_CURRENT_LINE')) {
+				// RENPY_WARP_SIGNAL_CURRENT_LINE:/path/to/game/script.rpy:script.rpy:52
+				const [, abs_path, local_path, line] = data.trim().split(':')
+
+				logger.debug(`renpy reports line: ${local_path}:${line}`)
+
+				return sync_editor_with_renpy({
+					abs_path,
+					local_path,
+					line: Number(line) - 1,
+				})
+			}
+
+			if (data.startsWith('Resetting cache.') && is_supports_exec_py) {
+				logger.info(
+					'game reload detected. attempting to re-inject sync script'
+				)
+				return inject_sync_script(game_root)
+			}
+		},
 	})
 
 	const throttle = p_throttle({
