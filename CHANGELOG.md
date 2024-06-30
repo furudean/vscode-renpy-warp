@@ -8,6 +8,9 @@ All notable changes to this project will be documented in this file.
     script when Ren'Py is reloaded
 -   Only conditionally inject the script if it's not already present, avoiding
     infinite recursion
+-   Adds a new setting, `renpyWarp.followCursorOnLaunch`, to control whether or not
+    the cursor should follow by default
+-   Add OK button to some notifications that did not have one
 
 ## 0.24.0 - 2024-06-20
 

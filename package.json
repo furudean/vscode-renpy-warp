@@ -176,10 +176,16 @@
 						"Try and keep both in sync.\n\n**Note**: Because of how warping works, this can be a bit janky."
 					]
 				},
-				"renpyWarp.focusWindowOnWarp": {
+				"renpyWarp.followCursorOnLaunch": {
 					"type": "boolean",
 					"default": false,
 					"order": 3,
+					"markdownDescription": "Automatically enter follow cursor mode when launching Ren'Py"
+				},
+				"renpyWarp.focusWindowOnWarp": {
+					"type": "boolean",
+					"default": false,
+					"order": 4,
 					"markdownDescription": "Focus the Ren'Py window after a warp command is executed.\n\nNot supported on Linux. Requires accessibility permissions to be granted to Visual Studio Code on macOS."
 				},
 				"renpyWarp.editor": {

@@ -115,8 +115,8 @@ class ProcessManager {
 				vscode.window
 					.showErrorMessage(
 						"Ren'Py process exited with errors",
-						'Logs',
-						'Ok'
+						'OK',
+						'Logs'
 					)
 					.then((selected) => {
 						if (selected === 'Logs') process_out_channel.show()
@@ -127,7 +127,8 @@ class ProcessManager {
 		if (this.length > 1 && is_follow_cursor) {
 			vscode.commands.executeCommand('renpyWarp.toggleFollowCursor')
 			vscode.window.showInformationMessage(
-				"Follow cursor was disabled because multiple Ren'Py instances are running"
+				"Follow cursor was disabled because multiple Ren'Py instances are running",
+				'OK'
 			)
 		}
 	}
@@ -476,7 +477,8 @@ async function focus_window(pid) {
 		})
 	} else {
 		vscode.window.showInformationMessage(
-			"Accessibility permissions have been requested. These are used to focus the Ren'Py window. You may need to restart Visual Studio Code for this to take effect."
+			"Accessibility permissions have been requested. These are used to focus the Ren'Py window. You may need to restart Visual Studio Code for this to take effect.",
+			'OK'
 		)
 	}
 }
@@ -495,8 +497,8 @@ async function inject_sync_script(game_root) {
 		vscode.window
 			.showErrorMessage(
 				'Failed to inject sync script. Follow cursor feature will not work for the open window.',
-				'Logs',
-				'Ok'
+				'OK',
+				'Logs'
 			)
 			.then((selection) => {
 				if (selection === 'Logs') logger.show()
@@ -550,7 +552,7 @@ async function launch_renpy({ file, line } = {}) {
 	}
 
 	if (!file) {
-		vscode.window.showErrorMessage("No Ren'Py project in workspace")
+		vscode.window.showErrorMessage("No Ren'Py project in workspace", 'OK')
 		return
 	}
 
@@ -560,7 +562,8 @@ async function launch_renpy({ file, line } = {}) {
 
 	if (!game_root) {
 		vscode.window.showErrorMessage(
-			'Unable to find "game" folder in parent directory. Not a Ren\'Py project?'
+			'Unable to find "game" folder in parent directory. Not a Ren\'Py project?',
+			'OK'
 		)
 		logger.info(`cannot find game root in ${file}`)
 		return
@@ -579,7 +582,8 @@ async function launch_renpy({ file, line } = {}) {
 	) {
 		if (pm.length > 1) {
 			vscode.window.showErrorMessage(
-				"Multiple Ren'Py instances running. Cannot warp inside open Ren'Py window."
+				"Multiple Ren'Py instances running. Cannot warp inside open Ren'Py window.",
+				'OK'
 			)
 			return
 		}
@@ -674,9 +678,23 @@ async function launch_renpy({ file, line } = {}) {
 		} catch (err) {
 			if (err instanceof ExecPyTimeoutError) {
 				logger.warn('failed to execute extra scripts in time')
+				vscode.window
+					.showWarningMessage(
+						'Failed to execute extra scripts in time. Follow cursor feature may not work.',
+						'OK',
+						'Logs'
+					)
+					.then((selection) => {
+						if (selection === 'Logs') logger.show()
+					})
 			} else {
 				throw err
 			}
+		}
+
+		if (get_config('followCursorOnLaunch') && pm.length === 1) {
+			logger.info('enabling follow cursor on launch')
+			await vscode.commands.executeCommand('renpyWarp.toggleFollowCursor')
 		}
 	}
 
@@ -936,14 +954,16 @@ function activate(context) {
 						vscode.window.showErrorMessage(
 							`Ren'Py version must be 8.3.0 or newer to follow cursor (Current is ${get_version(
 								renpy_sh
-							)})`
+							)})`,
+							'OK'
 						)
 						return
 					}
 
 					if (pm.length > 1) {
 						vscode.window.showErrorMessage(
-							"Multiple Ren'Py instances running. Cannot follow cursor."
+							"Multiple Ren'Py instances running. Cannot follow cursor.",
+							'OK'
 						)
 						return
 					}
@@ -966,7 +986,7 @@ function activate(context) {
 							await launch()
 						} catch (err) {
 							logger.error(err)
-							vscode.commands.executeCommand(
+							await vscode.commands.executeCommand(
 								'renpyWarp.toggleFollowCursor'
 							)
 							return
