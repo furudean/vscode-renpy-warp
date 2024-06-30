@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## Unreleased
+
+-   Fix redundant editor sync on window reload
+
 ## 0.25.0 - 2024-06-30
 
 -   Improves the reliabilty of the _Follow Cursor_ feature by re-injecting the
