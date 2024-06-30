@@ -842,6 +842,7 @@ function activate(context) {
 			}
 
 			if (
+				// https://github.com/renpy/renpy/blob/d3de1405dc0eedd5646032d34452b4e0835f9255/renpy/display/im.py#L2149
 				data.startsWith('Resetting cache.') &&
 				is_supports_exec_py &&
 				is_follow_cursor
