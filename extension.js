@@ -776,6 +776,12 @@ function activate(context) {
 		)
 			return
 
+		// dont do anything if we're just moving to the same line
+		if (last_warp_spec === `${local_path}:${line}`) {
+			logger.info('ignoring duplicate editor sync request')
+			return
+		}
+
 		logger.debug(`syncing editor to ${local_path}:${line}`)
 
 		// prevent feedback loop with warp to cursor
@@ -826,8 +832,6 @@ function activate(context) {
 	follow_cursor_status_bar.tooltip =
 		"When enabled, keep editor cursor and Ren'Py in sync"
 
-	let skip_next_current_line = false
-
 	pm = new ProcessManager({
 		stdout_callback({ data, game_root, is_supports_exec_py }) {
 			if (data.startsWith('RENPY_WARP_SIGNAL_CURRENT_LINE')) {
@@ -835,12 +839,6 @@ function activate(context) {
 				const [, abs_path, local_path, line] = data.trim().split(':')
 
 				logger.debug(`renpy reports line: ${local_path}:${line}`)
-
-				if (skip_next_current_line) {
-					logger.info('skipped redundant current line sync')
-					skip_next_current_line = false
-					return
-				}
 
 				return sync_editor_with_renpy({
 					abs_path,
@@ -858,7 +856,6 @@ function activate(context) {
 				logger.info(
 					'game reload detected. attempting to re-inject sync script'
 				)
-				skip_next_current_line = true
 				return inject_sync_script(game_root)
 			}
 		},

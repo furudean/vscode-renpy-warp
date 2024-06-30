@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.25.2 - 2024-06-30
+
+-   Fix somewhat erroneous behavior introduced in 0.26.1. Now instead relies on
+    the previous warp spec to deduplicate a sync
+
 ## 0.25.1 - 2024-06-30
 
 -   Fix redundant editor sync on window reload
