@@ -146,10 +146,10 @@ class ProcessManager {
 
 	/**
 	 * @param {number} index
-	 * @returns {child_process.ChildProcess | undefined}
+	 * @returns {ProcessManagerProcess | undefined}
 	 */
 	at(index) {
-		return Array.from(this.processes.values())[index].process
+		return Array.from(this.processes.values())[index]
 	}
 
 	kill_all() {
@@ -163,12 +163,7 @@ class ProcessManager {
 	update_status_bar() {
 		instance_status_bar.show()
 
-		if (
-			this.length &&
-			Array.from(this.processes.values()).some(
-				({ is_supports_exec_py }) => is_supports_exec_py
-			)
-		) {
+		if (this.length === 1 && this.at(0).is_supports_exec_py) {
 			follow_cursor_status_bar.show()
 		} else {
 			follow_cursor_status_bar.hide()
@@ -421,7 +416,7 @@ async function get_renpy_sh() {
  * @returns {Promise<void>}
  */
 function exec_py(script, game_root, timeout_ms = 5000) {
-	const process = pm.at(0)
+	const process = pm.at(0).process
 	const exec_path = path.join(game_root, 'exec.py')
 
 	const signature = 'executing script at ' + Date.now()
@@ -513,7 +508,7 @@ async function inject_sync_script(game_root) {
 		logger.error(error)
 		vscode.window
 			.showErrorMessage(
-				'Failed to inject sync script. Follow cursor feature will not work for the open window.',
+				'Failed to inject sync script. Follow cursor feature may not work for the open window.',
 				'OK',
 				'Logs'
 			)
@@ -631,7 +626,7 @@ async function launch_renpy({ file, line } = {}) {
 		}
 
 		if (get_config('focusWindowOnWarp')) {
-			await focus_window(pm.at(0).pid)
+			await focus_window(pm.at(0).process.pid)
 		}
 
 		return
@@ -685,32 +680,31 @@ async function launch_renpy({ file, line } = {}) {
 	const launch_script = get_config('launchScript').trim()
 
 	if (is_supports_exec_py) {
-		try {
-			await inject_sync_script(game_root)
-			if (launch_script) {
-				logger.info('executing launch script:', launch_script)
-				await exec_py(launch_script, game_root)
-			}
-		} catch (err) {
-			if (err instanceof ExecPyTimeoutError) {
-				logger.warn('failed to execute extra scripts in time')
-				vscode.window
-					.showWarningMessage(
-						'Failed to execute extra scripts in time. Follow cursor feature may not work.',
-						'OK',
-						'Logs'
-					)
-					.then((selection) => {
-						if (selection === 'Logs') logger.show()
-					})
-			} else {
-				throw err
-			}
-		}
-
 		if (get_config('followCursorOnLaunch') && pm.length === 1) {
 			logger.info('enabling follow cursor on launch')
 			await vscode.commands.executeCommand('renpyWarp.toggleFollowCursor')
+		}
+
+		if (launch_script) {
+			try {
+				logger.info('executing launch script:', launch_script)
+				await exec_py(launch_script, game_root)
+			} catch (err) {
+				if (err instanceof ExecPyTimeoutError) {
+					logger.warn('failed to execute extra scripts in time')
+					vscode.window
+						.showWarningMessage(
+							'Failed to execute extra scripts in time. Follow cursor feature may not work.',
+							'OK',
+							'Logs'
+						)
+						.then((selection) => {
+							if (selection === 'Logs') logger.show()
+						})
+				} else {
+					throw err
+				}
+			}
 		}
 	}
 
@@ -847,7 +841,11 @@ function activate(context) {
 				})
 			}
 
-			if (data.startsWith('Resetting cache.') && is_supports_exec_py) {
+			if (
+				data.startsWith('Resetting cache.') &&
+				is_supports_exec_py &&
+				is_follow_cursor
+			) {
 				logger.info(
 					'game reload detected. attempting to re-inject sync script'
 				)
@@ -1005,9 +1003,20 @@ function activate(context) {
 							await vscode.commands.executeCommand(
 								'renpyWarp.toggleFollowCursor'
 							)
+							vscode.window
+								.showErrorMessage(
+									"Failed to launch Ren'Py.",
+									'OK',
+									'Logs'
+								)
+								.then((selection) => {
+									if (selection === 'Logs') logger.show()
+								})
 							return
 						}
 					}
+
+					await inject_sync_script(pm.at(0).game_root)
 
 					text_editor_handle =
 						vscode.window.onDidChangeTextEditorSelection(
