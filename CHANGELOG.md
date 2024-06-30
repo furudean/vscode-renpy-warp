@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## Unreleased
+## 0.25.1 - 2024-06-30
 
 -   Fix redundant editor sync on window reload
 
