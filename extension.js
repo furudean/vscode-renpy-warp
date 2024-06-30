@@ -81,11 +81,18 @@ class ProcessManager {
 	 */
 
 	/**
+	 * @typedef {object} ProcessManagerProcess
+	 * @property {child_process.ChildProcess} process
+	 * @property {string} game_root
+	 * @property {boolean} is_supports_exec_py
+	 */
+
+	/**
 	 * @param {{ stdout_callback?: ((arg0: StdoutCallbackOptions) => Promise<void>) }} options
 	 */
 	constructor({ stdout_callback }) {
-		/** @type {Set<child_process.ChildProcess>} */
-		this.processes = new Set()
+		/** @type {Map<number, ProcessManagerProcess>} */
+		this.processes = new Map()
 		/** @type {((arg0: StdoutCallbackOptions) => Promise<void>)} */
 		this.stdout_callback = stdout_callback || (async () => {})
 
@@ -96,7 +103,11 @@ class ProcessManager {
 	 * @param {{process: child_process.ChildProcess, game_root: string, is_supports_exec_py: boolean}} arg0
 	 */
 	add({ process, game_root, is_supports_exec_py }) {
-		this.processes.add(process)
+		this.processes.set(process.pid, {
+			process,
+			game_root,
+			is_supports_exec_py,
+		})
 		this.update_status_bar()
 
 		process.stdout.on('data', async (data) => {
@@ -108,7 +119,7 @@ class ProcessManager {
 		process.on('exit', (code) => {
 			logger.info(`process ${process.pid} exited with code ${code}`)
 
-			this.processes.delete(process)
+			this.processes.delete(process.pid)
 			this.update_status_bar()
 
 			if (code) {
@@ -138,11 +149,11 @@ class ProcessManager {
 	 * @returns {child_process.ChildProcess | undefined}
 	 */
 	at(index) {
-		return Array.from(this.processes)[index]
+		return Array.from(this.processes.values())[index].process
 	}
 
 	kill_all() {
-		for (const process of this.processes) {
+		for (const { process } of this.processes.values()) {
 			process.kill(9) // SIGKILL, bypasses "are you sure" dialog
 		}
 
@@ -152,18 +163,25 @@ class ProcessManager {
 	update_status_bar() {
 		instance_status_bar.show()
 
+		if (
+			this.length &&
+			Array.from(this.processes.values()).some(
+				({ is_supports_exec_py }) => is_supports_exec_py
+			)
+		) {
+			follow_cursor_status_bar.show()
+		} else {
+			follow_cursor_status_bar.hide()
+		}
+
 		if (this.length) {
 			instance_status_bar.text = `$(debug-stop) Quit Ren'Py`
 			instance_status_bar.command = 'renpyWarp.killAll'
 			instance_status_bar.tooltip = "Kill all running Ren'Py instances"
-
-			follow_cursor_status_bar.show()
 		} else {
 			instance_status_bar.text = `$(play) Launch Project`
 			instance_status_bar.command = 'renpyWarp.launch'
 			instance_status_bar.tooltip = "Launch new Ren'Py instance"
-
-			follow_cursor_status_bar.hide()
 
 			if (is_follow_cursor) {
 				vscode.commands.executeCommand('renpyWarp.toggleFollowCursor')
@@ -487,7 +505,6 @@ async function focus_window(pid) {
  * @param {string} game_root
  */
 async function inject_sync_script(game_root) {
-	logger.info('injecting sync script')
 	try {
 		await exec_py(EDITOR_SYNC_SCRIPT, game_root)
 		logger.info('sync script injected successfully')

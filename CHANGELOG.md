@@ -11,6 +11,7 @@ All notable changes to this project will be documented in this file.
 -   Adds a new setting, `renpyWarp.followCursorOnLaunch`, to control whether or not
     the cursor should follow by default
 -   Add OK button to some notifications that did not have one
+-   The _Follow Cursor_ button now only appears if the feature is supported
 
 ## 0.24.0 - 2024-06-20
 
