@@ -2,16 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
-## Unreleased
+## 0.25.0 - 2024-06-30
 
 -   Improves the reliabilty of the _Follow Cursor_ feature by re-injecting the
     script when Ren'Py is reloaded
 -   Only conditionally inject the script if it's not already present, avoiding
-    infinite recursion
--   Adds a new setting, `renpyWarp.followCursorOnLaunch`, to control whether or not
-    the cursor should follow by default
--   Add OK button to some notifications that did not have one
+    redundant injections
 -   The _Follow Cursor_ button now only appears if the feature is supported
+-   Adds a new setting, `renpyWarp.followCursorOnLaunch`, to control whether or
+    not the cursor should follow by default
+-   Add OK button to notifications that did not have one
 
 ## 0.24.0 - 2024-06-20
 
