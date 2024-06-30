@@ -776,7 +776,7 @@ function activate(context) {
 		)
 			return
 
-		logger.info(`syncing editor to ${local_path}:${line}`)
+		logger.debug(`syncing editor to ${local_path}:${line}`)
 
 		// prevent feedback loop with warp to cursor
 		//
