@@ -669,12 +669,11 @@ async function launch_renpy({ file, line } = {}) {
 
 	if (is_supports_exec_py) {
 		try {
+			await inject_sync_script(game_root)
 			if (launch_script) {
 				logger.info('executing launch script:', launch_script)
 				await exec_py(launch_script, game_root)
 			}
-
-			await inject_sync_script(game_root)
 		} catch (err) {
 			if (err instanceof ExecPyTimeoutError) {
 				logger.warn('failed to execute extra scripts in time')
