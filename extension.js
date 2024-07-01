@@ -936,8 +936,6 @@ function activate(context) {
 			logger.info('warped to', warp_spec)
 		} catch (err) {
 			if (err instanceof ExecPyTimeoutError) {
-				// this will happen if the user switches files too quickly, as the
-				// old file is replaced before its consumed by renpy
 				logger.debug('failed to warp:', err)
 			} else {
 				throw err
