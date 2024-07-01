@@ -24,19 +24,23 @@ import functools
 def renpy_warp_say_current_line(event, interact=True, **kwargs):
     import re
     import os
+	import json
 
     if not interact:
         return
 
     if event == "begin":
         filename, line = renpy.get_filename_line()
-        filename_without_game = re.sub(r"^game/", "", filename)
+		relative_filename = re.sub(r"^game/", "", filename)
+        filename_abs = os.path.join(config.gamedir, relative_filename)
 
-        filename_abs_path = os.path.join(config.gamedir, filename_without_game)
-        print(
-            f"RENPY_WARP_SIGNAL_CURRENT_LINE:{filename_abs_path}:{filename_without_game}:{line}",
-            flush=True,
-        )
+		json_string = json.dumps({
+			"path": filename_abs,
+			"line": line,
+			"relative_path": relative_filename,
+		})
+
+        print(f"RENPY_WARP_SIGNAL_CURRENT_LINE:{json_string}", flush=True)
 
 if not any(
 	x
@@ -47,7 +51,7 @@ if not any(
 	print("injected sync script")
 else:
 	print("sync script already injected")
-`
+`.replaceAll('\t', '    ')
 
 /** @type {ProcessManager} */
 let pm
@@ -773,10 +777,10 @@ function activate(context) {
 	/**
 	 * @typedef {object} SyncEditorWithRenpyOptions
 	 *
-	 * @property {string} abs_path
+	 * @property {string} path
 	 * absolute path to the file
 	 *
-	 * @property {string} local_path
+	 * @property {string} relative_path
 	 * path relative from the game folder (e.g. `script.rpy`)
 	 *
 	 * @property {number} line
@@ -787,7 +791,7 @@ function activate(context) {
 	 * @param {SyncEditorWithRenpyOptions} arg0
 	 * @returns {Promise<void>}
 	 */
-	async function sync_editor_with_renpy({ abs_path, local_path, line }) {
+	async function sync_editor_with_renpy({ path, relative_path, line }) {
 		if (!is_follow_cursor) return
 		if (
 			!["Ren'Py updates Visual Studio Code", 'Update both'].includes(
@@ -796,27 +800,26 @@ function activate(context) {
 		)
 			return
 
-		logger.debug(`syncing editor to ${local_path}:${line}`)
-
 		// prevent feedback loop with warp to cursor
 		//
 		// TODO: this will still happen if renpy warps to a different line
 		// than the one requested.
-		last_warp_spec = `${local_path}:${line}`
+		last_warp_spec = `${relative_path}:${line}`
 
-		const doc = await vscode.workspace.openTextDocument(abs_path)
+		const doc = await vscode.workspace.openTextDocument(path)
 		await vscode.window.showTextDocument(doc)
 		const editor = vscode.window.activeTextEditor
 
-		const end_of_line = editor.document.lineAt(line).range.end.character
-		const pos = new vscode.Position(line, end_of_line)
-		const selection = new vscode.Selection(pos, pos)
-
-		editor.revealRange(selection)
-
 		// if the cursor is already on the correct line, don't munge it
 		if (editor.selection.start.line !== line) {
+			logger.debug(`syncing editor to ${relative_path}:${line}`)
+
+			const end_of_line = editor.document.lineAt(line).range.end.character
+			const pos = new vscode.Position(line, end_of_line)
+			const selection = new vscode.Selection(pos, pos)
+
 			editor.selection = selection
+			editor.revealRange(selection)
 		}
 	}
 
@@ -849,14 +852,17 @@ function activate(context) {
 	pm = new ProcessManager({
 		stdout_callback({ data, is_supports_exec_py }) {
 			if (data.startsWith('RENPY_WARP_SIGNAL_CURRENT_LINE')) {
-				// RENPY_WARP_SIGNAL_CURRENT_LINE:/path/to/game/script.rpy:script.rpy:52
-				const [, abs_path, local_path, line] = data.trim().split(':')
+				const parsed_data = JSON.parse(
+					// RENPY_WARP_SIGNAL_CURRENT_LINE:{"key": "value"}
+					data.replace('RENPY_WARP_SIGNAL_CURRENT_LINE:', '')
+				)
+				logger.debug('renpy reports line:', parsed_data)
 
-				logger.debug(`renpy reports line: ${local_path}:${line}`)
+				const { path, line, relative_path } = parsed_data
 
 				return sync_editor_with_renpy({
-					abs_path,
-					local_path,
+					path,
+					relative_path,
 					line: Number(line) - 1,
 				})
 			}
