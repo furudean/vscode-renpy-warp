@@ -501,10 +501,10 @@ async function focus_window(pid) {
 		.getWindows()
 		.filter((win) => pids.includes(win.processId))
 
-	logger.info('matching windows:', matching_windows)
+	logger.debug('matching windows:', matching_windows)
 
 	if (!matching_windows) {
-		logger.error('no matching window found', windowManager.getWindows())
+		logger.warn('no matching window found', windowManager.getWindows())
 		return
 	}
 
@@ -554,7 +554,7 @@ async function inject_sync_script() {
 function supports_exec_py(renpy_sh) {
 	const version = get_version(renpy_sh)
 
-	logger.info("ren'py version:", version)
+	logger.debug("ren'py version:", version)
 
 	const { major, minor } = RENPY_VERSION_REGEX.exec(version).groups
 
@@ -610,13 +610,15 @@ async function launch_renpy({ file, line } = {}) {
 	if (!renpy_sh) return
 
 	const is_supports_exec_py = supports_exec_py(renpy_sh)
+	logger.info('supports exec.py:', is_supports_exec_py)
 
-	// warp in existing ren'py window
 	if (
 		pm.length &&
 		Number.isInteger(line) &&
 		determine_strategy(is_supports_exec_py) === 'Update Window'
 	) {
+		logger.info('warping in existing window')
+
 		if (pm.length > 1) {
 			vscode.window.showErrorMessage(
 				"Multiple Ren'Py instances running. Cannot warp inside open Ren'Py window.",
@@ -650,89 +652,96 @@ async function launch_renpy({ file, line } = {}) {
 		}
 
 		if (get_config('focusWindowOnWarp')) {
+			logger.info('focusing window')
 			await focus_window(pm.at(0).process.pid)
 		}
 
 		return
-	}
-
-	// open new ren'py window
-
-	/** @type {string} */
-	let cmd
-
-	if (line === undefined) {
-		cmd = renpy_sh + ' ' + make_cmd([game_root])
 	} else {
-		cmd =
-			renpy_sh +
-			' ' +
-			make_cmd([game_root, '--warp', `${filename_relative}:${line + 1}`])
-	}
+		logger.info("opening new ren'py window")
 
-	logger.info('executing subshell:', cmd)
+		/** @type {string} */
+		let cmd
 
-	const this_process = child_process.exec(cmd)
-	logger.info('created process', this_process.pid)
-
-	if (get_config('strategy') === 'Replace Window') pm.kill_all()
-
-	pm.add({
-		process: this_process,
-		game_root,
-		is_supports_exec_py,
-	})
-
-	if (is_supports_exec_py) {
-		logger.info('using exec.py for accurate progress bar')
-		try {
-			await pm.exec_py('', 10000)
-			logger.info('clear progress bar')
-		} catch (err) {
-			if (err instanceof ExecPyTimeoutError) {
-				logger.warn(
-					'exec.py not read by renpy in time for progress bar'
-				)
-			} else {
-				throw err
-			}
-		}
-	} else {
-		logger.info('using early progress bar')
-	}
-
-	const launch_script = get_config('launchScript').trim()
-
-	if (is_supports_exec_py) {
-		if (get_config('followCursorOnLaunch') && pm.length === 1) {
-			logger.info('enabling follow cursor on launch')
-			await vscode.commands.executeCommand('renpyWarp.toggleFollowCursor')
+		if (line === undefined) {
+			cmd = renpy_sh + ' ' + make_cmd([game_root])
+		} else {
+			cmd =
+				renpy_sh +
+				' ' +
+				make_cmd([
+					game_root,
+					'--warp',
+					`${filename_relative}:${line + 1}`,
+				])
 		}
 
-		if (launch_script) {
+		logger.info('executing subshell:', cmd)
+
+		const this_process = child_process.exec(cmd)
+		logger.info('created process', this_process.pid)
+
+		if (get_config('strategy') === 'Replace Window') pm.kill_all()
+
+		pm.add({
+			process: this_process,
+			game_root,
+			is_supports_exec_py,
+		})
+
+		if (is_supports_exec_py) {
+			logger.info('using exec.py for accurate progress bar')
 			try {
-				logger.info('executing launch script:', launch_script)
-				await pm.exec_py(launch_script)
+				await pm.exec_py('', 10000)
+				logger.info('clear progress bar')
 			} catch (err) {
 				if (err instanceof ExecPyTimeoutError) {
-					logger.warn('failed to execute extra scripts in time')
-					vscode.window
-						.showWarningMessage(
-							'Failed to execute launch scripts in time. They may not have been run.',
-							'OK',
-							'Logs'
-						)
-						.then((selection) => {
-							if (selection === 'Logs') logger.show()
-						})
+					logger.warn(
+						'exec.py not read by renpy in time for progress bar'
+					)
 				} else {
 					throw err
 				}
 			}
+		} else {
+			logger.info('using early progress bar')
+		}
+
+		const launch_script = get_config('launchScript').trim()
+
+		if (is_supports_exec_py) {
+			if (get_config('followCursorOnLaunch') && pm.length === 1) {
+				logger.info('enabling follow cursor on launch')
+				await vscode.commands.executeCommand(
+					'renpyWarp.toggleFollowCursor'
+				)
+			}
+
+			if (launch_script) {
+				try {
+					logger.info('executing launch script:', launch_script)
+					await pm.exec_py(launch_script)
+				} catch (err) {
+					if (err instanceof ExecPyTimeoutError) {
+						logger.warn('failed to execute extra scripts in time')
+						vscode.window
+							.showWarningMessage(
+								'Failed to execute launch scripts in time. They may not have been run.',
+								'OK',
+								'Logs'
+							)
+							.then((selection) => {
+								if (selection === 'Logs') logger.show()
+							})
+					} else {
+						throw err
+					}
+				}
+			}
+
+			return this_process
 		}
 	}
-
-	return this_process
 }
 
 /**
