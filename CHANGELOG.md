@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## Unreleased
+## 0.26.0 - 2024-07-01
 
 -   Implements a task queue for exec.py commands, which should prevent things
     from happening out of order
