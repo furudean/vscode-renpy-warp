@@ -2,10 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
-## Unreleased
+## 0.25.3 - 2024-07-01
 
 -   Adds retries on editor sync script injection. It should now be able to
-    recover better on slower machines
+    recover better.
 -   The sync script itself has a better check for duplicates, checking if the
     function exists in the list before adding it.
 -   Removes duplicate redundancy checks added in 0.25.1~2, as they are now
