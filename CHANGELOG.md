@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## Unreleased
+
+-   Adds retries on editor sync script injection. It should now be able to
+    recover better on slower machines
+-   The sync script itself has a better check for duplicates, checking if the
+    function exists in the list before adding it.
+-   Removes duplicate redundancy checks added in 0.25.1~2, as they are now
+    obsolete
+
 ## 0.25.2 - 2024-06-30
 
 -   Fix somewhat erroneous behavior introduced in 0.26.1. Now instead relies on

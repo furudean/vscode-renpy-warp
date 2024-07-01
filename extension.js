@@ -6,6 +6,7 @@ const fs = require('node:fs/promises')
 const untildify = require('untildify')
 const { quoteForShell } = require('puka')
 const p_throttle = require('p-throttle')
+const p_retry = require('p-retry')
 const tmp = require('tmp-promise')
 const { windowManager } = require('node-window-manager')
 const { promisify } = require('util')
@@ -17,32 +18,35 @@ const RENPY_VERSION_REGEX =
 	/^(?<major>\d+)\.(?<minor>\d+)\.(?<patch>\d+)(?:\.(?<rest>.*))?$/
 
 const EDITOR_SYNC_SCRIPT = `
+import functools
+
+@functools.lru_cache(maxsize=1)  # avoid any sequential duplicate prints
 def renpy_warp_say_current_line(event, interact=True, **kwargs):
-	import re
-	import os
+    import re
+    import os
 
-	if not interact:
-		return
+    if not interact:
+        return
 
-	if event == "begin":
-		filename, line = renpy.get_filename_line()
-		filename_without_game = re.sub(r"^game/", "", filename)
+    if event == "begin":
+        filename, line = renpy.get_filename_line()
+        filename_without_game = re.sub(r"^game/", "", filename)
 
-		filename_abs_path = os.path.join(config.gamedir, filename_without_game)
-		print(
-			f"RENPY_WARP_SIGNAL_CURRENT_LINE:{filename_abs_path}:{filename_without_game}:{line}",
-			flush=True
-		)
+        filename_abs_path = os.path.join(config.gamedir, filename_without_game)
+        print(
+            f"RENPY_WARP_SIGNAL_CURRENT_LINE:{filename_abs_path}:{filename_without_game}:{line}",
+            flush=True,
+        )
 
-try:
-	renpy_warp_sync_script_loaded
-except NameError:
+if not any(
+	x
+	for x in config.all_character_callbacks
+	if x.__name__ == "renpy_warp_say_current_line"
+):
 	config.all_character_callbacks.append(renpy_warp_say_current_line)
-
-	renpy_warp_sync_script_loaded = True
 	print("injected sync script")
 else:
-	print("sync script already loaded")
+	print("sync script already injected")
 `
 
 /** @type {ProcessManager} */
@@ -501,10 +505,16 @@ async function focus_window(pid) {
  */
 async function inject_sync_script(game_root) {
 	try {
-		await exec_py(EDITOR_SYNC_SCRIPT, game_root)
+		const run = () => exec_py(EDITOR_SYNC_SCRIPT, game_root, 300)
+		await p_retry(run, {
+			retries: 5,
+			onFailedAttempt() {
+				logger.warn('failed to inject sync script, retrying')
+			},
+		})
 		logger.info('sync script injected successfully')
 	} catch (error) {
-		logger.error('failed to inject sync script. error below')
+		logger.error('failed to inject sync script after retries. error below')
 		logger.error(error)
 		vscode.window
 			.showErrorMessage(
@@ -694,7 +704,7 @@ async function launch_renpy({ file, line } = {}) {
 					logger.warn('failed to execute extra scripts in time')
 					vscode.window
 						.showWarningMessage(
-							'Failed to execute extra scripts in time. Follow cursor feature may not work.',
+							'Failed to execute launch scripts in time. They may not have been run.',
 							'OK',
 							'Logs'
 						)
@@ -775,12 +785,6 @@ function activate(context) {
 			)
 		)
 			return
-
-		// dont do anything if we're just moving to the same line
-		if (last_warp_spec === `${local_path}:${line}`) {
-			logger.info('ignoring duplicate editor sync request')
-			return
-		}
 
 		logger.debug(`syncing editor to ${local_path}:${line}`)
 
