@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## Unreleased
+
+-   Implements a task queue for exec.py commands, which should prevent things
+    from happening out of order
+-   Removes retries on sync script injection, as it's no longer necessary with
+    the task queue
+
 ## 0.25.3 - 2024-07-01
 
 -   Adds retries on editor sync script injection. It should now be able to

@@ -6,7 +6,7 @@ const fs = require('node:fs/promises')
 const untildify = require('untildify')
 const { quoteForShell } = require('puka')
 const p_throttle = require('p-throttle')
-const p_retry = require('p-retry')
+const p_queue = require('p-queue').default
 const tmp = require('tmp-promise')
 const { windowManager } = require('node-window-manager')
 const { promisify } = require('util')
@@ -99,6 +99,8 @@ class ProcessManager {
 		this.processes = new Map()
 		/** @type {((arg0: StdoutCallbackOptions) => Promise<void>)} */
 		this.stdout_callback = stdout_callback || (async () => {})
+		/** @type {p_queue} */
+		this.exec_queue = new p_queue({ concurrency: 1 })
 
 		this.update_status_bar()
 	}
@@ -190,6 +192,24 @@ class ProcessManager {
 
 	get length() {
 		return this.processes.size
+	}
+
+	/**
+	 * calls `exec_py` with a task queue. resolves when the queued task is
+	 * complete
+	 *
+	 * @param {string} script
+	 * @param {number} [timeout_ms]
+	 * @returns {Promise<void>}
+	 */
+	async exec_py(script, timeout_ms = 5000) {
+		if (this.length !== 1) {
+			throw new Error('must have exactly one process to exec')
+		}
+
+		await this.exec_queue.add(() =>
+			exec_py(script, this.at(0).game_root, timeout_ms)
+		)
 	}
 }
 
@@ -419,7 +439,7 @@ async function get_renpy_sh() {
  *
  * @returns {Promise<void>}
  */
-function exec_py(script, game_root, timeout_ms = 5000) {
+function exec_py(script, game_root, timeout_ms = Infinity) {
 	const process = pm.at(0).process
 	const exec_path = path.join(game_root, 'exec.py')
 
@@ -500,21 +520,12 @@ async function focus_window(pid) {
 	}
 }
 
-/**
- * @param {string} game_root
- */
-async function inject_sync_script(game_root) {
+async function inject_sync_script() {
 	try {
-		const run = () => exec_py(EDITOR_SYNC_SCRIPT, game_root, 300)
-		await p_retry(run, {
-			retries: 5,
-			onFailedAttempt() {
-				logger.warn('failed to inject sync script, retrying')
-			},
-		})
+		await pm.exec_py(EDITOR_SYNC_SCRIPT)
 		logger.info('sync script injected successfully')
 	} catch (error) {
-		logger.error('failed to inject sync script after retries. error below')
+		logger.error('failed to inject sync. error below')
 		logger.error(error)
 		vscode.window
 			.showErrorMessage(
@@ -611,9 +622,8 @@ async function launch_renpy({ file, line } = {}) {
 		}
 
 		try {
-			await exec_py(
-				`renpy.warp_to_line('${filename_relative}:${line + 1}')`,
-				game_root
+			await pm.exec_py(
+				`renpy.warp_to_line('${filename_relative}:${line + 1}')`
 			)
 		} catch (err) {
 			if (err instanceof ExecPyTimeoutError) {
@@ -672,7 +682,7 @@ async function launch_renpy({ file, line } = {}) {
 	if (is_supports_exec_py) {
 		logger.info('using exec.py for accurate progress bar')
 		try {
-			await exec_py('', game_root, 10000)
+			await pm.exec_py('', 10000)
 			logger.info('clear progress bar')
 		} catch (err) {
 			if (err instanceof ExecPyTimeoutError) {
@@ -698,7 +708,7 @@ async function launch_renpy({ file, line } = {}) {
 		if (launch_script) {
 			try {
 				logger.info('executing launch script:', launch_script)
-				await exec_py(launch_script, game_root)
+				await pm.exec_py(launch_script)
 			} catch (err) {
 				if (err instanceof ExecPyTimeoutError) {
 					logger.warn('failed to execute extra scripts in time')
@@ -837,7 +847,7 @@ function activate(context) {
 		"When enabled, keep editor cursor and Ren'Py in sync"
 
 	pm = new ProcessManager({
-		stdout_callback({ data, game_root, is_supports_exec_py }) {
+		stdout_callback({ data, is_supports_exec_py }) {
 			if (data.startsWith('RENPY_WARP_SIGNAL_CURRENT_LINE')) {
 				// RENPY_WARP_SIGNAL_CURRENT_LINE:/path/to/game/script.rpy:script.rpy:52
 				const [, abs_path, local_path, line] = data.trim().split(':')
@@ -862,7 +872,7 @@ function activate(context) {
 				logger.info(
 					'game reload detected. attempting to re-inject sync script'
 				)
-				return inject_sync_script(game_root)
+				return inject_sync_script()
 			}
 		},
 	})
@@ -907,7 +917,7 @@ function activate(context) {
 		last_warp_spec = warp_spec
 
 		try {
-			await exec_py(`renpy.warp_to_line('${warp_spec}')`, game_root)
+			await pm.exec_py(`renpy.warp_to_line('${warp_spec}')`)
 			logger.info('warped to', warp_spec)
 		} catch (err) {
 			if (err instanceof ExecPyTimeoutError) {
@@ -1029,7 +1039,7 @@ function activate(context) {
 						}
 					}
 
-					await inject_sync_script(pm.at(0).game_root)
+					await inject_sync_script()
 
 					text_editor_handle =
 						vscode.window.onDidChangeTextEditorSelection(
