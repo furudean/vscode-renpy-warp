@@ -144,18 +144,16 @@
 				},
 				"renpyWarp.strategy": {
 					"type": "string",
-					"default": "Auto",
+					"default": "Update Window",
 					"markdownDescription": "How to treat an existing Ren'Py instance when a warping command is issued",
 					"order": 1,
 					"enum": [
-						"Auto",
 						"Update Window",
 						"New Window",
 						"Replace Window"
 					],
 					"markdownEnumDescriptions": [
-						"Automatically choose based what features are available in your version of Ren'Py.\n\nIf  `exec.py` is supported, this will use \"Update Window\". Otherwise, it will use \"New Window\".",
-						"Execute `renpy.warp_to_line()` in the open instance.\n\nThis requires Ren'Py version 8.3.0 or higher.",
+						"Execute `renpy.warp_to_line()` in the open instance.",
 						"Launch a new instance when a command is executed.",
 						"Kill the existing instance and launch a new one."
 					]
@@ -180,7 +178,7 @@
 					"type": "boolean",
 					"default": false,
 					"order": 3,
-					"markdownDescription": "Automatically enter _Follow Cursor_ mode when launching Ren'Py (if supported)"
+					"markdownDescription": "Automatically enter _Follow Cursor_ mode when launching Ren'Py"
 				},
 				"renpyWarp.focusWindowOnWarp": {
 					"type": "boolean",
@@ -200,11 +198,13 @@
 					"markdownDescription": "The interval in milliseconds to execute `renpy.warp_to_line()` when in _Follow Cursor_ mode.\n\nThe lower the value, the more frequently the command is issued, which can feel more responsive at the cost of increased processing.\n\nNeeds a restart to take effect.",
 					"scope": "machine-overridable"
 				},
-				"renpyWarp.launchScript": {
-					"type": "string",
-					"default": "",
-					"editPresentation": "multilineText",
-					"markdownDescription": "Python code to execute in a newly created Ren'Py instance. Requires Python 8.3.0 or later."
+				"renpyWarp.webSocketsPort": {
+					"type": "integer",
+					"default": 40124,
+					"minimum": 1,
+					"maximum": 65535,
+					"markdownDescription": "The port to use for the WebSocket server.\n\nNeeds a restart to take effect.",
+					"scope": "machine-overridable"
 				}
 			}
 		}
@@ -231,12 +231,11 @@
 	},
 	"dependencies": {
 		"node-window-manager": "^2.2.4",
-		"p-queue": "^6.6.2",
 		"p-throttle": "^4.1.1",
 		"pidtree": "^0.6.0",
 		"puka": "^1.0.1",
-		"tmp-promise": "^3.0.3",
 		"untildify": "^4.0.0",
-		"upath": "^2.0.1"
+		"upath": "^2.0.1",
+		"ws": "^8.17.1"
 	}
 }

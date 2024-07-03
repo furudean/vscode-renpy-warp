@@ -6,52 +6,15 @@ const fs = require('node:fs/promises')
 const untildify = require('untildify')
 const { quoteForShell } = require('puka')
 const p_throttle = require('p-throttle')
-const p_queue = require('p-queue').default
-const tmp = require('tmp-promise')
 const { windowManager } = require('node-window-manager')
 const { promisify } = require('util')
 const pidtree = promisify(require('pidtree'))
+const ws = require('ws')
 
 const IS_WINDOWS = os.platform() === 'win32'
 
-const RENPY_VERSION_REGEX =
-	/^(?<major>\d+)\.(?<minor>\d+)\.(?<patch>\d+)(?:\.(?<rest>.*))?$/
-
-const EDITOR_SYNC_SCRIPT = `
-import functools
-
-@functools.lru_cache(maxsize=1)  # avoid any sequential duplicate prints
-def renpy_warp_say_current_line(event, interact=True, **kwargs):
-    import re
-    import os
-	import json
-
-    if not interact:
-        return
-
-    if event == "begin":
-        filename, line = renpy.get_filename_line()
-		relative_filename = re.sub(r"^game/", "", filename)
-        filename_abs = os.path.join(config.gamedir, relative_filename)
-
-		json_string = json.dumps({
-			"path": filename_abs,
-			"line": line,
-			"relative_path": relative_filename,
-		})
-
-        print(f"RENPY_WARP_SIGNAL_CURRENT_LINE:{json_string}", flush=True)
-
-if not any(
-	x
-	for x in config.all_character_callbacks
-	if x.__name__ == "renpy_warp_say_current_line"
-):
-	config.all_character_callbacks.append(renpy_warp_say_current_line)
-	print("injected sync script")
-else:
-	print("sync script already injected")
-`.replaceAll('\t', '    ')
+/** @type {ws.WebSocketServer} */
+let wss
 
 /** @type {ProcessManager} */
 let pm
@@ -70,66 +33,157 @@ let follow_cursor_status_bar
 
 let is_follow_cursor = false
 
-class ExecPyTimeoutError extends Error {
+/** @type {string | undefined} */
+let last_warp_spec = undefined
+
+class RenpyProcess {
 	/**
-	 * @param {string} [message]
+	 * @param {string} cmd
+	 * @param {(data: any) => void} message_handler
 	 */
-	constructor(message) {
-		super(message)
-		this.name = 'ExecPyTimeoutError'
+	constructor(cmd, message_handler) {
+		/** @type {string} */
+		this.cmd = cmd
+		/** @type {child_process.ChildProcess} */
+		this.process = undefined
+		/** @type {ws.WebSocket} */
+		this.ws = undefined
+		/** @type {(data: any) => void | Promise<void>} */
+		this.message_handler = message_handler
+
+		this.killed = false
+
+		logger.info('executing subshell:', cmd)
+		this.process = child_process.exec(cmd)
+
+		this.process.stdout.on('data', process_out_channel.append)
+		this.process.stderr.on('data', process_out_channel.append)
+		this.process.on('exit', (code) => {
+			logger.info(`process ${this.process.pid} exited with code ${code}`)
+		})
+
+		logger.info('created process', this.process.pid)
+	}
+
+	/**
+	 * @returns {Promise<void>}
+	 */
+	async connect_socket() {
+		if (this.killed)
+			throw new Error('process was killed but tried to connect to socket')
+
+		if (!wss) throw new Error('websockets server not started')
+
+		return new Promise((resolve, reject) => {
+			this.process.on('exit', () => {
+				this.killed = true
+
+				if (this.ws) {
+					logger.info('closing websockets for pid', this.process.pid)
+					this.ws.close()
+					this.ws = undefined
+				}
+			})
+
+			/** @param {ws.WebSocket} ws */
+			const on_connection = (ws) => {
+				this.ws = ws
+				clearTimeout(t)
+
+				logger.info(
+					'websocket connection established to pid ' +
+						this.process.pid
+				)
+
+				ws.on('message', async (data) => {
+					logger.debug('websocket <', data.toString())
+					const message = JSON.parse(data.toString())
+
+					await this.message_handler(message)
+				})
+				wss.off('connection', on_connection)
+				ws.on('close', () => {
+					logger.info('websocket closed for pid', this.process.pid)
+					this.ws = undefined
+				})
+
+				resolve()
+			}
+
+			wss.on('connection', on_connection)
+
+			const t = setTimeout(() => {
+				this.ws.close()
+				reject(new Error('websocket connection timed out'))
+			}, 10000)
+		})
+	}
+
+	/**
+	 * @typedef {object} message
+	 * @property {string} message.type
+	 *
+	 * @param {message & Record<string, any>} message
+	 * @returns {Promise<void>}
+	 */
+	async ipc(message) {
+		if (this.killed) return
+
+		if (!this.ws) {
+			logger.warn('dead socket... making new for pid', this.process.pid)
+			await ensure_websocket_server()
+			await this.connect_socket()
+		}
+
+		return new Promise((resolve, reject) => {
+			const serialized = JSON.stringify(message)
+
+			const t = setTimeout(() => {
+				reject(new Error('ipc timed out'))
+			}, 1000)
+			this.ws.send(serialized, (err) => {
+				logger.debug('websocket >', serialized)
+
+				clearInterval(t)
+				if (err) {
+					reject(err)
+				} else {
+					resolve()
+				}
+			})
+		})
+	}
+
+	/**
+	 * @param {string} file
+	 * relative filename to
+	 * @param {number} line
+	 * 1-indexed line number
+	 */
+	async warp_to_line(file, line) {
+		return this.ipc({
+			type: 'warp_to_line',
+			file,
+			line,
+		})
 	}
 }
 
 class ProcessManager {
-	/**
-	 * @typedef {object} StdoutCallbackOptions
-	 * @property {string} data
-	 * @property {string} game_root
-	 * @property {boolean} is_supports_exec_py
-	 */
-
-	/**
-	 * @typedef {object} ProcessManagerProcess
-	 * @property {child_process.ChildProcess} process
-	 * @property {string} game_root
-	 * @property {boolean} is_supports_exec_py
-	 */
-
-	/**
-	 * @param {{ stdout_callback?: ((arg0: StdoutCallbackOptions) => Promise<void>) }} options
-	 */
-	constructor({ stdout_callback }) {
-		/** @type {Map<number, ProcessManagerProcess>} */
+	constructor() {
+		/** @type {Map<number, RenpyProcess>} */
 		this.processes = new Map()
-		/** @type {((arg0: StdoutCallbackOptions) => Promise<void>)} */
-		this.stdout_callback = stdout_callback || (async () => {})
-		/** @type {p_queue} */
-		this.exec_queue = new p_queue({ concurrency: 1 })
 
 		this.update_status_bar()
 	}
 
-	/**
-	 * @param {{process: child_process.ChildProcess, game_root: string, is_supports_exec_py: boolean}} arg0
-	 */
-	add({ process, game_root, is_supports_exec_py }) {
-		this.processes.set(process.pid, {
-			process,
-			game_root,
-			is_supports_exec_py,
-		})
+	/** @param {RenpyProcess} process */
+	async add(process) {
+		this.processes.set(process.process.pid, process)
 		this.update_status_bar()
 
-		process.stdout.on('data', async (data) => {
-			process_out_channel.append(data)
-			await this.stdout_callback({ data, game_root, is_supports_exec_py })
-		})
-		process.stderr.on('data', process_out_channel.append)
-
-		process.on('exit', (code) => {
-			logger.info(`process ${process.pid} exited with code ${code}`)
-
-			this.processes.delete(process.pid)
+		process.process.on('exit', (code) => {
+			this.processes.delete(process.process.pid)
 			this.update_status_bar()
 
 			if (code) {
@@ -156,34 +210,30 @@ class ProcessManager {
 
 	/**
 	 * @param {number} index
-	 * @returns {ProcessManagerProcess | undefined}
+	 * @returns {RenpyProcess | undefined}
 	 */
 	at(index) {
 		return Array.from(this.processes.values())[index]
 	}
 
 	kill_all() {
-		for (const { process } of this.processes.values()) {
+		for (const { process: process } of this.processes.values()) {
 			process.kill(9) // SIGKILL, bypasses "are you sure" dialog
 		}
-
-		this.update_status_bar()
 	}
 
 	update_status_bar() {
 		instance_status_bar.show()
 
-		if (this.length === 1 && this.at(0).is_supports_exec_py) {
-			follow_cursor_status_bar.show()
-		} else {
-			follow_cursor_status_bar.hide()
-		}
-
 		if (this.length) {
+			follow_cursor_status_bar.show()
+
 			instance_status_bar.text = `$(debug-stop) Quit Ren'Py`
 			instance_status_bar.command = 'renpyWarp.killAll'
 			instance_status_bar.tooltip = "Kill all running Ren'Py instances"
 		} else {
+			follow_cursor_status_bar.hide()
+
 			instance_status_bar.text = `$(play) Launch Project`
 			instance_status_bar.command = 'renpyWarp.launch'
 			instance_status_bar.tooltip = "Launch new Ren'Py instance"
@@ -197,24 +247,6 @@ class ProcessManager {
 	get length() {
 		return this.processes.size
 	}
-
-	/**
-	 * calls `exec_py` with a task queue. resolves when the queued task is
-	 * complete
-	 *
-	 * @param {string} script
-	 * @param {number} [timeout_ms]
-	 * @returns {Promise<void>}
-	 */
-	async exec_py(script, timeout_ms = 5000) {
-		if (this.length !== 1) {
-			throw new Error('must have exactly one process to exec')
-		}
-
-		await this.exec_queue.add(() =>
-			exec_py(script, this.at(0).game_root, timeout_ms)
-		)
-	}
 }
 
 /**
@@ -226,14 +258,11 @@ function get_config(key) {
 }
 
 /**
- * @param {boolean} is_supports_exec_py
  * @returns {'New Window' | 'Replace Window' | 'Update Window'}
  */
-function determine_strategy(is_supports_exec_py) {
+function determine_strategy() {
 	return get_config('strategy') === 'Auto'
-		? is_supports_exec_py
-			? 'Update Window'
-			: 'New Window'
+		? 'Update Window'
 		: get_config('strategy')
 }
 
@@ -243,6 +272,27 @@ function determine_strategy(is_supports_exec_py) {
  */
 function resolve_path(str) {
 	return path.resolve(untildify(str))
+}
+
+/**
+ * @param {Record<string, string>} entries
+ * @returns {string}
+ *
+ * @example
+ * // on unix
+ * env_string({ FOO: 'bar', BAZ: 'qux' })
+ * // "FOO='bar' BAZ='qux'"
+ *
+ * // on windows
+ * env_string({ FOO: 'bar', BAZ: 'qux' })
+ * // 'set "FOO=bar" && set "BAZ=qux"'
+ */
+function env_string(entries) {
+	return Object.entries(entries)
+		.map(([key, value]) =>
+			IS_WINDOWS ? `set "${key}=${value}"` : `${key}='${value}'`
+		)
+		.join(IS_WINDOWS ? ' && ' : ' ')
 }
 
 /**
@@ -346,9 +396,10 @@ async function get_sdk_path() {
 }
 
 /**
+ * @param {Record<string, string | number>} [environment]
  * @returns {Promise<string | undefined>}
  */
-async function get_renpy_sh() {
+async function get_renpy_sh(environment = {}) {
 	const sdk_path = await get_sdk_path()
 
 	if (!sdk_path) return
@@ -417,77 +468,18 @@ async function get_renpy_sh() {
 		const win_renpy_path = path.join(sdk_path, 'renpy.py')
 		// set RENPY_EDIT_PY=editor.edit.py && python.exe renpy.py
 		return (
-			`set "RENPY_EDIT_PY=${editor}" && ` +
+			env_string({ ...environment, RENPY_EDIT_PY: editor }) +
+			' && ' +
 			make_cmd([executable, win_renpy_path])
 		)
 	} else {
 		// RENPY_EDIT_PY=editor.edit.py renpy.sh
-		return `RENPY_EDIT_PY='${editor}' ` + make_cmd([executable])
+		return (
+			env_string({ ...environment, RENPY_EDIT_PY: editor }) +
+			' ' +
+			make_cmd([executable])
+		)
 	}
-}
-
-/**
- * writes a script to `exec.py` in the game root and waits for ren'py to read it
- *
- * rejects with `ExecPyTimeoutError` if ren'py does not read the file in a
- * reasonable time
- *
- * @param {string} script
- * the script to write to `exec.py`
- *
- * @param {string} game_root
- * path to the game root
- *
- * @param {number} [timeout_ms]
- * time in milliseconds to wait for ren'py to read the file
- *
- * @returns {Promise<void>}
- */
-function exec_py(script, game_root, timeout_ms = Infinity) {
-	const process = pm.at(0).process
-	const exec_path = path.join(game_root, 'exec.py')
-
-	const signature = 'executing script at ' + Date.now()
-	const exec_prelude =
-		"# This file is created by Ren'Py Launch and Sync and can safely be deleted\n#\n\n" +
-		`print('${signature}', flush=True)\n`
-
-	return new Promise(async (resolve, reject) => {
-		const tmp_file = await tmp.file()
-
-		// write the script file atomically, as is recommended by ren'py
-		await fs.writeFile(tmp_file.path, exec_prelude + script + '\n')
-
-		/** @param {string} data */
-		function listener(data) {
-			if (!data.includes(signature)) return
-			process.stdout.removeListener('data', listener)
-			resolve()
-		}
-
-		process.stdout.on('data', listener)
-
-		logger.debug(`writing exec.py: "${script}"`)
-		await fs.rename(tmp_file.path, exec_path)
-
-		setTimeout(() => {
-			process.stdout.removeListener('data', listener)
-			reject(new ExecPyTimeoutError())
-		}, timeout_ms)
-		tmp_file.cleanup()
-	})
-}
-
-/**
- * @param {string} renpy_sh
- * base renpy.sh command
- */
-function get_version(renpy_sh) {
-	return child_process
-		.execSync(renpy_sh + ' --version')
-		.toString('utf-8')
-		.trim()
-		.replace("Ren'Py ", '')
 }
 
 /**
@@ -524,41 +516,98 @@ async function focus_window(pid) {
 	}
 }
 
-async function inject_sync_script() {
-	try {
-		await pm.exec_py(EDITOR_SYNC_SCRIPT)
-		logger.info('sync script injected successfully')
-	} catch (error) {
-		logger.error('failed to inject sync. error below')
-		logger.error(error)
-		vscode.window
-			.showErrorMessage(
-				'Failed to inject sync script. Follow cursor feature may not work for the open window.',
-				'OK',
-				'Logs'
-			)
-			.then((selection) => {
-				if (selection === 'Logs') logger.show()
-			})
-	}
+/**
+ * @returns {Promise<void>}
+ */
+async function ensure_websocket_server() {
+	if (wss) return
+
+	return new Promise(async (resolve, reject) => {
+		let has_listened = false
+		const port = get_config('webSocketsPort')
+
+		wss = new ws.WebSocketServer({ port })
+
+		wss.on('listening', () => {
+			has_listened = true
+			logger.info('websockets server listening on port', wss.options.port)
+			resolve()
+		})
+
+		wss.on('error', (...args) => {
+			logger.error('websockets server error:', ...args)
+
+			wss = undefined
+
+			if (!has_listened) {
+				vscode.window
+					.showErrorMessage(
+						`Failed to start websockets server. Is the port ${port} already in use?`,
+						'Logs',
+						'OK'
+					)
+					.then((selection) => {
+						if (selection === 'Logs') {
+							logger.show()
+						}
+					})
+				reject()
+			}
+		})
+
+		wss.on('close', () => {
+			wss = undefined
+			reject()
+		})
+	})
 }
 
 /**
- * determine if the current version of ren'py supports exec.py
+ * @typedef {object} SyncEditorWithRenpyOptions
  *
- * @param {string} renpy_sh
- * base renpy.sh command
+ * @property {string} path
+ * absolute path to the file
  *
- * @returns {boolean}
+ * @property {string} relative_path
+ * path relative from the game folder (e.g. `script.rpy`)
+ *
+ * @property {number} line
+ * 0-indexed line number
  */
-function supports_exec_py(renpy_sh) {
-	const version = get_version(renpy_sh)
 
-	logger.debug("ren'py version:", version)
+/**
+ * @param {SyncEditorWithRenpyOptions} arg0
+ * @returns {Promise<void>}
+ */
+async function sync_editor_with_renpy({ path, relative_path, line }) {
+	if (
+		!["Ren'Py updates Visual Studio Code", 'Update both'].includes(
+			get_config('followCursorMode')
+		)
+	)
+		return
 
-	const { major, minor } = RENPY_VERSION_REGEX.exec(version).groups
+	// prevent feedback loop with warp to cursor
+	//
+	// TODO: this will still happen if renpy warps to a different line
+	// than the one requested.
+	last_warp_spec = `${relative_path}:${line}`
 
-	return Number(major) >= 8 && Number(minor) >= 3
+	const doc = await vscode.workspace.openTextDocument(path)
+	await vscode.window.showTextDocument(doc)
+	const editor = vscode.window.activeTextEditor
+
+	// if the cursor is already on the correct line, don't munge it
+	if (editor.selection.start.line !== line) {
+		logger.debug(`syncing editor to ${relative_path}:${line}`)
+
+		const end_of_line = editor.document.lineAt(line).range.end.character
+		const pos = new vscode.Position(line, end_of_line)
+		const selection = new vscode.Selection(pos, pos)
+
+		editor.selection = selection
+		editor.revealRange(selection)
+	}
 }
 
 /**
@@ -575,7 +624,7 @@ function supports_exec_py(renpy_sh) {
  * @param {number} [options.line]
  * zero-indexed line number. if set, warp to line will be attempted
  *
- * @returns {Promise<child_process.ChildProcess | undefined>}
+ * @returns {Promise<RenpyProcess>}
  * resolves with the child process if a new instance was opened, otherwise
  * undefined
  */
@@ -606,16 +655,10 @@ async function launch_renpy({ file, line } = {}) {
 		return
 	}
 
-	const renpy_sh = await get_renpy_sh()
-	if (!renpy_sh) return
-
-	const is_supports_exec_py = supports_exec_py(renpy_sh)
-	logger.info('supports exec.py:', is_supports_exec_py)
-
 	if (
 		pm.length &&
 		Number.isInteger(line) &&
-		determine_strategy(is_supports_exec_py) === 'Update Window'
+		determine_strategy() === 'Update Window'
 	) {
 		logger.info('warping in existing window')
 
@@ -627,38 +670,23 @@ async function launch_renpy({ file, line } = {}) {
 			return
 		}
 
-		try {
-			await pm.exec_py(
-				`renpy.warp_to_line('${filename_relative}:${line + 1}')`
-			)
-		} catch (err) {
-			if (err instanceof ExecPyTimeoutError) {
-				vscode.window
-					.showErrorMessage(
-						'Failed to warp inside active window. You may want to change the strategy in settings.',
-						'Open Settings'
-					)
-					.then((selection) => {
-						if (!selection) return
-						vscode.commands.executeCommand(
-							'workbench.action.openSettings',
-							'@ext:PaisleySoftworks.renpyWarp strategy'
-						)
-					})
-				return
-			} else {
-				throw err
-			}
-		}
+		const rpp = pm.at(0)
+
+		await rpp.warp_to_line(filename_relative, line + 1)
 
 		if (get_config('focusWindowOnWarp')) {
 			logger.info('focusing window')
-			await focus_window(pm.at(0).process.pid)
+			await focus_window(rpp.process.pid)
 		}
 
 		return
 	} else {
 		logger.info("opening new ren'py window")
+
+		const renpy_sh = await get_renpy_sh({
+			WARP_WS_PORT: get_config('webSocketsPort'),
+		})
+		if (!renpy_sh) return
 
 		/** @type {string} */
 		let cmd
@@ -676,71 +704,36 @@ async function launch_renpy({ file, line } = {}) {
 				])
 		}
 
-		logger.info('executing subshell:', cmd)
-
-		const this_process = child_process.exec(cmd)
-		logger.info('created process', this_process.pid)
-
 		if (get_config('strategy') === 'Replace Window') pm.kill_all()
 
-		pm.add({
-			process: this_process,
-			game_root,
-			is_supports_exec_py,
-		})
-
-		if (is_supports_exec_py) {
-			logger.info('using exec.py for accurate progress bar')
-			try {
-				await pm.exec_py('', 10000)
-				logger.info('clear progress bar')
-			} catch (err) {
-				if (err instanceof ExecPyTimeoutError) {
-					logger.warn(
-						'exec.py not read by renpy in time for progress bar'
-					)
-				} else {
-					throw err
-				}
-			}
-		} else {
-			logger.info('using early progress bar')
-		}
-
-		const launch_script = get_config('launchScript').trim()
-
-		if (is_supports_exec_py) {
-			if (get_config('followCursorOnLaunch') && pm.length === 1) {
-				logger.info('enabling follow cursor on launch')
-				await vscode.commands.executeCommand(
-					'renpyWarp.toggleFollowCursor'
+		const rp = new RenpyProcess(cmd, async (message) => {
+			if (message.type === 'current_line') {
+				logger.debug(
+					`current line reported as ${message.line} in ${message.relative_path}`
 				)
-			}
+				if (!is_follow_cursor) return
 
-			if (launch_script) {
-				try {
-					logger.info('executing launch script:', launch_script)
-					await pm.exec_py(launch_script)
-				} catch (err) {
-					if (err instanceof ExecPyTimeoutError) {
-						logger.warn('failed to execute extra scripts in time')
-						vscode.window
-							.showWarningMessage(
-								'Failed to execute launch scripts in time. They may not have been run.',
-								'OK',
-								'Logs'
-							)
-							.then((selection) => {
-								if (selection === 'Logs') logger.show()
-							})
-					} else {
-						throw err
-					}
-				}
+				await sync_editor_with_renpy({
+					path: message.path,
+					relative_path: message.relative_path,
+					line: message.line - 1,
+				})
+			} else {
+				logger.warn('unhandled message:', message)
 			}
+		})
+		pm.add(rp)
 
-			return this_process
+		if (
+			!is_follow_cursor &&
+			get_config('followCursorOnLaunch') &&
+			pm.length === 1
+		) {
+			logger.info('enabling follow cursor on launch')
+			await vscode.commands.executeCommand('renpyWarp.toggleFollowCursor')
 		}
+
+		return rp
 	}
 }
 
@@ -752,7 +745,7 @@ async function launch_renpy({ file, line } = {}) {
  */
 function associate_progress_notification(message, run) {
 	return function (...args) {
-		return new Promise((resolve, reject) => {
+		return new Promise((resolve) => {
 			vscode.window.withProgress(
 				{
 					location: vscode.ProgressLocation.Notification,
@@ -764,8 +757,7 @@ function associate_progress_notification(message, run) {
 						resolve(result)
 					} catch (err) {
 						logger.error(err)
-						logger.show()
-						reject(err)
+						resolve(err)
 					}
 				}
 			)
@@ -779,58 +771,6 @@ function associate_progress_notification(message, run) {
 function activate(context) {
 	/** @type {vscode.Disposable} */
 	let text_editor_handle
-
-	/** @type {string | undefined} */
-	let last_warp_spec
-
-	/**
-	 * @typedef {object} SyncEditorWithRenpyOptions
-	 *
-	 * @property {string} path
-	 * absolute path to the file
-	 *
-	 * @property {string} relative_path
-	 * path relative from the game folder (e.g. `script.rpy`)
-	 *
-	 * @property {number} line
-	 * 0-indexed line number
-	 */
-
-	/**
-	 * @param {SyncEditorWithRenpyOptions} arg0
-	 * @returns {Promise<void>}
-	 */
-	async function sync_editor_with_renpy({ path, relative_path, line }) {
-		if (!is_follow_cursor) return
-		if (
-			!["Ren'Py updates Visual Studio Code", 'Update both'].includes(
-				get_config('followCursorMode')
-			)
-		)
-			return
-
-		// prevent feedback loop with warp to cursor
-		//
-		// TODO: this will still happen if renpy warps to a different line
-		// than the one requested.
-		last_warp_spec = `${relative_path}:${line}`
-
-		const doc = await vscode.workspace.openTextDocument(path)
-		await vscode.window.showTextDocument(doc)
-		const editor = vscode.window.activeTextEditor
-
-		// if the cursor is already on the correct line, don't munge it
-		if (editor.selection.start.line !== line) {
-			logger.debug(`syncing editor to ${relative_path}:${line}`)
-
-			const end_of_line = editor.document.lineAt(line).range.end.character
-			const pos = new vscode.Position(line, end_of_line)
-			const selection = new vscode.Selection(pos, pos)
-
-			editor.selection = selection
-			editor.revealRange(selection)
-		}
-	}
 
 	logger = vscode.window.createOutputChannel(
 		"Ren'Py Launch and Sync - Extension",
@@ -858,44 +798,10 @@ function activate(context) {
 	follow_cursor_status_bar.tooltip =
 		"When enabled, keep editor cursor and Ren'Py in sync"
 
-	pm = new ProcessManager({
-		stdout_callback({ data, is_supports_exec_py }) {
-			if (data.startsWith('RENPY_WARP_SIGNAL_CURRENT_LINE')) {
-				const parsed_data = JSON.parse(
-					// RENPY_WARP_SIGNAL_CURRENT_LINE:{"key": "value"}
-					data.replace('RENPY_WARP_SIGNAL_CURRENT_LINE:', '')
-				)
-				logger.debug('renpy reports line:', parsed_data)
-
-				const { path, line, relative_path } = parsed_data
-
-				return sync_editor_with_renpy({
-					path,
-					relative_path,
-					line: Number(line) - 1,
-				})
-			}
-
-			if (
-				// https://github.com/renpy/renpy/blob/d3de1405dc0eedd5646032d34452b4e0835f9255/renpy/display/im.py#L2149
-				// TODO: this is kind of brittle. it would be good if ren'py
-				// could provide a more reliable signal for this
-				data.startsWith('Resetting cache.') &&
-				is_supports_exec_py &&
-				is_follow_cursor
-			) {
-				logger.info(
-					'game reload detected. attempting to re-inject sync script'
-				)
-				return inject_sync_script()
-			}
-		},
-	})
+	pm = new ProcessManager()
 
 	const throttle = p_throttle({
 		limit: 1,
-		// renpy only reads exec.py every 100ms. but writing the file more
-		// frequently is more responsive
 		interval: get_config('followCursorExecInterval'),
 	})
 
@@ -931,16 +837,10 @@ function activate(context) {
 		if (warp_spec === last_warp_spec) return // no change
 		last_warp_spec = warp_spec
 
-		try {
-			await pm.exec_py(`renpy.warp_to_line('${warp_spec}')`)
-			logger.info('warped to', warp_spec)
-		} catch (err) {
-			if (err instanceof ExecPyTimeoutError) {
-				logger.debug('failed to warp:', err)
-			} else {
-				throw err
-			}
-		}
+		const rp = pm.at(0)
+
+		await rp.warp_to_line(filename_relative, line + 1)
+		logger.info('warped to', warp_spec)
 	})
 
 	context.subscriptions.push(
@@ -997,19 +897,6 @@ function activate(context) {
 			'renpyWarp.toggleFollowCursor',
 			async () => {
 				if (!is_follow_cursor) {
-					const renpy_sh = await get_renpy_sh()
-					if (!renpy_sh) return
-
-					if (!supports_exec_py(renpy_sh)) {
-						vscode.window.showErrorMessage(
-							`Ren'Py version must be 8.3.0 or newer to follow cursor (Current is ${get_version(
-								renpy_sh
-							)})`,
-							'OK'
-						)
-						return
-					}
-
 					if (pm.length > 1) {
 						vscode.window.showErrorMessage(
 							"Multiple Ren'Py instances running. Cannot follow cursor.",
@@ -1025,6 +912,8 @@ function activate(context) {
 					)
 					follow_cursor_status_bar.backgroundColor =
 						new vscode.ThemeColor('statusBarItem.warningBackground')
+
+					await ensure_websocket_server()
 
 					if (pm.length === 0) {
 						const launch = associate_progress_notification(
@@ -1051,8 +940,6 @@ function activate(context) {
 							return
 						}
 					}
-
-					await inject_sync_script()
 
 					text_editor_handle =
 						vscode.window.onDidChangeTextEditorSelection(
