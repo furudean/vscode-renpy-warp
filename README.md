@@ -6,13 +6,14 @@ Launch and sync your Ren'Py game at the current line in Visual Studio Code.
 
 This extension adds the following commands:
 
-| Command                        | Description                                   | Shortcut                                     | Shortcut (Mac)                             |
-| ------------------------------ | --------------------------------------------- | -------------------------------------------- | ------------------------------------------ |
-| `renpyWarp.warpToLine`         | Open Ren'Py at the current line               | <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>E</kbd> | <kbd>⌘</kbd>+<kbd>Shift</kbd>+<kbd>E</kbd> |
-| `renpyWarp.warpToFile`         | Open Ren'Py at the current file               | <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd> | <kbd>⌘</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd> |
-| `renpyWarp.launch`             | Launch the Ren'Py project                     | <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>L</kbd> | <kbd>⌘</kbd>+<kbd>Shift</kbd>+<kbd>L</kbd> |
-| `renpyWarp.toggleFollowCursor` | Toggle: Warp to selected line as cursor moves | <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>C</kbd> | <kbd>⌘</kbd>+<kbd>Shift</kbd>+<kbd>C</kbd> |
-| `renpyWarp.killAll`            | Kill running Ren'Py instances                 | <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>K</kbd> | <kbd>⌘</kbd>+<kbd>Shift</kbd>+<kbd>K</kbd> |
+| Command                        | Description                                         | Shortcut                                     | Shortcut (Mac)                             |
+| ------------------------------ | --------------------------------------------------- | -------------------------------------------- | ------------------------------------------ |
+| `renpyWarp.warpToLine`         | Open Ren'Py at the current line                     | <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>E</kbd> | <kbd>⌘</kbd>+<kbd>Shift</kbd>+<kbd>E</kbd> |
+| `renpyWarp.warpToFile`         | Open Ren'Py at the current file                     | <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd> | <kbd>⌘</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd> |
+| `renpyWarp.launch`             | Launch the Ren'Py project                           | <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>L</kbd> | <kbd>⌘</kbd>+<kbd>Shift</kbd>+<kbd>L</kbd> |
+| `renpyWarp.toggleFollowCursor` | Toggle: Warp to selected line as cursor moves       | <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>C</kbd> | <kbd>⌘</kbd>+<kbd>Shift</kbd>+<kbd>C</kbd> |
+| `renpyWarp.killAll`            | Kill running Ren'Py instances                       | <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>K</kbd> | <kbd>⌘</kbd>+<kbd>Shift</kbd>+<kbd>K</kbd> |
+| `renpyWarp.installRpe`         | Install the Ren'Py extension in the current project |                                              |                                            |
 
 ## Triggers
 
@@ -43,9 +44,13 @@ The strategy is controlled with the setting
 set to one of the following values:
 
 <dl>
-   <dt><strong>Auto</strong></dt>
+   <dt><strong>Update Window</strong></dt>
    <dd>
-      Automatically choose the best strategy based on what features are available
+      <p>
+         When a command is issued, replace an open editor by sending a
+         <code>renpy.warp_to_line()</code> command to the currently running 
+         Ren'Py instance
+      </p>
    </dd>
    <dt><strong>New window</strong></dt>
    <dd>
@@ -56,26 +61,10 @@ set to one of the following values:
       Kill the currently running Ren'Py instance and open a new one when a 
       command is issued
    </dd>
-   <dt><strong>Update Window</strong></dt>
-   <dd>
-      <blockquote>
-         ⚠️ <b>Warning</b><br>
-         This feature only works with Ren'Py 8.3.0 or newer, or a recent 
-         nightly build.
-      </blockquote>
-      <p>
-         When a command is issued, replace an open editor by sending a
-         <code>renpy.warp_to_line()</code> command to the currently running 
-         Ren'Py instance
-      </p>
-   </dd>
+
 </dl>
 
 ### Follow Cursor
-
-> ⚠️ **Warning**<br>
-> This feature only works with Ren'Py 8.3.0 or newer, or a recent
-> nightly build.
 
 Renpy Launch and Sync can keep its cursor in sync with the Ren'Py game. The
 direction of this sync can be controlled with the setting

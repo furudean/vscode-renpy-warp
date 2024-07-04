@@ -8,7 +8,8 @@ All notable changes to this project will be documented in this file.
     Ren'Py, which uses a WebSocket server in Ren'Py to communicate with the
     extension. The largest motivation for this change is that the `exec.py`
     feature was canned on grounds of being a footgun.
-    -   The new protocol supports more recent versions of Ren'Py
+    -   The new protocol supports a wider variety of Ren'Py versions. Let me know
+        if you find a version that doesn't work!
     -   Adds a new setting, `renpyWarp.websocketPort`, to control the port the
         websockets server should listen on.
     -   A new setting, `renpyWarp.renpyExtensionsEnabled` has been added to
