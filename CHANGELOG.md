@@ -20,6 +20,8 @@ release. Yay!
         Ren'Py.
 -   Removes the 'Auto' strategy for `renpyWarp.strategy`, as it is no longer
     necessary with the new protocol. The new default is 'Update Window'.
+-   Launch scripts have been removed. Use a `.rpe` file in your project to get
+    the same effect.
 
 ## 0.26.0 - 2024-07-01
 
