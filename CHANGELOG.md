@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## Unreleased
+
+-   Fix a bug where extension would not initialize properly on Windows. As a
+    side effect, the `renpyWarp.focusWindowOnWarp` setting is removed for now,
+    as it was causing issues on Windows
+-   Match pid to child process, as Windows seems to create subprocesses that
+    don't match what was expected
+
 ## 1.0.0 - 2024-07-04
 
 This release is a major overhaul of the extension internally, signifiying a 1.0

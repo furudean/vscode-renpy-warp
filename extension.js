@@ -6,9 +6,7 @@ const fs = require('node:fs/promises')
 const untildify = require('untildify')
 const { quoteForShell } = require('puka')
 const p_throttle = require('p-throttle')
-const { windowManager } = require('node-window-manager')
-const { promisify } = require('node:util')
-const pidtree = promisify(require('pidtree'))
+const pidtree = require('pidtree')
 const ws = require('ws')
 const AdmZip = require('adm-zip')
 const semver = require('semver')
@@ -60,6 +58,8 @@ class RenpyProcess {
 		this.message_handler = message_handler
 		/** @type {string} */
 		this.game_root = game_root
+		/** @type {number | undefined} */
+		this.renpy_pid = undefined
 
 		logger.info('executing subshell:', cmd)
 		this.process = child_process.exec(cmd)
@@ -93,7 +93,7 @@ class RenpyProcess {
 					.then((selection) => {
 						if (selection === 'Logs') logger.show()
 					})
-			}, 5000)
+			}, 10000)
 
 			const interval = setInterval(() => {
 				if (this.socket) {
@@ -593,40 +593,6 @@ function get_version(renpy_sh) {
 }
 
 /**
- * @param {number} pid
- */
-async function focus_window(pid) {
-	// windows creates subprocesses for each window, so we need to find
-	// the subprocess associated with the parent process we created
-	const pids = [pid, ...(await pidtree(pid))]
-	const matching_windows = windowManager
-		.getWindows()
-		.filter((win) => pids.includes(win.processId))
-
-	logger.debug('matching windows:', matching_windows)
-
-	if (!matching_windows) {
-		logger.warn('no matching window found', windowManager.getWindows())
-		return
-	}
-
-	const has_accessibility = windowManager.requestAccessibility()
-
-	if (has_accessibility) {
-		matching_windows.forEach((win) => {
-			// bring all windows to top. windows creates many
-			// subprocesses and figuring out the right one is not straightforward
-			win.bringToTop()
-		})
-	} else {
-		vscode.window.showInformationMessage(
-			"Accessibility permissions have been requested. These are used to focus the Ren'Py window. You may need to restart Visual Studio Code for this to take effect.",
-			'OK'
-		)
-	}
-}
-
-/**
  * @returns {Promise<void>}
  */
 async function ensure_websocket_server() {
@@ -671,22 +637,32 @@ async function ensure_websocket_server() {
 			reject()
 		})
 
-		wss.on('connection', (ws, req) => {
-			const pid = Number(req.headers['pid'])
-			const rp = pm.get(pid)
+		wss.on('connection', async (ws, req) => {
+			/** @type {RenpyProcess | undefined} */
+			let rp
+
+			const renpy_pid = Number(req.headers['pid'])
+			for (const pid of pm.processes.keys()) {
+				// the process might be a child of the process we created
+				const pid_tree = await pidtree(pid, { root: true })
+				logger.debug('pid tree:', pid_tree)
+				if (pid_tree.includes(renpy_pid)) {
+					logger.info(`matched process ${pid} to pid ${renpy_pid}`)
+					rp = pm.get(pid)
+					rp.socket = ws
+					rp.renpy_pid = renpy_pid
+					break
+				}
+			}
 
 			if (!rp) {
 				logger.warn(
 					'unknown process tried to connect to socket server',
-					pid
+					renpy_pid
 				)
 				ws.close()
 				return
 			}
-
-			rp.socket = ws
-
-			logger.info('websocket connection established to pid ' + pid)
 
 			ws.on('message', async (data) => {
 				logger.debug('websocket <', data.toString())
@@ -696,7 +672,10 @@ async function ensure_websocket_server() {
 			})
 
 			ws.on('close', () => {
-				logger.info('websocket connection closed to pid', pid)
+				logger.info(
+					'websocket connection closed to pid',
+					rp.process.pid
+				)
 				rp.socket = undefined
 				if (wss.clients.size === 0) {
 					logger.info('closing socket server as no clients remain')
@@ -823,11 +802,6 @@ async function launch_renpy({ file, line } = {}) {
 		const rpp = pm.at(0)
 
 		await rpp.warp_to_line(filename_relative, line + 1)
-
-		if (get_config('focusWindowOnWarp')) {
-			logger.info('focusing window')
-			await focus_window(rpp.process.pid)
-		}
 
 		return
 	} else {
