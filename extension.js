@@ -71,9 +71,20 @@ class RenpyProcess {
 	async wait_for_socket() {
 		if (this.socket) return
 
+		logger.info("waiting for socket connection from ren'py...")
+
 		return new Promise((resolve, reject) => {
 			const t = setTimeout(() => {
 				reject(new Error('timed out waiting for socket'))
+				vscode.window
+					.showErrorMessage(
+						"Timed out trying to connect to Ren'Py window. Is the socket client running?",
+						'Logs',
+						'OK'
+					)
+					.then((selection) => {
+						if (selection === 'Logs') logger.show()
+					})
 			}, 5000)
 
 			const interval = setInterval(() => {
@@ -563,10 +574,11 @@ async function ensure_websocket_server() {
 			ws.on('close', () => {
 				logger.info('websocket connection closed to pid', pid)
 				rp.socket = undefined
-				// if (wss.clients.size === 0) {
-				// 	logger.info('closing socket server as no clients remain')
-				// 	wss.close()
-				// }
+				if (wss.clients.size === 0) {
+					logger.info('closing socket server as no clients remain')
+					wss.close()
+					wss = undefined
+				}
 			})
 		})
 	})
@@ -954,6 +966,7 @@ function activate(context) {
 						process = pm.at(0)
 					}
 
+					// TODO: handle errors
 					await ensure_websocket_server()
 					await process.wait_for_socket()
 
