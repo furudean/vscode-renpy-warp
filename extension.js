@@ -545,16 +545,14 @@ async function has_current_rpe(renpy_sh) {
 		.then((files) => files.map((f) => f.fsPath))
 
 	const renpy_version = get_version(renpy_sh)
+	const supports_rpe_py = semver.gte(renpy_version.semver, '8.3.0')
 
 	for (const file of files) {
 		const basename = path.basename(file)
 
 		// find mismatched feature support
-		if (
-			semver.lt(renpy_version.semver, '8.3.0') &&
-			basename.endsWith('.rpe.py')
-		)
-			return false
+		if (!supports_rpe_py && basename.endsWith('.rpe.py')) return false
+		if (supports_rpe_py && basename.endsWith('.rpe')) return false
 
 		const version = basename.match(
 			/renpy_warp_(?<version>.+)\.rpe(?:\.py)?/
