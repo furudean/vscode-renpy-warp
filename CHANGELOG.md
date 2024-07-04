@@ -2,7 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
-## Unreleased
+## 1.0.0 - 2024-07-04
+
+This release is a major overhaul of the extension internally, signifiying a 1.0
+release. Yay!
 
 -   Implements a new protocol for communication between the extension and
     Ren'Py, which uses a WebSocket server in Ren'Py to communicate with the
