@@ -12,6 +12,7 @@ const pidtree = promisify(require('pidtree'))
 const ws = require('ws')
 const AdmZip = require('adm-zip')
 
+const pkg_version = require('./package.json').version
 const IS_WINDOWS = os.platform() === 'win32'
 
 /** @type {ws.WebSocketServer} */
@@ -250,19 +251,6 @@ function resolve_path(str) {
 }
 
 /**
- * @param {string} file
- * @returns {Promise<boolean>}
- */
-async function file_exists(file) {
-	try {
-		await fs.access(file, fs.constants.F_OK)
-		return true
-	} catch (err) {
-		return false
-	}
-}
-
-/**
  * @param {Record<string, string>} entries
  * @returns {string}
  *
@@ -478,48 +466,50 @@ async function install_rpe(game_root) {
 	const version = get_version(await get_renpy_sh())
 	const supports_rpe_py = version.major >= 8 && version.minor >= 3
 
-	const game_path = path.join(game_root, 'game/')
-	const rpe_py_path = path.join(game_path, 'renpy_warp.rpe.py')
-	const rpe_path = path.join(game_path, 'renpy_warp.rpe')
+	const files = await vscode.workspace
+		.findFiles('**/renpy_warp_*.rpe*', null, 2)
+		.then((files) => files.map((f) => f.fsPath))
 
-	const rpe_source_code = await fs.readFile(rpe_source_path, 'utf-8')
+	for (const file of files) {
+		await fs.unlink(file)
+		logger.info('deleted old rpe at', file)
+	}
+
+	const rpe_source_code = await fs.readFile(rpe_source_path)
+	/** @type {string} */
+	let file_path
 
 	if (supports_rpe_py) {
-		await fs.writeFile(rpe_py_path, rpe_source_code)
-		logger.info('wrote rpe to', rpe_py_path)
-
-		if (await file_exists(rpe_path)) {
-			await fs.unlink(rpe_path)
-			logger.info('deleted old rpe at', rpe_path)
-		}
+		file_path = path.join(game_root, `renpy_warp_${pkg_version}.rpe.py`)
+		await fs.writeFile(file_path, rpe_source_code)
+		logger.info('wrote rpe to', file_path)
 	} else {
+		file_path = path.join(
+			game_root,
+			'game/',
+			`renpy_warp_${pkg_version}.rpe`
+		)
 		const zip = new AdmZip()
-
-		zip.addFile('autorun.py', Buffer.from(rpe_source_code, 'utf-8'))
-
-		await fs.writeFile(rpe_path, zip.toBuffer())
-		logger.info('wrote rpe to', rpe_path)
-
-		if (await file_exists(rpe_py_path)) {
-			await fs.unlink(rpe_py_path)
-			logger.info('deleted old rpe at', rpe_path)
-		}
+		zip.addFile('autorun.py', rpe_source_code)
+		await fs.writeFile(file_path, zip.toBuffer())
 	}
+
+	logger.info('wrote rpe to', file_path)
 
 	const gitignore_file = await vscode.workspace
 		.findFiles('**/.gitignore', null, 1)
 		.then((files) => (files.length ? files[0].fsPath : null))
 
 	if (gitignore_file) {
-		const lines = ['renpy_warp.rpe.py', 'renpy_warp.rpe']
+		const ignores = ['renpy_warp_*.rpe.py', 'renpy_warp_*.rpe']
 		const gitignore_content = await fs.readFile(gitignore_file, 'utf-8')
 
 		if (
 			!gitignore_content
 				.split('\n')
-				.some((line) => lines.includes(line.trim()))
+				.some((line) => ignores.includes(line.trim()))
 		) {
-			let text = lines.join('\n') + '\n'
+			let text = ignores.join('\n') + '\n'
 
 			if (!gitignore_content.endsWith('\n')) {
 				text = '\n' + text
@@ -532,15 +522,26 @@ async function install_rpe(game_root) {
 }
 
 /**
- * @param {string} game_root
  * @returns {Promise<boolean>}
  */
-async function has_rpe(game_root) {
-	const game_path = path.join(game_root, 'game/')
-	const rpe_py_path = path.join(game_path, 'renpy_warp.rpe.py')
-	const rpe_path = path.join(game_path, 'renpy_warp.rpe')
+async function has_up_to_date_rpe() {
+	const files = await vscode.workspace
+		.findFiles('**/renpy_warp_*.rpe*', null)
+		.then((files) => files.map((f) => f.fsPath))
 
-	return Promise.race([file_exists(rpe_py_path), file_exists(rpe_path)])
+	for (const file of files) {
+		const basename = path.basename(file)
+
+		const version = basename.match(
+			/renpy_warp_(?<version>.+)\.rpe(?:\.py)?/
+		).groups.version
+
+		if (version === pkg_version) {
+			return true
+		}
+	}
+
+	return false
 }
 
 /**
@@ -836,7 +837,7 @@ async function launch_renpy({ file, line } = {}) {
 
 		if (
 			get_config('renpyExtensionsEnabled') &&
-			!(await has_rpe(game_root))
+			!(await has_up_to_date_rpe())
 		) {
 			const selection = await vscode.window.showInformationMessage(
 				`Ren'Py Launch and Sync can install a script in your Ren'Py project to synchronize the game and editor. Would you like to install it?`,

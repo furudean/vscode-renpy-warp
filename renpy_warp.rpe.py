@@ -1,7 +1,5 @@
 # This file is created by the Ren'Py Launch and Sync Visual Studio Code
-# extension. It has been added to your project to enable certain features.
-#
-# This file can be safely be deleted if you do not want to use the features
+# extension. It can be safely be deleted if you do not want to use the features
 # provided by the extension.
 #
 # This file should not be checked into source control.
