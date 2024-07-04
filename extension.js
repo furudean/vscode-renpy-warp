@@ -468,7 +468,7 @@ async function install_rpe(game_root) {
 	const supports_rpe_py = semver.gte(version.semver, '8.3.0')
 
 	const files = await vscode.workspace
-		.findFiles('**/renpy_warp_*.rpe*', null, 2)
+		.findFiles('**/renpy_warp_*.rpe*')
 		.then((files) => files.map((f) => f.fsPath))
 
 	for (const file of files) {
@@ -483,7 +483,7 @@ async function install_rpe(game_root) {
 	if (supports_rpe_py) {
 		file_path = path.join(
 			game_root,
-			'game/', // https://github.com/renpy/renpy/issues/5614
+			'game/', // TODO: https://github.com/renpy/renpy/issues/5614
 			`renpy_warp_${pkg_version}.rpe.py`
 		)
 		await fs.writeFile(file_path, rpe_source_code)
@@ -502,7 +502,7 @@ async function install_rpe(game_root) {
 	logger.info('wrote rpe to', file_path)
 
 	const gitignore_file = await vscode.workspace
-		.findFiles('**/.gitignore', null)
+		.findFiles('**/.gitignore')
 		.then((files) => (files.length ? files[0].fsPath : null))
 
 	if (gitignore_file) {
@@ -531,7 +531,7 @@ async function install_rpe(game_root) {
  */
 async function has_any_rpe() {
 	return vscode.workspace
-		.findFiles('**/renpy_warp_*.rpe*', null)
+		.findFiles('**/renpy_warp_*.rpe*')
 		.then((files) => files.length > 0)
 }
 
@@ -541,7 +541,7 @@ async function has_any_rpe() {
  */
 async function has_current_rpe(renpy_sh) {
 	const files = await vscode.workspace
-		.findFiles('**/renpy_warp_*.rpe*', null)
+		.findFiles('**/renpy_warp_*.rpe*')
 		.then((files) => files.map((f) => f.fsPath))
 
 	const renpy_version = get_version(renpy_sh)
@@ -569,8 +569,6 @@ async function has_current_rpe(renpy_sh) {
 /**
  * @param {string} renpy_sh
  * base renpy.sh command
- *
- * @returns {{ semver: string, rest?: string }}
  */
 function get_version(renpy_sh) {
 	const RENPY_VERSION_REGEX =
@@ -587,6 +585,9 @@ function get_version(renpy_sh) {
 
 	return {
 		semver: `${major}.${minor}.${patch}`,
+		major: Number(major),
+		minor: Number(minor),
+		patch: Number(patch),
 		rest,
 	}
 }

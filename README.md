@@ -61,7 +61,6 @@ set to one of the following values:
       Kill the currently running Ren'Py instance and open a new one when a 
       command is issued
    </dd>
-
 </dl>
 
 ### Follow Cursor
@@ -105,8 +104,8 @@ apply the changes.
 ## Troubleshooting
 
 In order to use the current line/file feature, your game must be compatible with
-warping as described in [the Ren'Py
-documentation](https://www.renpy.org/doc/html/developer_tools.html#warping-to-a-line).
+warping as described in
+[the Ren'Py documentation](https://www.renpy.org/doc/html/developer_tools.html#warping-to-a-line).
 This feature has several limitations that you should be aware of, and as such
 may not work in all cases.
 
