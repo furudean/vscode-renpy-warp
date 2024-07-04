@@ -480,7 +480,11 @@ async function install_rpe(game_root) {
 	let file_path
 
 	if (supports_rpe_py) {
-		file_path = path.join(game_root, `renpy_warp_${pkg_version}.rpe.py`)
+		file_path = path.join(
+			game_root,
+			'game/', // https://github.com/renpy/renpy/issues/5614
+			`renpy_warp_${pkg_version}.rpe.py`
+		)
 		await fs.writeFile(file_path, rpe_source_code)
 		logger.info('wrote rpe to', file_path)
 	} else {
@@ -524,7 +528,16 @@ async function install_rpe(game_root) {
 /**
  * @returns {Promise<boolean>}
  */
-async function has_up_to_date_rpe() {
+async function has_any_rpe() {
+	return vscode.workspace
+		.findFiles('**/renpy_warp_*.rpe*', null)
+		.then((files) => files.length > 0)
+}
+
+/**
+ * @returns {Promise<boolean>}
+ */
+async function has_current_rpe() {
 	const files = await vscode.workspace
 		.findFiles('**/renpy_warp_*.rpe*', null)
 		.then((files) => files.map((f) => f.fsPath))
@@ -835,24 +848,29 @@ async function launch_renpy({ file, line } = {}) {
 
 		if (strategy === 'Replace Window') pm.kill_all()
 
-		if (
-			get_config('renpyExtensionsEnabled') &&
-			!(await has_up_to_date_rpe())
-		) {
-			const selection = await vscode.window.showInformationMessage(
-				`Ren'Py Launch and Sync can install a script in your Ren'Py project to synchronize the game and editor. Would you like to install it?`,
-				'Yes, install',
-				'No, do not install'
-			)
-			if (selection === 'Yes, install') {
-				await install_rpe(game_root)
-			} else {
-				await vscode.workspace
-					.getConfiguration('renpyWarp')
-					.update('renpyExtensionsEnabled', false, true)
+		if (get_config('renpyExtensionsEnabled')) {
+			if (!(await has_any_rpe())) {
+				const selection = await vscode.window.showInformationMessage(
+					`Ren'Py Launch and Sync can install a script in your Ren'Py project to synchronize the game and editor. Would you like to install it?`,
+					'Yes, install',
+					'No, do not install'
+				)
+				if (selection === 'Yes, install') {
+					await install_rpe(game_root)
+				} else {
+					await vscode.workspace
+						.getConfiguration('renpyWarp')
+						.update('renpyExtensionsEnabled', false, true)
 
+					vscode.window.showInformationMessage(
+						'No RPE script will be installed. Keep in mind that some features may not work as expected.',
+						'OK'
+					)
+				}
+			} else if (!(await has_current_rpe())) {
+				await install_rpe(game_root)
 				vscode.window.showInformationMessage(
-					'No RPE script will be installed. Keep in mind that some features may not work as expected.',
+					"Ren'Py extensions in this project have been updated.",
 					'OK'
 				)
 			}
