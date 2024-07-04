@@ -11,6 +11,7 @@ const { promisify } = require('node:util')
 const pidtree = promisify(require('pidtree'))
 const ws = require('ws')
 const AdmZip = require('adm-zip')
+const semver = require('semver')
 
 const pkg_version = require('./package.json').version
 const IS_WINDOWS = os.platform() === 'win32'
@@ -464,7 +465,7 @@ async function get_renpy_sh(environment = {}) {
  */
 async function install_rpe(game_root) {
 	const version = get_version(await get_renpy_sh())
-	const supports_rpe_py = version.major >= 8 && version.minor >= 3
+	const supports_rpe_py = semver.gte(version.semver, '8.3.0')
 
 	const files = await vscode.workspace
 		.findFiles('**/renpy_warp_*.rpe*', null, 2)
@@ -501,7 +502,7 @@ async function install_rpe(game_root) {
 	logger.info('wrote rpe to', file_path)
 
 	const gitignore_file = await vscode.workspace
-		.findFiles('**/.gitignore', null, 1)
+		.findFiles('**/.gitignore', null)
 		.then((files) => (files.length ? files[0].fsPath : null))
 
 	if (gitignore_file) {
@@ -535,15 +536,25 @@ async function has_any_rpe() {
 }
 
 /**
+ * @param {string} renpy_sh
  * @returns {Promise<boolean>}
  */
-async function has_current_rpe() {
+async function has_current_rpe(renpy_sh) {
 	const files = await vscode.workspace
 		.findFiles('**/renpy_warp_*.rpe*', null)
 		.then((files) => files.map((f) => f.fsPath))
 
+	const renpy_version = get_version(renpy_sh)
+
 	for (const file of files) {
 		const basename = path.basename(file)
+
+		// find mismatched feature support
+		if (
+			semver.lt(renpy_version.semver, '8.3.0') &&
+			basename.endsWith('.rpe.py')
+		)
+			return false
 
 		const version = basename.match(
 			/renpy_warp_(?<version>.+)\.rpe(?:\.py)?/
@@ -561,7 +572,7 @@ async function has_current_rpe() {
  * @param {string} renpy_sh
  * base renpy.sh command
  *
- * @returns {{ major: number, minor: number, patch: number, rest?: string }}
+ * @returns {{ semver: string, rest?: string }}
  */
 function get_version(renpy_sh) {
 	const RENPY_VERSION_REGEX =
@@ -577,9 +588,7 @@ function get_version(renpy_sh) {
 		RENPY_VERSION_REGEX.exec(version_string).groups
 
 	return {
-		major: Number(major),
-		minor: Number(minor),
-		patch: Number(patch),
+		semver: `${major}.${minor}.${patch}`,
 		rest,
 	}
 }
@@ -867,7 +876,7 @@ async function launch_renpy({ file, line } = {}) {
 						'OK'
 					)
 				}
-			} else if (!(await has_current_rpe())) {
+			} else if (!(await has_current_rpe(renpy_sh))) {
 				await install_rpe(game_root)
 				vscode.window.showInformationMessage(
 					"Ren'Py extensions in this project have been updated.",
