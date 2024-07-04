@@ -472,7 +472,7 @@ async function get_renpy_sh(environment = {}) {
 
 /**
  * @param {string} game_root
- * @returns {Promise<string>}
+ * @returns {Promise<void>}
  */
 async function install_rpe(game_root) {
 	const version = get_version(await get_renpy_sh())
@@ -492,8 +492,6 @@ async function install_rpe(game_root) {
 			await fs.unlink(rpe_path)
 			logger.info('deleted old rpe at', rpe_path)
 		}
-
-		return rpe_py_path
 	} else {
 		const zip = new AdmZip()
 
@@ -506,8 +504,30 @@ async function install_rpe(game_root) {
 			await fs.unlink(rpe_py_path)
 			logger.info('deleted old rpe at', rpe_path)
 		}
+	}
 
-		return rpe_path
+	const gitignore_file = await vscode.workspace
+		.findFiles('**/.gitignore', null, 1)
+		.then((files) => (files.length ? files[0].fsPath : null))
+
+	if (gitignore_file) {
+		const lines = ['renpy_warp.rpe.py', 'renpy_warp.rpe']
+		const gitignore_content = await fs.readFile(gitignore_file, 'utf-8')
+
+		if (
+			!gitignore_content
+				.split('\n')
+				.some((line) => lines.includes(line.trim()))
+		) {
+			let text = lines.join('\n') + '\n'
+
+			if (!gitignore_content.endsWith('\n')) {
+				text = '\n' + text
+			}
+
+			await fs.appendFile(gitignore_file, text)
+			logger.info('added rpe to .gitignore')
+		}
 	}
 }
 
@@ -1169,7 +1189,7 @@ function activate(context) {
 
 			await vscode.workspace
 				.getConfiguration('renpyWarp')
-				.update('noRpe', false, true)
+				.update('renpyExtensionsEnabled', true, true)
 
 			await install_rpe(game_root)
 		})
