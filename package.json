@@ -51,6 +51,11 @@
 				"command": "renpyWarp.toggleFollowCursor",
 				"title": "Toggle following cursor mode",
 				"category": "Ren'Py Launch"
+			},
+			{
+				"command": "renpyWarp.installRpe",
+				"title": "Install Ren'Py Extension (.rpe)",
+				"category": "Ren'Py Launch"
 			}
 		],
 		"menus": {
@@ -153,7 +158,7 @@
 						"Replace Window"
 					],
 					"markdownEnumDescriptions": [
-						"Execute `renpy.warp_to_line()` in the open instance.",
+						"Execute `renpy.warp_to_line()` in the open instance. This installs a .rpe file in your project.\n\n**Note**: This setting is is ignored if `#renpyWarp.renpyExtensionsEnabled#` is enabled.",
 						"Launch a new instance when a command is executed.",
 						"Kill the existing instance and launch a new one."
 					]
@@ -178,7 +183,7 @@
 					"type": "boolean",
 					"default": false,
 					"order": 3,
-					"markdownDescription": "Automatically enter _Follow Cursor_ mode when launching Ren'Py"
+					"markdownDescription": "Automatically enter _Follow Cursor_ mode when launching Ren'Py. This setting is ignored if `#renpyWarp.renpyExtensionsEnabled#` is enabled."
 				},
 				"renpyWarp.focusWindowOnWarp": {
 					"type": "boolean",
@@ -205,6 +210,11 @@
 					"maximum": 65535,
 					"markdownDescription": "The port to use for the WebSocket server.\n\nNeeds a restart to take effect.",
 					"scope": "machine-overridable"
+				},
+				"renpyWarp.renpyExtensionsEnabled": {
+					"type": "boolean",
+					"default": true,
+					"markdownDescription": "Enable Ren'Py Extension (.rpe) support."
 				}
 			}
 		}
@@ -230,6 +240,7 @@
 		"typescript": "^5.3.3"
 	},
 	"dependencies": {
+		"adm-zip": "^0.5.14",
 		"node-window-manager": "^2.2.4",
 		"p-throttle": "^4.1.1",
 		"pidtree": "^0.6.0",

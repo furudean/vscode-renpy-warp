@@ -7,9 +7,10 @@ const untildify = require('untildify')
 const { quoteForShell } = require('puka')
 const p_throttle = require('p-throttle')
 const { windowManager } = require('node-window-manager')
-const { promisify } = require('util')
+const { promisify } = require('node:util')
 const pidtree = promisify(require('pidtree'))
 const ws = require('ws')
+const AdmZip = require('adm-zip')
 
 const IS_WINDOWS = os.platform() === 'win32'
 
@@ -36,12 +37,17 @@ let is_follow_cursor = false
 /** @type {string | undefined} */
 let last_warp_spec = undefined
 
+/** @type {string} */
+let rpe_source_path
+
 class RenpyProcess {
 	/**
-	 * @param {string} cmd
-	 * @param {(data: any) => void} message_handler
+	 * @param {object} options
+	 * @param {string} options.cmd
+	 * @param {(data: Record<string, any>) => void} options.message_handler
+	 * @param {string} options.game_root
 	 */
-	constructor(cmd, message_handler) {
+	constructor({ cmd, message_handler, game_root }) {
 		/** @type {string} */
 		this.cmd = cmd
 		/** @type {child_process.ChildProcess} */
@@ -50,8 +56,8 @@ class RenpyProcess {
 		this.socket = undefined
 		/** @type {(data: any) => void | Promise<void>} */
 		this.message_handler = message_handler
-
-		this.killed = false
+		/** @type {string} */
+		this.game_root = game_root
 
 		logger.info('executing subshell:', cmd)
 		this.process = child_process.exec(cmd)
@@ -71,7 +77,7 @@ class RenpyProcess {
 	async wait_for_socket() {
 		if (this.socket) return
 
-		logger.info("waiting for socket connection from ren'py...")
+		logger.info('waiting for socket connection from renpy window...')
 
 		return new Promise((resolve, reject) => {
 			const t = setTimeout(() => {
@@ -105,8 +111,6 @@ class RenpyProcess {
 	 * @returns {Promise<void>}
 	 */
 	async ipc(message) {
-		if (this.killed) return
-
 		if (!this.socket) {
 			logger.info('no socket, waiting for connection...')
 			await ensure_websocket_server()
@@ -176,14 +180,6 @@ class ProcessManager {
 					})
 			}
 		})
-
-		if (this.length > 1 && is_follow_cursor) {
-			await vscode.commands.executeCommand('renpyWarp.toggleFollowCursor')
-			vscode.window.showInformationMessage(
-				"Follow cursor was disabled because multiple Ren'Py instances are running",
-				'OK'
-			)
-		}
 	}
 
 	/**
@@ -211,15 +207,17 @@ class ProcessManager {
 	update_status_bar() {
 		instance_status_bar.show()
 
-		if (this.length) {
+		if (this.length && get_config('renpyExtensionsEnabled')) {
 			follow_cursor_status_bar.show()
+		} else {
+			follow_cursor_status_bar.hide()
+		}
 
+		if (this.length) {
 			instance_status_bar.text = `$(debug-stop) Quit Ren'Py`
 			instance_status_bar.command = 'renpyWarp.killAll'
 			instance_status_bar.tooltip = "Kill all running Ren'Py instances"
 		} else {
-			follow_cursor_status_bar.hide()
-
 			instance_status_bar.text = `$(play) Launch Project`
 			instance_status_bar.command = 'renpyWarp.launch'
 			instance_status_bar.tooltip = "Launch new Ren'Py instance"
@@ -244,20 +242,24 @@ function get_config(key) {
 }
 
 /**
- * @returns {'New Window' | 'Replace Window' | 'Update Window'}
- */
-function determine_strategy() {
-	return get_config('strategy') === 'Auto'
-		? 'Update Window'
-		: get_config('strategy')
-}
-
-/**
  * @param {string} str
  * @returns {string}
  */
 function resolve_path(str) {
 	return path.resolve(untildify(str))
+}
+
+/**
+ * @param {string} file
+ * @returns {Promise<boolean>}
+ */
+async function file_exists(file) {
+	try {
+		await fs.access(file, fs.constants.F_OK)
+		return true
+	} catch (err) {
+		return false
+	}
 }
 
 /**
@@ -465,6 +467,86 @@ async function get_renpy_sh(environment = {}) {
 			' ' +
 			make_cmd([executable])
 		)
+	}
+}
+
+/**
+ * @param {string} game_root
+ * @returns {Promise<string>}
+ */
+async function install_rpe(game_root) {
+	const version = get_version(await get_renpy_sh())
+	const supports_rpe_py = version.major >= 8 && version.minor >= 3
+
+	const game_path = path.join(game_root, 'game/')
+	const rpe_py_path = path.join(game_path, 'renpy_warp.rpe.py')
+	const rpe_path = path.join(game_path, 'renpy_warp.rpe')
+
+	const rpe_source_code = await fs.readFile(rpe_source_path, 'utf-8')
+
+	if (supports_rpe_py) {
+		await fs.writeFile(rpe_py_path, rpe_source_code)
+		logger.info('wrote rpe to', rpe_py_path)
+
+		if (await file_exists(rpe_path)) {
+			await fs.unlink(rpe_path)
+			logger.info('deleted old rpe at', rpe_path)
+		}
+
+		return rpe_py_path
+	} else {
+		const zip = new AdmZip()
+
+		zip.addFile('autorun.py', Buffer.from(rpe_source_code, 'utf-8'))
+
+		await fs.writeFile(rpe_path, zip.toBuffer())
+		logger.info('wrote rpe to', rpe_path)
+
+		if (await file_exists(rpe_py_path)) {
+			await fs.unlink(rpe_py_path)
+			logger.info('deleted old rpe at', rpe_path)
+		}
+
+		return rpe_path
+	}
+}
+
+/**
+ * @param {string} game_root
+ * @returns {Promise<boolean>}
+ */
+async function has_rpe(game_root) {
+	const game_path = path.join(game_root, 'game/')
+	const rpe_py_path = path.join(game_path, 'renpy_warp.rpe.py')
+	const rpe_path = path.join(game_path, 'renpy_warp.rpe')
+
+	return Promise.race([file_exists(rpe_py_path), file_exists(rpe_path)])
+}
+
+/**
+ * @param {string} renpy_sh
+ * base renpy.sh command
+ *
+ * @returns {{ major: number, minor: number, patch: number, rest?: string }}
+ */
+function get_version(renpy_sh) {
+	const RENPY_VERSION_REGEX =
+		/^(?<major>\d+)\.(?<minor>\d+)\.(?<patch>\d+)(?:\.(?<rest>.*))?$/
+
+	const version_string = child_process
+		.execSync(renpy_sh + ' --version')
+		.toString('utf-8')
+		.trim()
+		.replace("Ren'Py ", '')
+
+	const { major, minor, patch, rest } =
+		RENPY_VERSION_REGEX.exec(version_string).groups
+
+	return {
+		major: Number(major),
+		minor: Number(minor),
+		patch: Number(patch),
+		rest,
 	}
 }
 
@@ -677,10 +759,14 @@ async function launch_renpy({ file, line } = {}) {
 		return
 	}
 
+	const strategy = get_config('strategy')
+	const extensions_enabled = get_config('renpyExtensionsEnabled')
+
 	if (
 		pm.length &&
 		Number.isInteger(line) &&
-		determine_strategy() === 'Update Window'
+		strategy === 'Update Window' &&
+		extensions_enabled
 	) {
 		logger.info('warping in existing window')
 
@@ -726,33 +812,73 @@ async function launch_renpy({ file, line } = {}) {
 				])
 		}
 
-		if (get_config('strategy') === 'Replace Window') pm.kill_all()
+		if (strategy === 'Replace Window') pm.kill_all()
 
-		const rp = new RenpyProcess(cmd, async (message) => {
-			if (message.type === 'current_line') {
-				logger.debug(
-					`current line reported as ${message.line} in ${message.relative_path}`
-				)
-				if (!is_follow_cursor) return
-
-				await sync_editor_with_renpy({
-					path: message.path,
-					relative_path: message.relative_path,
-					line: message.line - 1,
-				})
+		if (
+			get_config('renpyExtensionsEnabled') &&
+			!(await has_rpe(game_root))
+		) {
+			const selection = await vscode.window.showInformationMessage(
+				`Ren'Py Launch and Sync can install a script in your Ren'Py project to synchronize the game and editor. Would you like to install it?`,
+				'Yes, install',
+				'No, do not install'
+			)
+			if (selection === 'Yes, install') {
+				await install_rpe(game_root)
 			} else {
-				logger.warn('unhandled message:', message)
+				await vscode.workspace
+					.getConfiguration('renpyWarp')
+					.update('renpyExtensionsEnabled', false, true)
+
+				vscode.window.showInformationMessage(
+					'No RPE script will be installed. Keep in mind that some features may not work as expected.',
+					'OK'
+				)
 			}
+		}
+
+		const rp = new RenpyProcess({
+			cmd,
+			game_root,
+			async message_handler(message) {
+				if (message.type === 'current_line') {
+					logger.debug(
+						`current line reported as ${message.line} in ${message.relative_path}`
+					)
+					if (!is_follow_cursor) return
+
+					await sync_editor_with_renpy({
+						path: message.path,
+						relative_path: message.relative_path,
+						line: message.line - 1,
+					})
+				} else {
+					logger.warn('unhandled message:', message)
+				}
+			},
 		})
 		pm.add(rp)
 
 		if (
 			!is_follow_cursor &&
 			get_config('followCursorOnLaunch') &&
-			pm.length === 1
+			pm.length === 1 &&
+			extensions_enabled
 		) {
 			logger.info('enabling follow cursor on launch')
 			await vscode.commands.executeCommand('renpyWarp.toggleFollowCursor')
+		}
+
+		if (
+			pm.length > 1 &&
+			is_follow_cursor &&
+			strategy !== 'Replace Window'
+		) {
+			await vscode.commands.executeCommand('renpyWarp.toggleFollowCursor')
+			vscode.window.showInformationMessage(
+				"Follow cursor was disabled because multiple Ren'Py instances are running",
+				'OK'
+			)
 		}
 
 		return rp
@@ -793,6 +919,8 @@ function associate_progress_notification(message, run) {
 function activate(context) {
 	/** @type {vscode.Disposable} */
 	let text_editor_handle
+
+	rpe_source_path = path.join(context.extensionPath, 'renpy_warp.rpe.py')
 
 	logger = vscode.window.createOutputChannel(
 		"Ren'Py Launch and Sync - Extension",
@@ -919,6 +1047,14 @@ function activate(context) {
 			'renpyWarp.toggleFollowCursor',
 			async () => {
 				if (!is_follow_cursor) {
+					if (!get_config('renpyExtensionsEnabled')) {
+						vscode.window.showErrorMessage(
+							"Follow cursor only works with Ren'Py extensions enabled.",
+							'OK'
+						)
+						return
+					}
+
 					if (pm.length > 1) {
 						vscode.window.showErrorMessage(
 							"Multiple Ren'Py instances running. Cannot follow cursor.",
@@ -1006,7 +1142,37 @@ function activate(context) {
 					text_editor_handle.dispose()
 				}
 			}
-		)
+		),
+
+		vscode.commands.registerCommand('renpyWarp.installRpe', async () => {
+			const file_path = await vscode.workspace
+				.findFiles('**/game/**/*.rpy', null, 1)
+				.then((files) => (files.length ? files[0].fsPath : null))
+
+			if (!file_path) {
+				vscode.window.showErrorMessage(
+					"No Ren'Py project in workspace",
+					'OK'
+				)
+				return
+			}
+
+			const game_root = find_game_root(file_path)
+
+			if (!game_root) {
+				vscode.window.showErrorMessage(
+					'Unable to find "game" folder in parent directory. Not a Ren\'Py project?',
+					'OK'
+				)
+				return
+			}
+
+			await vscode.workspace
+				.getConfiguration('renpyWarp')
+				.update('noRpe', false, true)
+
+			await install_rpe(game_root)
+		})
 	)
 }
 
