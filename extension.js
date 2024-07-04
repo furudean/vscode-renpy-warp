@@ -47,7 +47,7 @@ class RenpyProcess {
 		/** @type {child_process.ChildProcess} */
 		this.process = undefined
 		/** @type {ws.WebSocket} */
-		this.ws = undefined
+		this.socket = undefined
 		/** @type {(data: any) => void | Promise<void>} */
 		this.message_handler = message_handler
 
@@ -68,54 +68,21 @@ class RenpyProcess {
 	/**
 	 * @returns {Promise<void>}
 	 */
-	async connect_socket() {
-		if (this.killed)
-			throw new Error('process was killed but tried to connect to socket')
-
-		if (!wss) throw new Error('websockets server not started')
+	async wait_for_socket() {
+		if (this.socket) return
 
 		return new Promise((resolve, reject) => {
-			this.process.on('exit', () => {
-				this.killed = true
-
-				if (this.ws) {
-					logger.info('closing websockets for pid', this.process.pid)
-					this.ws.close()
-					this.ws = undefined
-				}
-			})
-
-			/** @param {ws.WebSocket} ws */
-			const on_connection = (ws) => {
-				this.ws = ws
-				clearTimeout(t)
-
-				logger.info(
-					'websocket connection established to pid ' +
-						this.process.pid
-				)
-
-				ws.on('message', async (data) => {
-					logger.debug('websocket <', data.toString())
-					const message = JSON.parse(data.toString())
-
-					await this.message_handler(message)
-				})
-				wss.off('connection', on_connection)
-				ws.on('close', () => {
-					logger.info('websocket closed for pid', this.process.pid)
-					this.ws = undefined
-				})
-
-				resolve()
-			}
-
-			wss.on('connection', on_connection)
-
 			const t = setTimeout(() => {
-				this.ws.close()
-				reject(new Error('websocket connection timed out'))
-			}, 10000)
+				reject(new Error('timed out waiting for socket'))
+			}, 5000)
+
+			const interval = setInterval(() => {
+				if (this.socket) {
+					clearTimeout(t)
+					clearInterval(interval)
+					resolve()
+				}
+			}, 10)
 		})
 	}
 
@@ -129,10 +96,10 @@ class RenpyProcess {
 	async ipc(message) {
 		if (this.killed) return
 
-		if (!this.ws) {
-			logger.warn('dead socket... making new for pid', this.process.pid)
+		if (!this.socket) {
+			logger.info('no socket, waiting for connection...')
 			await ensure_websocket_server()
-			await this.connect_socket()
+			await this.wait_for_socket()
 		}
 
 		return new Promise((resolve, reject) => {
@@ -141,7 +108,7 @@ class RenpyProcess {
 			const t = setTimeout(() => {
 				reject(new Error('ipc timed out'))
 			}, 1000)
-			this.ws.send(serialized, (err) => {
+			this.socket.send(serialized, (err) => {
 				logger.debug('websocket >', serialized)
 
 				clearInterval(t)
@@ -200,12 +167,20 @@ class ProcessManager {
 		})
 
 		if (this.length > 1 && is_follow_cursor) {
-			vscode.commands.executeCommand('renpyWarp.toggleFollowCursor')
+			await vscode.commands.executeCommand('renpyWarp.toggleFollowCursor')
 			vscode.window.showInformationMessage(
 				"Follow cursor was disabled because multiple Ren'Py instances are running",
 				'OK'
 			)
 		}
+	}
+
+	/**
+	 * @param {number} pid
+	 * @returns {RenpyProcess | undefined}
+	 */
+	get(pid) {
+		return this.processes.get(pid)
 	}
 
 	/**
@@ -520,24 +495,24 @@ async function focus_window(pid) {
  * @returns {Promise<void>}
  */
 async function ensure_websocket_server() {
-	if (wss) return
+	if (wss) {
+		logger.debug('socket server already running')
+		return
+	}
 
 	return new Promise(async (resolve, reject) => {
 		let has_listened = false
 		const port = get_config('webSocketsPort')
-
 		wss = new ws.WebSocketServer({ port })
 
 		wss.on('listening', () => {
 			has_listened = true
-			logger.info('websockets server listening on port', wss.options.port)
+			logger.info('socket server listening on port', wss.options.port)
 			resolve()
 		})
 
 		wss.on('error', (...args) => {
-			logger.error('websockets server error:', ...args)
-
-			wss = undefined
+			logger.error('socket server error:', ...args)
 
 			if (!has_listened) {
 				vscode.window
@@ -551,13 +526,48 @@ async function ensure_websocket_server() {
 							logger.show()
 						}
 					})
-				reject()
 			}
+			wss = undefined
+			reject()
 		})
 
 		wss.on('close', () => {
 			wss = undefined
 			reject()
+		})
+
+		wss.on('connection', (ws, req) => {
+			const pid = Number(req.headers['pid'])
+			const rp = pm.get(pid)
+
+			if (!rp) {
+				logger.warn(
+					'unknown process tried to connect to socket server',
+					pid
+				)
+				ws.close()
+				return
+			}
+
+			rp.socket = ws
+
+			logger.info('websocket connection established to pid ' + pid)
+
+			ws.on('message', async (data) => {
+				logger.debug('websocket <', data.toString())
+				const message = JSON.parse(data.toString())
+
+				await rp.message_handler(message)
+			})
+
+			ws.on('close', () => {
+				logger.info('websocket connection closed to pid', pid)
+				rp.socket = undefined
+				// if (wss.clients.size === 0) {
+				// 	logger.info('closing socket server as no clients remain')
+				// 	wss.close()
+				// }
+			})
 		})
 	})
 }
@@ -913,7 +923,8 @@ function activate(context) {
 					follow_cursor_status_bar.backgroundColor =
 						new vscode.ThemeColor('statusBarItem.warningBackground')
 
-					await ensure_websocket_server()
+					/** @type {RenpyProcess} */
+					let process
 
 					if (pm.length === 0) {
 						const launch = associate_progress_notification(
@@ -922,7 +933,7 @@ function activate(context) {
 						)
 
 						try {
-							await launch()
+							process = await launch()
 						} catch (err) {
 							logger.error(err)
 							await vscode.commands.executeCommand(
@@ -939,7 +950,12 @@ function activate(context) {
 								})
 							return
 						}
+					} else {
+						process = pm.at(0)
 					}
+
+					await ensure_websocket_server()
+					await process.wait_for_socket()
 
 					text_editor_handle =
 						vscode.window.onDidChangeTextEditorSelection(
