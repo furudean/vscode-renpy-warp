@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## Unreleased
+
+-   Implements a new protocol for communication between the extension and
+    Ren'Py, which uses a WebSocket server in Ren'Py to communicate with the
+    extension. The largest motivation for this change is that the `exec.py`
+    feature was canned on grounds of being a footgun.
+    -   The new protocol supports a wider variety of Ren'Py versions. Let me know
+        if you find a version that doesn't work!
+    -   Adds a new setting, `renpyWarp.websocketPort`, to control the port the
+        websockets server should listen on.
+    -   A new setting, `renpyWarp.renpyExtensionsEnabled` has been added to
+        control whether or not the extension should attempt to communicate with
+        Ren'Py.
+-   Removes the 'Auto' strategy for `renpyWarp.strategy`, as it is no longer
+    necessary with the new protocol. The new default is 'Update Window'.
+
 ## 0.26.0 - 2024-07-01
 
 -   Implements a task queue for exec.py commands, which should prevent things
