@@ -217,7 +217,7 @@
 		"LuqueDaniel.languague-renpy"
 	],
 	"scripts": {
-		"lint": "eslint .",
+		"lint": "eslint . --ignore-pattern .vscode-test/",
 		"pretest": "npm run lint",
 		"test": "vscode-test",
 		"package": "vsce package",
