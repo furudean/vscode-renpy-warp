@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## Unreleased
+
+-   Don't attempt to modify .gitignore as we can't know what the user wants
+
 ## 1.0.1 - 2024-07-05
 
 -   Fix a bug where extension would not initialize properly on Windows. As a

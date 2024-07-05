@@ -500,30 +500,6 @@ async function install_rpe(game_root) {
 	}
 
 	logger.info('wrote rpe to', file_path)
-
-	const gitignore_file = await vscode.workspace
-		.findFiles('**/.gitignore')
-		.then((files) => (files.length ? files[0].fsPath : null))
-
-	if (gitignore_file) {
-		const ignores = ['renpy_warp_*.rpe.py', 'renpy_warp_*.rpe']
-		const gitignore_content = await fs.readFile(gitignore_file, 'utf-8')
-
-		if (
-			!gitignore_content
-				.split('\n')
-				.some((line) => ignores.includes(line.trim()))
-		) {
-			let text = ignores.join('\n') + '\n'
-
-			if (!gitignore_content.endsWith('\n')) {
-				text = '\n' + text
-			}
-
-			await fs.appendFile(gitignore_file, text)
-			logger.info('added rpe to .gitignore')
-		}
-	}
 }
 
 /**
