@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## Unreleased
+## 1.0.1 - 2024-07-05
 
 -   Fix a bug where extension would not initialize properly on Windows. As a
     side effect, the `renpyWarp.focusWindowOnWarp` setting is removed for now,
