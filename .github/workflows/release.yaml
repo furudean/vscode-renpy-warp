@@ -6,7 +6,7 @@ jobs:
     release:
         strategy:
             matrix:
-                os: [macos-latest, windows-latest]
+                os: [ubuntu-latest, macos-latest, windows-latest]
         runs-on: '${{ matrix.os }}'
         steps:
             - name: Checkout
@@ -19,12 +19,17 @@ jobs:
 
             - run: npm install
 
-            - run: npm run publish
-              if: runner.os != 'Windows'
+            - run: npm run publish -- --target linux-x64
+              if: matrix.os == 'ubuntu-latest'
+              env:
+                  VSCE_PAT: ${{ secrets.VSCE_PAT }}
+
+            - run: npm run publish -- --target darwin-x64 darwin-arm64
+              if: matrix.os == 'macos-latest'
               env:
                   VSCE_PAT: ${{ secrets.VSCE_PAT }}
 
             - run: npm run publish -- --target win32-x64
-              if: runner.os == 'Windows'
+              if: matrix.os == 'windows-latest'
               env:
                   VSCE_PAT: ${{ secrets.VSCE_PAT }}
