@@ -10,6 +10,7 @@ const pidtree = require('pidtree')
 const ws = require('ws')
 const AdmZip = require('adm-zip')
 const semver = require('semver')
+const { windowManager } = require('node-window-manager')
 
 const pkg_version = require('./package.json').version
 const IS_WINDOWS = os.platform() === 'win32'
@@ -569,6 +570,40 @@ function get_version(renpy_sh) {
 }
 
 /**
+ * @param {number} pid
+ */
+async function focus_window(pid) {
+	// windows creates subprocesses for each window, so we need to find
+	// the subprocess associated with the parent process we created
+	const pids = [pid, ...(await pidtree(pid))]
+	const matching_windows = windowManager
+		.getWindows()
+		.filter((win) => pids.includes(win.processId))
+
+	logger.debug('matching windows:', matching_windows)
+
+	if (!matching_windows) {
+		logger.warn('no matching window found', windowManager.getWindows())
+		return
+	}
+
+	const has_accessibility = windowManager.requestAccessibility()
+
+	if (has_accessibility) {
+		matching_windows.forEach((win) => {
+			// bring all windows to top. windows creates many
+			// subprocesses and figuring out the right one is not straightforward
+			win.bringToTop()
+		})
+	} else {
+		vscode.window.showInformationMessage(
+			"Accessibility permissions have been requested. These are used to focus the Ren'Py window. You may need to restart Visual Studio Code for this to take effect.",
+			'OK'
+		)
+	}
+}
+
+/**
  * @returns {Promise<void>}
  */
 async function ensure_websocket_server() {
@@ -778,6 +813,11 @@ async function launch_renpy({ file, line } = {}) {
 		const rpp = pm.at(0)
 
 		await rpp.warp_to_line(filename_relative, line + 1)
+
+		if (get_config('focusWindowOnWarp')) {
+			logger.info('focusing window')
+			await focus_window(rpp.process.pid)
+		}
 
 		return
 	} else {

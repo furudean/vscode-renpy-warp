@@ -5,6 +5,7 @@ All notable changes to this project will be documented in this file.
 ## Unreleased
 
 -   Don't attempt to modify .gitignore as we can't know what the user wants
+-   Add `renpyWarp.focusWindowOnWarp` back.
 
 ## 1.0.1 - 2024-07-05
 
