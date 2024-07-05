@@ -6,7 +6,8 @@ All notable changes to this project will be documented in this file.
 
 -   Fix a bug where extension would not initialize properly on Windows. As a
     side effect, the `renpyWarp.focusWindowOnWarp` setting is removed for now,
-    as the dependency for it has environment specific bindings.
+    as the dependency for it has environment specific bindings that I won't have
+    time to fix for a while.
 -   Match pid to child process, as Windows Ren'Py creates a subprocesses that
     doesn't match what was expected
 
