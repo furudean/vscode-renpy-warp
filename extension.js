@@ -975,6 +975,38 @@ function associate_progress_notification(message, run) {
 	}
 }
 
+async function warp_renpy_to_cursor() {
+	if (pm.length !== 1) {
+		logger.info('needs exactly one instance to follow... got', pm.length)
+
+		await vscode.commands.executeCommand('renpyWarp.toggleFollowCursor')
+		return
+	}
+
+	const editor = vscode.window.activeTextEditor
+
+	if (!editor) return
+
+	const language_id = editor.document.languageId
+	const file = editor.document.uri.fsPath
+	const line = editor.selection.active.line
+
+	if (language_id !== 'renpy') return
+
+	const game_root = find_game_root(file)
+	const filename_relative = path.relative(path.join(game_root, 'game/'), file)
+
+	const warp_spec = `${filename_relative}:${line + 1}`
+
+	if (warp_spec === last_warp_spec) return // no change
+	last_warp_spec = warp_spec
+
+	const rp = pm.at(0)
+
+	await rp.warp_to_line(filename_relative, line + 1)
+	logger.info('warped to', warp_spec)
+}
+
 /**
  * @param {vscode.ExtensionContext} context
  */
@@ -1017,43 +1049,7 @@ function activate(context) {
 		interval: get_config('followCursorExecInterval'),
 	})
 
-	const warp_renpy_to_cursor = throttle(async () => {
-		if (pm.length !== 1) {
-			logger.info(
-				'needs exactly one instance to follow... got',
-				pm.length
-			)
-
-			await vscode.commands.executeCommand('renpyWarp.toggleFollowCursor')
-			return
-		}
-
-		const editor = vscode.window.activeTextEditor
-
-		if (!editor) return
-
-		const language_id = editor.document.languageId
-		const file = editor.document.uri.fsPath
-		const line = editor.selection.active.line
-
-		if (language_id !== 'renpy') return
-
-		const game_root = find_game_root(file)
-		const filename_relative = path.relative(
-			path.join(game_root, 'game/'),
-			file
-		)
-
-		const warp_spec = `${filename_relative}:${line + 1}`
-
-		if (warp_spec === last_warp_spec) return // no change
-		last_warp_spec = warp_spec
-
-		const rp = pm.at(0)
-
-		await rp.warp_to_line(filename_relative, line + 1)
-		logger.info('warped to', warp_spec)
-	})
+	const warp_renpy_to_cursor_throttled = throttle(warp_renpy_to_cursor)
 
 	context.subscriptions.push(
 		logger,
@@ -1182,7 +1178,7 @@ function activate(context) {
 										vscode.TextEditorSelectionChangeKind
 											.Command
 								) {
-									await warp_renpy_to_cursor()
+									await warp_renpy_to_cursor_throttled()
 								}
 							}
 						)
@@ -1194,7 +1190,7 @@ function activate(context) {
 							'Update both',
 						].includes(get_config('followCursorMode'))
 					) {
-						await warp_renpy_to_cursor()
+						await warp_renpy_to_cursor_throttled()
 					}
 				} else {
 					is_follow_cursor = false
