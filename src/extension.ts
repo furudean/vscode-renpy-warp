@@ -25,6 +25,7 @@ let process_out_channel: vscode.OutputChannel
 let instance_status_bar: vscode.StatusBarItem
 let follow_cursor_status_bar: vscode.StatusBarItem
 
+let is_development_mode = false
 let is_follow_cursor = false
 
 /** @type {string | undefined} */
@@ -882,6 +883,8 @@ async function launch_renpy({ file, line }: LaunchRenpyOptions = {}): Promise<
 					"Ren'Py extensions in this project have been updated.",
 					'OK'
 				)
+			} else if (is_development_mode) {
+				await install_rpe(game_root)
 			}
 		}
 
@@ -998,6 +1001,9 @@ async function warp_renpy_to_cursor() {
 export function activate(context: vscode.ExtensionContext) {
 	/** @type {vscode.Disposable} */
 	let text_editor_handle: vscode.Disposable
+
+	is_development_mode =
+		context.extensionMode === vscode.ExtensionMode.Development
 
 	rpe_source_path = path.join(
 		context.extensionPath,
