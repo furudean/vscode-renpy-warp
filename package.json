@@ -21,7 +21,7 @@
 	"activationEvents": [
 		"onLanguage:renpy"
 	],
-	"main": "./extension.js",
+	"main": "./dist/extension.js",
 	"contributes": {
 		"commands": [
 			{
@@ -223,21 +223,37 @@
 		"LuqueDaniel.languague-renpy"
 	],
 	"scripts": {
-		"lint": "eslint . --ignore-pattern .vscode-test/",
-		"pretest": "npm run lint",
-		"test": "vscode-test",
+		"prepublish": "npm run package",
+		"publish": "vsce publish",
+		"compile": "npm run check-types && npm run lint && node esbuild.js",
+		"watch": "npm-run-all -p watch:*",
+		"watch:esbuild": "node esbuild.js --watch",
+		"watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
+		"prepack": "npm run check-types && npm run lint && node esbuild.js --production",
 		"package": "vsce package",
-		"publish": "vsce publish"
+		"compile-tests": "tsc -p . --outDir out",
+		"watch-tests": "tsc -p . -w --outDir out",
+		"pretest": "npm run compile-tests && npm run compile && npm run lint",
+		"check-types": "tsc --noEmit",
+		"lint": "eslint",
+		"test": "vscode-test"
 	},
 	"devDependencies": {
+		"@types/adm-zip": "^0.5.5",
 		"@types/mocha": "^10.0.6",
 		"@types/node": "^20.14.2",
+		"@types/semver": "^7.5.8",
 		"@types/vscode": "^1.87.0",
+		"@types/ws": "^8.5.10",
+		"@typescript-eslint/eslint-plugin": "^7.15.0",
+		"@typescript-eslint/parser": "^7.15.0",
 		"@vscode/test-cli": "^0.0.9",
 		"@vscode/test-electron": "^2.3.9",
 		"@vscode/vsce": "^2.24.0",
-		"eslint": "^9.5.0",
-		"typescript": "^5.3.3"
+		"esbuild": "^0.23.0",
+		"eslint": "^8.57.0",
+		"npm-run-all": "^4.1.5",
+		"typescript": "^5.5.3"
 	},
 	"dependencies": {
 		"adm-zip": "^0.5.14",
