@@ -1,18 +1,26 @@
 'on':
     release:
         types: [published]
+    workflow_dispatch: {}
+
+name: Release
 jobs:
     release:
+        permissions:
+            contents: write
         strategy:
             matrix:
                 os: [ubuntu-latest, macos-latest, windows-latest]
                 include:
                     - os: ubuntu-latest
                       target: linux-x64
+                      platformName: linux
                     - os: macos-latest
                       target: darwin-x64 darwin-arm64
+                      platformName: mac
                     - os: windows-latest
                       target: win32-x64
+                      platformName: win
 
         runs-on: '${{ matrix.os }}'
         steps:
@@ -24,25 +32,40 @@ jobs:
               with:
                   node-version: 18.x
 
-            - name: get-npm-version
-              id: package-version
-              uses: martinbeentjes/npm-get-version-action@v1.3.1
+            - name: Cache node modules
+              id: cache-npm
+              uses: actions/cache@v3
+              env:
+                  cache-name: cache-node-modules
+              with:
+                  path: ~/.npm # npm cache files are stored in `~/.npm` on Linux/macOS
+                  key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/package-lock.json') }}
+                  restore-keys: |
+                      ${{ runner.os }}-build-${{ env.cache-name }}-
+                      ${{ runner.os }}-build-
+                      ${{ runner.os }}-
 
             - run: npm install
 
-            - run: vsce package --target ${{ matrix.target }} -o renpy-warp-${{ steps.package-version.outputs.current-version}}-${{ matrix.target }}.vsix
+            - name: create extension package
+              run: >-
+                  npm run package --
+                  --out renpy-warp-${{ github.ref_name }}-${{ matrix.platformName }}.vsix
 
             - name: create github release
               uses: ncipollo/release-action@v1
               with:
-                  artifacts: *.vsix
+                  artifacts: '*.vsix'
                   replacesArtifacts: false
                   tag: ${{ github.ref_name }}
                   allowUpdates: true
                   makeLatest: false
                   omitNameDuringUpdate: true
+                  omitBodyDuringUpdate: true
                   omitPrereleaseDuringUpdate: true
+                  omitDraftDuringUpdate: true
 
-            - run: npm run publish -- --target ${{ matrix.target }}
+            - name: release to marketplace
+              run: npm run publish -- --target ${{ matrix.target }}
               env:
-                  VSCE_PAT: ${{ secrets.VSCE_PAT }}
+                  VSCE_PAT: '${{ secrets.VSCE_PAT }}'
