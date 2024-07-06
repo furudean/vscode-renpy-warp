@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.1.1~4 - 2024-07-06
+
+Testing some CI stuff, no actual code changes
+
 ## 1.1.0 - 2024-07-05
 
 -   Don't attempt to modify .gitignore as we can't know what the user wants
