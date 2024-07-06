@@ -348,7 +348,7 @@ async function get_sdk_path() {
 
 				vscode.commands.executeCommand(
 					'workbench.action.openSettings',
-					'@ext:PaisleySoftworks.renpyWarp sdkPath'
+					'@ext:PaisleySoftworks.renpyWarp'
 				)
 			})
 
@@ -370,7 +370,7 @@ async function get_sdk_path() {
 				if (!selection) return
 				vscode.commands.executeCommand(
 					'workbench.action.openSettings',
-					'@ext:PaisleySoftworks.renpyWarp sdkPath'
+					'@ext:PaisleySoftworks.renpyWarp'
 				)
 			})
 		return
@@ -410,7 +410,7 @@ async function get_renpy_sh(environment = {}) {
 				if (!selection) return
 				vscode.commands.executeCommand(
 					'workbench.action.openSettings',
-					'@ext:PaisleySoftworks.renpyWarp sdkPath'
+					'@ext:PaisleySoftworks.renpyWarp'
 				)
 			})
 		return
@@ -442,7 +442,7 @@ async function get_renpy_sh(environment = {}) {
 
 				vscode.commands.executeCommand(
 					'workbench.action.openSettings',
-					'@ext:PaisleySoftworks.renpyWarp editor'
+					'@ext:PaisleySoftworks.renpyWarp'
 				)
 			})
 		return

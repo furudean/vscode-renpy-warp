@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## Unreleased
+
+-   Don't link to specific settings (it doesn't work very well)
+
 ## 1.2.0 - 2024-07-06
 
 -   Leave the websocket server running for a bit if connection is lost, like on
