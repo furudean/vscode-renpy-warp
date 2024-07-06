@@ -30,10 +30,9 @@ jobs:
 
             - run: npm install
 
-            - run: >-
-                  npm run package --
-                    --target ${{ matrix.target }} 
-                    --out renpy-warp-${{ steps.ver.outputs.packageVersion }}-${{ matrix.target }}.vsix
+            - run: npm run package -- \
+                  --target ${{ matrix.target }} \
+                  --out renpy-warp-${{ steps.ver.outputs.packageVersion }}-${{ matrix.target }}.vsix
 
             - name: create github release
               uses: ncipollo/release-action@v1
