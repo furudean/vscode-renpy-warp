@@ -51,15 +51,21 @@ class RenpyProcess {
 	constructor({ cmd, message_handler, game_root }) {
 		/** @type {string} */
 		this.cmd = cmd
-		/** @type {child_process.ChildProcess} */
-		this.process = undefined
-		/** @type {ws.WebSocket} */
-		this.socket = undefined
 		/** @type {(data: any) => void | Promise<void>} */
 		this.message_handler = message_handler
 		/** @type {string} */
 		this.game_root = game_root
-		/** @type {number | undefined} */
+
+		/** @type {child_process.ChildProcess} */
+		this.process = undefined
+		/** @type {ws.WebSocket} */
+		this.socket = undefined
+		/**
+		 * @type {number | undefined}
+		 * The Ren'Py pid might be different from the pid of the process we
+		 * created. This happens on Windows where the actual Ren'Py process is
+		 * a child process of the process we created.
+		 */
 		this.renpy_pid = undefined
 
 		logger.info('executing subshell:', cmd)
@@ -653,7 +659,7 @@ async function ensure_websocket_server() {
 
 		wss.on('connection', async (ws, req) => {
 			/** @type {RenpyProcess | undefined} */
-			let rp
+			let process
 
 			const renpy_pid = Number(req.headers['pid'])
 			for (const pid of pm.processes.keys()) {
@@ -664,14 +670,20 @@ async function ensure_websocket_server() {
 					logger.info(
 						`matched new connection from ${pid} to launched process ${renpy_pid}`
 					)
-					rp = pm.get(pid)
-					rp.socket = ws
-					rp.renpy_pid = renpy_pid
-					break
+					process = pm.get(pid)
+
+					if (process.socket) {
+						logger.info('closing existing socket')
+						process.socket.close()
+					}
+
+					process.socket = ws
+					process.renpy_pid = renpy_pid
+					process
 				}
 			}
 
-			if (!rp) {
+			if (!process) {
 				logger.warn(
 					'unknown process tried to connect to socket server',
 					renpy_pid
@@ -686,15 +698,15 @@ async function ensure_websocket_server() {
 				logger.debug('websocket <', data.toString())
 				const message = JSON.parse(data.toString())
 
-				await rp.message_handler(message)
+				await process.message_handler(message)
 			})
 
 			ws.on('close', () => {
 				logger.info(
 					'websocket connection closed to pid',
-					rp.process.pid
+					process.process.pid
 				)
-				rp.socket = undefined
+				process.socket = undefined
 
 				clearTimeout(close_timeout)
 				close_timeout = setTimeout(() => {

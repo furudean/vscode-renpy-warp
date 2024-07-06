@@ -71,7 +71,7 @@ def socket_producer(websocket: websockets.WebSocketClientProtocol):
 def renpy_warp_service():
     try:
         with connect(
-            "ws://localhost:" + os.getenv("WARP_WS_PORT"),
+            f"ws://localhost:{port}",
             additional_headers={"pid": str(os.getpid())},
             open_timeout=5,
             close_timeout=5,
@@ -84,12 +84,16 @@ def renpy_warp_service():
             socket_listener(websocket)  # this blocks until socket is closed
 
     except websockets.exceptions.ConnectionClosedOK:
+        print("connection closed by renpy warp socket server")
         pass
-    except websockets.exceptions.ConnectionClosedError:
-        print("connection to renpy warp socket server closed unexpectedly")
+
+    except websockets.exceptions.ConnectionClosedError as e:
+        print("connection to renpy warp socket server closed unexpectedly", e)
+        sleep(1)
         return renpy_warp_service()
+
     except ConnectionRefusedError:
-        print(f"no renpy warp socket server on {port}... sleeping for 1 second")
+        print(f"no renpy warp socket server on {port}. retrying in 1s...")
         sleep(1)
         return renpy_warp_service()
 

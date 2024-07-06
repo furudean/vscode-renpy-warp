@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file.
 
 -   Leave the websocket server running for a bit if connection is lost, like on
     a reload or a crash
+-   Close old socket if the same process tries to connect more than once
 
 ## 1.1.1~4 - 2024-07-06
 
