@@ -617,6 +617,9 @@ async function ensure_websocket_server() {
 		const port = get_config('webSocketsPort')
 		wss = new ws.WebSocketServer({ port })
 
+		/** @type {NodeJS.Timeout} */
+		let close_timeout = undefined
+
 		wss.on('listening', () => {
 			has_listened = true
 			logger.info('socket server listening on port', wss.options.port)
@@ -675,6 +678,8 @@ async function ensure_websocket_server() {
 				return
 			}
 
+			clearTimeout(close_timeout)
+
 			ws.on('message', async (data) => {
 				logger.debug('websocket <', data.toString())
 				const message = JSON.parse(data.toString())
@@ -688,11 +693,17 @@ async function ensure_websocket_server() {
 					rp.process.pid
 				)
 				rp.socket = undefined
-				if (wss.clients.size === 0) {
-					logger.info('closing socket server as no clients remain')
-					wss.close()
-					wss = undefined
-				}
+
+				clearTimeout(close_timeout)
+				close_timeout = setTimeout(() => {
+					if (wss.clients.size === 0) {
+						logger.info(
+							'closing socket server as no clients remain'
+						)
+						wss.close()
+						wss = undefined
+					}
+				}, 30 * 1000)
 			})
 		})
 	})

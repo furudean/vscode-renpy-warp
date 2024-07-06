@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## Unreleased
+
+-   Leave the websocket server running for a bit if connection is lost, like on
+    a reload or a crash
+
 ## 1.1.1~4 - 2024-07-06
 
 Testing some CI stuff, no actual code changes
