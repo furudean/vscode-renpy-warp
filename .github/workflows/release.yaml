@@ -30,8 +30,10 @@ jobs:
 
             - run: npm install
 
-            - run: npm run package -- \
-                  --target ${{ matrix.target }} \
+            - name: create extension package
+              run: >-
+                  npm run package --
+                  --target ${{ matrix.target }}
                   --out renpy-warp-${{ steps.ver.outputs.packageVersion }}-${{ matrix.target }}.vsix
 
             - name: create github release
@@ -45,6 +47,7 @@ jobs:
                   omitNameDuringUpdate: true
                   omitPrereleaseDuringUpdate: true
 
-            - run: npm run publish -- --target ${{ matrix.target }}
+            - name: release to marketplace
+              run: npm run publish -- --target ${{ matrix.target }}
               env:
                   VSCE_PAT: ${{ secrets.VSCE_PAT }}
