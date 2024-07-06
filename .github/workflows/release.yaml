@@ -24,13 +24,16 @@ jobs:
               with:
                   node-version: 18.x
 
-            - name: get-npm-version
-              id: package-version
-              uses: martinbeentjes/npm-get-version-action@v1.3.1
+            - name: Retrieve information from package.json
+              uses: myrotvorets/info-from-package-json-action@1.0.0
+              id: ver
 
             - run: npm install
 
-            - run: vsce package --target ${{ matrix.target }} -o renpy-warp-${{ steps.package-version.outputs.current-version}}-${{ matrix.target }}.vsix
+            - run: >-
+                  npm run package --
+                    --target ${{ matrix.target }} 
+                    --out renpy-warp-${{ steps.ver.outputs.packageVersion }}-${{ matrix.target }}.vsix
 
             - name: create github release
               uses: ncipollo/release-action@v1
