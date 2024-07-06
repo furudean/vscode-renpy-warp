@@ -1,12 +1,19 @@
 'on':
     release:
-        types:
-            - created
+        types: [published]
 jobs:
     release:
         strategy:
             matrix:
                 os: [ubuntu-latest, macos-latest, windows-latest]
+                include:
+                    - os: ubuntu-latest
+                      target: linux-x64
+                    - os: macos-latest
+                      target: darwin-x64 darwin-arm64
+                    - os: windows-latest
+                      target: win32-x64
+
         runs-on: '${{ matrix.os }}'
         steps:
             - name: Checkout
@@ -17,19 +24,25 @@ jobs:
               with:
                   node-version: 18.x
 
+            - name: get-npm-version
+              id: package-version
+              uses: martinbeentjes/npm-get-version-action@v1.3.1
+
             - run: npm install
 
-            - run: npm run publish -- --target linux-x64
-              if: matrix.os == 'ubuntu-latest'
-              env:
-                  VSCE_PAT: ${{ secrets.VSCE_PAT }}
+            - run: vsce package --target ${{ matrix.target }} -o renpy-warp-${{ steps.package-version.outputs.current-version}}-${{ matrix.target }}.vsix
 
-            - run: npm run publish -- --target darwin-x64 darwin-arm64
-              if: matrix.os == 'macos-latest'
-              env:
-                  VSCE_PAT: ${{ secrets.VSCE_PAT }}
+            - name: create github release
+              uses: ncipollo/release-action@v1
+              with:
+                  artifacts: *.vsix
+                  replacesArtifacts: false
+                  tag: ${{ github.ref_name }}
+                  allowUpdates: true
+                  makeLatest: false
+                  omitNameDuringUpdate: true
+                  omitPrereleaseDuringUpdate: true
 
-            - run: npm run publish -- --target win32-x64
-              if: matrix.os == 'windows-latest'
+            - run: npm run publish -- --target ${{ matrix.target }}
               env:
                   VSCE_PAT: ${{ secrets.VSCE_PAT }}
