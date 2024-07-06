@@ -661,7 +661,9 @@ async function ensure_websocket_server() {
 				const pid_tree = await pidtree(pid, { root: true })
 				logger.debug('pid tree:', pid_tree)
 				if (pid_tree.includes(renpy_pid)) {
-					logger.info(`matched process ${pid} to pid ${renpy_pid}`)
+					logger.info(
+						`matched new connection from ${pid} to launched process ${renpy_pid}`
+					)
 					rp = pm.get(pid)
 					rp.socket = ws
 					rp.renpy_pid = renpy_pid
