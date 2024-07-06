@@ -35,7 +35,7 @@ jobs:
             - name: create github release
               uses: ncipollo/release-action@v1
               with:
-                  artifacts: *.vsix
+                  artifacts: '*.vsix'
                   replacesArtifacts: false
                   tag: ${{ github.ref_name }}
                   allowUpdates: true
