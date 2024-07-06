@@ -3,8 +3,13 @@
 test/**
 .gitignore
 .yarnrc
-vsc-extension-quickstart.md
 **/jsconfig.json
 **/*.map
 **/.eslintrc.json
 **/.vscode-test.*
+**/*.ts
+out/**
+src/**
+.github/**
+tsconfig.json
+esbuild.js

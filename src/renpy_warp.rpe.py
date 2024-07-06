@@ -6,7 +6,7 @@
 #
 
 from time import sleep
-import renpy
+import renpy  # type: ignore
 from websockets.sync.client import connect
 import websockets
 

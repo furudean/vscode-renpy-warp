@@ -1,3 +1,7 @@
-node_modules
-.vscode-test/
+out/**
+dist/
+node_modules/**
+.gitignore
 *.vsix
+.vscode-test/
+.DS_Store

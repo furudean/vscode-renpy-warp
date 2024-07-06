@@ -1,10 +1,16 @@
 {
 	"editor.formatOnSave": true,
 	"editor.defaultFormatter": "esbenp.prettier-vscode",
+	// Turn off tsc task auto detection since we have the necessary tasks as npm scripts
+	"typescript.tsc.autoDetect": "off",
 	"files.exclude": {
-		"**/*.rpyc": true,
-		"**/*.rpa": true,
-		"**/*.rpymc": true,
-		"**/cache/": true
+		"out": true,
+		"dist": false,
+		".vscode-test": true
+	},
+	"search.exclude": {
+		"out": true,
+		"dist": true,
+		".vscode-test": true
 	}
 }

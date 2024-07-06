@@ -1,78 +1,75 @@
-const vscode = require('vscode')
-const path = require('upath')
-const child_process = require('node:child_process')
-const os = require('node:os')
-const fs = require('node:fs/promises')
-const untildify = require('untildify')
-const { quoteForShell } = require('puka')
-const p_throttle = require('p-throttle')
-const pidtree = require('pidtree')
-const ws = require('ws')
-const AdmZip = require('adm-zip')
-const semver = require('semver')
-const { windowManager } = require('node-window-manager')
+import * as vscode from 'vscode'
+import path from 'upath'
+import child_process from 'node:child_process'
+import os from 'node:os'
+import fs from 'node:fs/promises'
+import untildify from 'untildify'
+import p_throttle from 'p-throttle'
+import pidtree from 'pidtree'
+import { WebSocket, WebSocketServer } from 'ws'
+import AdmZip from 'adm-zip'
+import semver from 'semver'
+import { windowManager } from 'node-window-manager'
 
-const pkg_version = require('./package.json').version
+import { version as pkg_version } from '../package.json'
+import { quoteForShell } from 'puka'
 const IS_WINDOWS = os.platform() === 'win32'
 
-/** @type {ws.WebSocketServer} */
-let wss
+type MaybePromise<T> = T | Promise<T>
 
-/** @type {ProcessManager} */
-let pm
+let wss: WebSocketServer | undefined
+let pm: ProcessManager
 
-/** @type {vscode.LogOutputChannel} */
-let logger
+let logger: vscode.LogOutputChannel
+let process_out_channel: vscode.OutputChannel
+let instance_status_bar: vscode.StatusBarItem
+let follow_cursor_status_bar: vscode.StatusBarItem
 
-/** @type {vscode.OutputChannel} */
-let process_out_channel
-
-/** @type {vscode.StatusBarItem} */
-let instance_status_bar
-
-/** @type {vscode.StatusBarItem} */
-let follow_cursor_status_bar
-
+let is_development_mode = false
 let is_follow_cursor = false
 
 /** @type {string | undefined} */
-let last_warp_spec = undefined
+let last_warp_spec: string | undefined = undefined
 
 /** @type {string} */
-let rpe_source_path
+let rpe_source_path: string
+
+interface SocketMessage {
+	type: string
+	[key: string]: any
+}
 
 class RenpyProcess {
+	cmd: string
+	message_handler: (data: SocketMessage) => MaybePromise<void>
+	game_root: string
+	process: child_process.ChildProcess
+	socket?: WebSocket = undefined
 	/**
-	 * @param {object} options
-	 * @param {string} options.cmd
-	 * @param {(data: Record<string, any>) => void} options.message_handler
-	 * @param {string} options.game_root
+	 * The Ren'Py pid might be different from the pid of the process we
+	 * created. This happens on Windows where the actual Ren'Py process is
+	 * a child process of the process we created.
 	 */
-	constructor({ cmd, message_handler, game_root }) {
-		/** @type {string} */
-		this.cmd = cmd
-		/** @type {(data: any) => void | Promise<void>} */
-		this.message_handler = message_handler
-		/** @type {string} */
-		this.game_root = game_root
+	renpy_pid?: number
 
-		/** @type {child_process.ChildProcess} */
-		this.process = undefined
-		/** @type {ws.WebSocket} */
-		this.socket = undefined
-		/**
-		 * @type {number | undefined}
-		 * The Ren'Py pid might be different from the pid of the process we
-		 * created. This happens on Windows where the actual Ren'Py process is
-		 * a child process of the process we created.
-		 */
-		this.renpy_pid = undefined
+	constructor({
+		cmd,
+		message_handler,
+		game_root,
+	}: {
+		cmd: string
+		message_handler: (data: SocketMessage) => MaybePromise<void>
+		game_root: string
+	}) {
+		this.cmd = cmd
+		this.message_handler = message_handler
+		this.game_root = game_root
 
 		logger.info('executing subshell:', cmd)
 		this.process = child_process.exec(cmd)
 
-		this.process.stdout.on('data', process_out_channel.append)
-		this.process.stderr.on('data', process_out_channel.append)
+		this.process.stdout!.on('data', process_out_channel.append)
+		this.process.stderr!.on('data', process_out_channel.append)
 		this.process.on('exit', (code) => {
 			logger.info(`process ${this.process.pid} exited with code ${code}`)
 		})
@@ -80,10 +77,7 @@ class RenpyProcess {
 		logger.info('created process', this.process.pid)
 	}
 
-	/**
-	 * @returns {Promise<void>}
-	 */
-	async wait_for_socket() {
+	async wait_for_socket(): Promise<void> {
 		if (this.socket) return
 
 		logger.info('waiting for socket connection from renpy window...')
@@ -112,14 +106,7 @@ class RenpyProcess {
 		})
 	}
 
-	/**
-	 * @typedef {object} message
-	 * @property {string} message.type
-	 *
-	 * @param {message & Record<string, any>} message
-	 * @returns {Promise<void>}
-	 */
-	async ipc(message) {
+	async ipc(message: SocketMessage): Promise<void> {
 		if (!this.socket) {
 			logger.info('no socket, waiting for connection...')
 			await ensure_websocket_server()
@@ -129,13 +116,13 @@ class RenpyProcess {
 		return new Promise((resolve, reject) => {
 			const serialized = JSON.stringify(message)
 
-			const t = setTimeout(() => {
+			const timeout = setTimeout(() => {
 				reject(new Error('ipc timed out'))
 			}, 1000)
-			this.socket.send(serialized, (err) => {
+			this.socket!.send(serialized, (err) => {
 				logger.debug('websocket >', serialized)
 
-				clearInterval(t)
+				clearInterval(timeout)
 				if (err) {
 					reject(err)
 				} else {
@@ -146,12 +133,10 @@ class RenpyProcess {
 	}
 
 	/**
-	 * @param {string} file
-	 * relative filename to
 	 * @param {number} line
 	 * 1-indexed line number
 	 */
-	async warp_to_line(file, line) {
+	async warp_to_line(file: string, line: number) {
 		return this.ipc({
 			type: 'warp_to_line',
 			file,
@@ -161,19 +146,23 @@ class RenpyProcess {
 }
 
 class ProcessManager {
+	processes: Map<number, RenpyProcess>
 	constructor() {
-		/** @type {Map<number, RenpyProcess>} */
 		this.processes = new Map()
 
 		this.update_status_bar()
 	}
 
 	/** @param {RenpyProcess} process */
-	async add(process) {
+	async add(process: RenpyProcess) {
+		if (!process.process.pid) throw new Error('no pid in process')
+
 		this.processes.set(process.process.pid, process)
 		this.update_status_bar()
 
 		process.process.on('exit', (code) => {
+			if (!process.process.pid) throw new Error('no pid in process')
+
 			this.processes.delete(process.process.pid)
 			this.update_status_bar()
 
@@ -195,7 +184,7 @@ class ProcessManager {
 	 * @param {number} pid
 	 * @returns {RenpyProcess | undefined}
 	 */
-	get(pid) {
+	get(pid: number): RenpyProcess | undefined {
 		return this.processes.get(pid)
 	}
 
@@ -203,7 +192,7 @@ class ProcessManager {
 	 * @param {number} index
 	 * @returns {RenpyProcess | undefined}
 	 */
-	at(index) {
+	at(index: number): RenpyProcess | undefined {
 		return Array.from(this.processes.values())[index]
 	}
 
@@ -246,7 +235,7 @@ class ProcessManager {
  * @param {string} key
  * @returns {any}
  */
-function get_config(key) {
+function get_config(key: string): any {
 	return vscode.workspace.getConfiguration('renpyWarp').get(key)
 }
 
@@ -254,14 +243,11 @@ function get_config(key) {
  * @param {string} str
  * @returns {string}
  */
-function resolve_path(str) {
+function resolve_path(str: string): string {
 	return path.resolve(untildify(str))
 }
 
 /**
- * @param {Record<string, string>} entries
- * @returns {string}
- *
  * @example
  * // on unix
  * env_string({ FOO: 'bar', BAZ: 'qux' })
@@ -271,7 +257,7 @@ function resolve_path(str) {
  * env_string({ FOO: 'bar', BAZ: 'qux' })
  * // 'set "FOO=bar" && set "BAZ=qux"'
  */
-function env_string(entries) {
+function env_string(entries: Record<string, string>): string {
 	return Object.entries(entries)
 		.map(([key, value]) =>
 			IS_WINDOWS ? `set "${key}=${value}"` : `${key}='${value}'`
@@ -279,11 +265,7 @@ function env_string(entries) {
 		.join(IS_WINDOWS ? ' && ' : ' ')
 }
 
-/**
- * @param {string[]} cmds
- * @returns {string}
- */
-function make_cmd(cmds) {
+function make_cmd(cmds: string[]): string {
 	return cmds
 		.filter(Boolean)
 		.map((i) => ' ' + quoteForShell(i))
@@ -291,13 +273,11 @@ function make_cmd(cmds) {
 		.trim()
 }
 
-/**
- * @param {string} filename
- * @param {string} [haystack]
- * @param {number} [depth]
- * @returns {string | null}
- */
-function find_game_root(filename, haystack = null, depth = 1) {
+function find_game_root(
+	filename: string,
+	haystack: string | null = null,
+	depth: number = 1
+): string | null {
 	if (haystack) {
 		haystack = path.resolve(haystack, '..')
 	} else {
@@ -328,12 +308,10 @@ function find_game_root(filename, haystack = null, depth = 1) {
 
 /**
  * Returns the path to the Ren'Py SDK as specified in the settings
- *
- * @returns {Promise<string | undefined>}
  */
-async function get_sdk_path() {
+async function get_sdk_path(): Promise<string | undefined> {
 	/** @type {string} */
-	const sdk_path_setting = get_config('sdkPath')
+	const sdk_path_setting: string = get_config('sdkPath')
 
 	logger.debug('raw sdk path:', sdk_path_setting)
 
@@ -379,11 +357,9 @@ async function get_sdk_path() {
 	return parsed_path
 }
 
-/**
- * @param {Record<string, string | number>} [environment]
- * @returns {Promise<string | undefined>}
- */
-async function get_renpy_sh(environment = {}) {
+async function get_renpy_sh(
+	environment: Record<string, string | number | boolean> = {}
+): Promise<string | undefined> {
 	const sdk_path = await get_sdk_path()
 
 	if (!sdk_path) return
@@ -417,10 +393,10 @@ async function get_renpy_sh(environment = {}) {
 	}
 
 	/** @type {string} */
-	const editor_setting = get_config('editor')
+	const editor_setting: string = get_config('editor')
 
 	/** @type {string} */
-	let editor
+	let editor: string
 
 	if (path.isAbsolute(editor_setting)) {
 		editor = resolve_path(editor_setting)
@@ -431,7 +407,7 @@ async function get_renpy_sh(environment = {}) {
 
 	try {
 		await fs.access(editor)
-	} catch (err) {
+	} catch (err: any) {
 		vscode.window
 			.showErrorMessage(
 				`Invalid Ren'Py editor path: '${err.editor_path}'`,
@@ -470,8 +446,13 @@ async function get_renpy_sh(environment = {}) {
  * @param {string} game_root
  * @returns {Promise<void>}
  */
-async function install_rpe(game_root) {
-	const version = get_version(await get_renpy_sh())
+async function install_rpe(game_root: string): Promise<void> {
+	const renpy_sh = await get_renpy_sh()
+
+	if (!renpy_sh)
+		throw new Error('failed to get renpy.sh while installing rpe')
+
+	const version = get_version(renpy_sh)
 	const supports_rpe_py = semver.gte(version.semver, '8.3.0')
 
 	const files = await vscode.workspace
@@ -485,7 +466,7 @@ async function install_rpe(game_root) {
 
 	const rpe_source_code = await fs.readFile(rpe_source_path)
 	/** @type {string} */
-	let file_path
+	let file_path: string
 
 	if (supports_rpe_py) {
 		file_path = path.join(
@@ -509,20 +490,13 @@ async function install_rpe(game_root) {
 	logger.info('wrote rpe to', file_path)
 }
 
-/**
- * @returns {Promise<boolean>}
- */
-async function has_any_rpe() {
+async function has_any_rpe(): Promise<boolean> {
 	return vscode.workspace
 		.findFiles('**/renpy_warp_*.rpe*')
 		.then((files) => files.length > 0)
 }
 
-/**
- * @param {string} renpy_sh
- * @returns {Promise<boolean>}
- */
-async function has_current_rpe(renpy_sh) {
+async function has_current_rpe(renpy_sh: string): Promise<boolean> {
 	const files = await vscode.workspace
 		.findFiles('**/renpy_warp_*.rpe*')
 		.then((files) => files.map((f) => f.fsPath))
@@ -539,7 +513,7 @@ async function has_current_rpe(renpy_sh) {
 
 		const version = basename.match(
 			/renpy_warp_(?<version>.+)\.rpe(?:\.py)?/
-		).groups.version
+		)?.groups?.version
 
 		if (version === pkg_version) {
 			return true
@@ -550,10 +524,10 @@ async function has_current_rpe(renpy_sh) {
 }
 
 /**
- * @param {string} renpy_sh
+ * @param renpy_sh
  * base renpy.sh command
  */
-function get_version(renpy_sh) {
+function get_version(renpy_sh: string) {
 	const RENPY_VERSION_REGEX =
 		/^(?<major>\d+)\.(?<minor>\d+)\.(?<patch>\d+)(?:\.(?<rest>.*))?$/
 
@@ -564,7 +538,7 @@ function get_version(renpy_sh) {
 		.replace("Ren'Py ", '')
 
 	const { major, minor, patch, rest } =
-		RENPY_VERSION_REGEX.exec(version_string).groups
+		RENPY_VERSION_REGEX.exec(version_string)?.groups ?? {}
 
 	return {
 		semver: `${major}.${minor}.${patch}`,
@@ -578,7 +552,7 @@ function get_version(renpy_sh) {
 /**
  * @param {number} pid
  */
-async function focus_window(pid) {
+async function focus_window(pid: number) {
 	// windows creates subprocesses for each window, so we need to find
 	// the subprocess associated with the parent process we created
 	const pids = [pid, ...(await pidtree(pid))]
@@ -612,7 +586,7 @@ async function focus_window(pid) {
 /**
  * @returns {Promise<void>}
  */
-async function ensure_websocket_server() {
+async function ensure_websocket_server(): Promise<void> {
 	if (wss) {
 		logger.debug('socket server already running')
 		return
@@ -621,14 +595,14 @@ async function ensure_websocket_server() {
 	return new Promise(async (resolve, reject) => {
 		let has_listened = false
 		const port = get_config('webSocketsPort')
-		wss = new ws.WebSocketServer({ port })
+		wss = new WebSocketServer({ port })
 
 		/** @type {NodeJS.Timeout} */
-		let close_timeout = undefined
+		let close_timeout: NodeJS.Timeout | undefined = undefined
 
 		wss.on('listening', () => {
 			has_listened = true
-			logger.info('socket server listening on port', wss.options.port)
+			logger.info('socket server listening on port', wss!.options.port)
 			resolve()
 		})
 
@@ -659,7 +633,7 @@ async function ensure_websocket_server() {
 
 		wss.on('connection', async (ws, req) => {
 			/** @type {RenpyProcess | undefined} */
-			let process
+			let process: RenpyProcess | undefined
 
 			const renpy_pid = Number(req.headers['pid'])
 			for (const pid of pm.processes.keys()) {
@@ -672,6 +646,11 @@ async function ensure_websocket_server() {
 					)
 					process = pm.get(pid)
 
+					if (!process) {
+						logger.warn('process not found in process manager')
+						return
+					}
+
 					if (process.socket) {
 						logger.info('closing existing socket')
 						process.socket.close()
@@ -679,7 +658,8 @@ async function ensure_websocket_server() {
 
 					process.socket = ws
 					process.renpy_pid = renpy_pid
-					process
+
+					break
 				}
 			}
 
@@ -710,7 +690,7 @@ async function ensure_websocket_server() {
 
 				clearTimeout(close_timeout)
 				close_timeout = setTimeout(() => {
-					if (wss.clients.size === 0) {
+					if (wss?.clients.size === 0) {
 						logger.info(
 							'closing socket server as no clients remain'
 						)
@@ -723,24 +703,20 @@ async function ensure_websocket_server() {
 	})
 }
 
-/**
- * @typedef {object} SyncEditorWithRenpyOptions
- *
- * @property {string} path
- * absolute path to the file
- *
- * @property {string} relative_path
- * path relative from the game folder (e.g. `script.rpy`)
- *
- * @property {number} line
- * 0-indexed line number
- */
+interface SyncEditorWithRenpyOptions {
+	/** absolute path to the file */
+	path: string
+	/** path relative from the game folder (e.g. `script.rpy`) */
+	relative_path: string
+	/** 0-indexed line number */
+	line: number
+}
 
-/**
- * @param {SyncEditorWithRenpyOptions} arg0
- * @returns {Promise<void>}
- */
-async function sync_editor_with_renpy({ path, relative_path, line }) {
+async function sync_editor_with_renpy({
+	path,
+	relative_path,
+	line,
+}: SyncEditorWithRenpyOptions): Promise<void> {
 	if (
 		!["Ren'Py updates Visual Studio Code", 'Update both'].includes(
 			get_config('followCursorMode')
@@ -758,6 +734,11 @@ async function sync_editor_with_renpy({ path, relative_path, line }) {
 	await vscode.window.showTextDocument(doc)
 	const editor = vscode.window.activeTextEditor
 
+	if (!editor) {
+		logger.warn('no active text editor')
+		return
+	}
+
 	// if the cursor is already on the correct line, don't munge it
 	if (editor.selection.start.line !== line) {
 		logger.debug(`syncing editor to ${relative_path}:${line}`)
@@ -771,6 +752,16 @@ async function sync_editor_with_renpy({ path, relative_path, line }) {
 	}
 }
 
+interface LaunchRenpyOptions {
+	/**
+	 * fs path representing the current editor. selects the file to warp to. if
+	 * null, simply open ren'py and detect the project root
+	 */
+	file?: string
+	/** zero-indexed line number. if set, warp to line will be attempted */
+	line?: number
+}
+
 /**
  * starts or warps depending on arguments and settings specified for the
  * extension
@@ -778,24 +769,19 @@ async function sync_editor_with_renpy({ path, relative_path, line }) {
  * if strategy is `Update Window`, no new window is opened and the current one
  * is updated instead.
  *
- * @param {object} [options]
- * @param {string} [options.file]
- * fs path representing the current editor. selects the file to warp to. if
- * null, simply open ren'py and detect the project root
- * @param {number} [options.line]
- * zero-indexed line number. if set, warp to line will be attempted
- *
- * @returns {Promise<RenpyProcess>}
+ * @returns
  * resolves with the child process if a new instance was opened, otherwise
  * undefined
  */
-async function launch_renpy({ file, line } = {}) {
+async function launch_renpy({ file, line }: LaunchRenpyOptions = {}): Promise<
+	RenpyProcess | undefined
+> {
 	logger.info('launch_renpy:', { file, line })
 
 	if (!file) {
 		file = await vscode.workspace
 			.findFiles('**/game/**/*.rpy', null, 1)
-			.then((files) => (files.length ? files[0].fsPath : null))
+			.then((files) => (files.length ? files[0].fsPath : undefined))
 	}
 
 	if (!file) {
@@ -821,6 +807,7 @@ async function launch_renpy({ file, line } = {}) {
 
 	if (
 		pm.length &&
+		line !== undefined &&
 		Number.isInteger(line) &&
 		strategy === 'Update Window' &&
 		extensions_enabled
@@ -835,11 +822,11 @@ async function launch_renpy({ file, line } = {}) {
 			return
 		}
 
-		const rpp = pm.at(0)
+		const rpp = pm.at(0) as RenpyProcess
 
 		await rpp.warp_to_line(filename_relative, line + 1)
 
-		if (get_config('focusWindowOnWarp')) {
+		if (get_config('focusWindowOnWarp') && rpp.process?.pid) {
 			logger.info('focusing window')
 			await focus_window(rpp.process.pid)
 		}
@@ -854,7 +841,7 @@ async function launch_renpy({ file, line } = {}) {
 		if (!renpy_sh) return
 
 		/** @type {string} */
-		let cmd
+		let cmd: string
 
 		if (line === undefined) {
 			cmd = renpy_sh + ' ' + make_cmd([game_root])
@@ -896,6 +883,8 @@ async function launch_renpy({ file, line } = {}) {
 					"Ren'Py extensions in this project have been updated.",
 					'OK'
 				)
+			} else if (is_development_mode) {
+				await install_rpe(game_root)
 			}
 		}
 
@@ -947,13 +936,10 @@ async function launch_renpy({ file, line } = {}) {
 	}
 }
 
-/**
- * @template T
- * @param {string} message
- * @param {(...args: any[]) => Promise<T>} run
- * @returns {(...args: any[]) => Promise<T>}
- */
-function associate_progress_notification(message, run) {
+function associate_progress_notification<T>(
+	message: string,
+	run: (...args: any[]) => Promise<T>
+): (...args: any[]) => Promise<T> {
 	return function (...args) {
 		return new Promise((resolve) => {
 			vscode.window.withProgress(
@@ -965,7 +951,7 @@ function associate_progress_notification(message, run) {
 					try {
 						const result = await run(...args)
 						resolve(result)
-					} catch (err) {
+					} catch (err: any) {
 						logger.error(err)
 						resolve(err)
 					}
@@ -975,14 +961,55 @@ function associate_progress_notification(message, run) {
 	}
 }
 
-/**
- * @param {vscode.ExtensionContext} context
- */
-function activate(context) {
-	/** @type {vscode.Disposable} */
-	let text_editor_handle
+async function warp_renpy_to_cursor() {
+	if (pm.length !== 1) {
+		logger.info('needs exactly one instance to follow... got', pm.length)
 
-	rpe_source_path = path.join(context.extensionPath, 'renpy_warp.rpe.py')
+		await vscode.commands.executeCommand('renpyWarp.toggleFollowCursor')
+		return
+	}
+
+	const editor = vscode.window.activeTextEditor
+
+	if (!editor) return
+
+	const language_id = editor.document.languageId
+	const file = editor.document.uri.fsPath
+	const line = editor.selection.active.line
+
+	if (language_id !== 'renpy') return
+
+	const game_root = find_game_root(file)
+	const filename_relative = path.relative(path.join(game_root, 'game/'), file)
+
+	const warp_spec = `${filename_relative}:${line + 1}`
+
+	if (warp_spec === last_warp_spec) return // no change
+	last_warp_spec = warp_spec
+
+	const rp = pm.at(0)
+
+	if (!rp) {
+		logger.warn('no renpy process found')
+		return
+	}
+
+	await rp.warp_to_line(filename_relative, line + 1)
+	logger.info('warped to', warp_spec)
+}
+
+export function activate(context: vscode.ExtensionContext) {
+	/** @type {vscode.Disposable} */
+	let text_editor_handle: vscode.Disposable
+
+	is_development_mode =
+		context.extensionMode === vscode.ExtensionMode.Development
+
+	rpe_source_path = path.join(
+		context.extensionPath,
+		'dist/',
+		'renpy_warp.rpe.py'
+	)
 
 	logger = vscode.window.createOutputChannel(
 		"Ren'Py Launch and Sync - Extension",
@@ -1017,43 +1044,7 @@ function activate(context) {
 		interval: get_config('followCursorExecInterval'),
 	})
 
-	const warp_renpy_to_cursor = throttle(async () => {
-		if (pm.length !== 1) {
-			logger.info(
-				'needs exactly one instance to follow... got',
-				pm.length
-			)
-
-			await vscode.commands.executeCommand('renpyWarp.toggleFollowCursor')
-			return
-		}
-
-		const editor = vscode.window.activeTextEditor
-
-		if (!editor) return
-
-		const language_id = editor.document.languageId
-		const file = editor.document.uri.fsPath
-		const line = editor.selection.active.line
-
-		if (language_id !== 'renpy') return
-
-		const game_root = find_game_root(file)
-		const filename_relative = path.relative(
-			path.join(game_root, 'game/'),
-			file
-		)
-
-		const warp_spec = `${filename_relative}:${line + 1}`
-
-		if (warp_spec === last_warp_spec) return // no change
-		last_warp_spec = warp_spec
-
-		const rp = pm.at(0)
-
-		await rp.warp_to_line(filename_relative, line + 1)
-		logger.info('warped to', warp_spec)
-	})
+	const warp_renpy_to_cursor_throttled = throttle(warp_renpy_to_cursor)
 
 	context.subscriptions.push(
 		logger,
@@ -1067,9 +1058,9 @@ function activate(context) {
 				'Warping to line...',
 				async () =>
 					await launch_renpy({
-						file: vscode.window.activeTextEditor.document.uri
+						file: vscode.window.activeTextEditor?.document.uri
 							.fsPath,
-						line: vscode.window.activeTextEditor.selection.active
+						line: vscode.window.activeTextEditor?.selection.active
 							.line,
 					})
 			)
@@ -1080,10 +1071,10 @@ function activate(context) {
 			associate_progress_notification(
 				'Warping to file...',
 				/** @param {vscode.Uri} uri */
-				async (uri) => {
+				async (uri: vscode.Uri) => {
 					const fs_path = uri
 						? uri.fsPath
-						: vscode.window.activeTextEditor.document.uri.fsPath
+						: vscode.window.activeTextEditor?.document.uri.fsPath
 
 					await launch_renpy({
 						file: fs_path,
@@ -1133,8 +1124,7 @@ function activate(context) {
 					follow_cursor_status_bar.backgroundColor =
 						new vscode.ThemeColor('statusBarItem.warningBackground')
 
-					/** @type {RenpyProcess} */
-					let process
+					let process: RenpyProcess | undefined
 
 					if (pm.length === 0) {
 						const launch = associate_progress_notification(
@@ -1144,7 +1134,7 @@ function activate(context) {
 
 						try {
 							process = await launch()
-						} catch (err) {
+						} catch (err: any) {
 							logger.error(err)
 							await vscode.commands.executeCommand(
 								'renpyWarp.toggleFollowCursor'
@@ -1164,6 +1154,8 @@ function activate(context) {
 						process = pm.at(0)
 					}
 
+					if (!process) throw new Error('no process found')
+
 					// TODO: handle errors
 					await ensure_websocket_server()
 					await process.wait_for_socket()
@@ -1182,7 +1174,7 @@ function activate(context) {
 										vscode.TextEditorSelectionChangeKind
 											.Command
 								) {
-									await warp_renpy_to_cursor()
+									await warp_renpy_to_cursor_throttled()
 								}
 							}
 						)
@@ -1194,7 +1186,7 @@ function activate(context) {
 							'Update both',
 						].includes(get_config('followCursorMode'))
 					) {
-						await warp_renpy_to_cursor()
+						await warp_renpy_to_cursor_throttled()
 					}
 				} else {
 					is_follow_cursor = false
@@ -1238,11 +1230,7 @@ function activate(context) {
 	)
 }
 
-function deactivate() {
+export function deactivate() {
 	pm.kill_all()
-}
-
-module.exports = {
-	activate,
-	deactivate,
+	wss?.close()
 }
