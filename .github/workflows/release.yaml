@@ -15,6 +15,8 @@ jobs:
                       target: win32-x64
 
         runs-on: '${{ matrix.os }}'
+        permissions:
+            contents: write
         steps:
             - name: Checkout
               uses: actions/checkout@v4
@@ -50,4 +52,4 @@ jobs:
             - name: release to marketplace
               run: npm run publish -- --target ${{ matrix.target }}
               env:
-                  VSCE_PAT: ${{ secrets.VSCE_PAT }}
+                  VSCE_PAT: '${{ secrets.VSCE_PAT }}'
