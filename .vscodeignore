@@ -8,3 +8,8 @@ test/**
 **/.eslintrc.json
 **/.vscode-test.*
 **/*.ts
+out/**
+src/**
+.github/**
+tsconfig.json
+esbuild.js

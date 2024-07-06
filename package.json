@@ -223,13 +223,12 @@
 		"LuqueDaniel.languague-renpy"
 	],
 	"scripts": {
-		"prepublish": "npm run package",
+		"vscode:prepublish": "npm run check-types && npm run lint && node esbuild.js --production",
 		"publish": "vsce publish",
 		"compile": "npm run check-types && npm run lint && node esbuild.js",
 		"watch": "npm-run-all -p watch:*",
 		"watch:esbuild": "node esbuild.js --watch",
 		"watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
-		"prepack": "npm run check-types && npm run lint && node esbuild.js --production",
 		"package": "vsce package",
 		"compile-tests": "tsc -p . --outDir out",
 		"watch-tests": "tsc -p . -w --outDir out",
@@ -251,6 +250,7 @@
 		"@vscode/test-electron": "^2.3.9",
 		"@vscode/vsce": "^2.24.0",
 		"esbuild": "^0.23.0",
+		"esbuild-plugin-copy": "^2.1.1",
 		"eslint": "^8.57.0",
 		"npm-run-all": "^4.1.5",
 		"typescript": "^5.5.3"
@@ -264,6 +264,6 @@
 		"semver": "^7.6.2",
 		"untildify": "^4.0.0",
 		"upath": "^2.0.1",
-		"ws": "^8.17.1"
+		"ws": "^8.18.0"
 	}
 }

@@ -1,4 +1,5 @@
 const { context } = require('esbuild')
+const { copy } = require('esbuild-plugin-copy')
 
 const production = process.argv.includes('--production')
 const watch = process.argv.includes('--watch')
@@ -33,11 +34,19 @@ async function main() {
 		sourcesContent: false,
 		platform: 'node',
 		outfile: 'dist/extension.js',
-		external: ['vscode', 'extract-file-icon'],
+		external: ['vscode', 'node-window-manager', 'extract-file-icon'],
 		logLevel: 'silent',
 		plugins: [
 			/* add to the end of plugins array */
 			esbuildProblemMatcherPlugin,
+			copy({
+				resolveFrom: 'cwd',
+				assets: {
+					from: ['./src/**/*.py'],
+					to: ['./dist/'],
+				},
+				watch: true,
+			}),
 		],
 	})
 	if (watch) {

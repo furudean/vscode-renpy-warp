@@ -1,7 +1,6 @@
 out/**
 dist/
 node_modules/**
-src/**
 .gitignore
 *.vsix
 .vscode-test/
