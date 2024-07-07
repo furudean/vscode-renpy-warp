@@ -129,6 +129,7 @@ export class RenpyProcess {
 						.then((selection) => {
 							if (selection === 'Logs') logger.show()
 						})
+					this.kill()
 				}
 			}, 10_000)
 

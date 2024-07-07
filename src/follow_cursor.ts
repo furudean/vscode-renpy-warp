@@ -111,19 +111,7 @@ export class FollowCursor {
 			0
 		)
 
-		context.subscriptions.push(
-			vscode.commands.registerCommand(
-				'renpyWarp.toggleFollowCursor',
-				async () => {
-					if (!this.active) {
-						this.enable()
-					} else {
-						this.disable()
-						this.text_editor_handle?.dispose()
-					}
-				}
-			)
-		)
+		this.context.subscriptions.push(this.status_bar)
 
 		this.disable()
 	}

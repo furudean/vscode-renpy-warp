@@ -61,6 +61,14 @@ export function activate(context: vscode.ExtensionContext) {
 			}
 		}),
 
+		vscode.commands.registerCommand('renpyWarp.toggleFollowCursor', () => {
+			if (follow_cursor.active) {
+				follow_cursor.disable()
+			} else {
+				follow_cursor.enable()
+			}
+		}),
+
 		vscode.commands.registerCommand('renpyWarp.killAll', () =>
 			pm.kill_all()
 		),

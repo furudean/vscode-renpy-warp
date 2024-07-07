@@ -1,5 +1,6 @@
 import * as vscode from 'vscode'
 import path from 'upath'
+import { promisify } from 'node:util'
 
 import { focus_window, ProcessManager, RenpyProcess } from './process'
 import { FollowCursor, sync_editor_with_renpy } from './follow_cursor'
@@ -110,70 +111,72 @@ export async function launch_renpy({
 	} else {
 		logger.info("opening new ren'py window")
 
-		const renpy_sh = await get_renpy_sh({
-			WARP_ENABLED: extensions_enabled ? '1' : undefined,
-			WARP_WS_PORT: get_config('webSocketsPort'),
-		})
-		if (!renpy_sh) return
-
-		let cmd: string
-
-		if (line === undefined) {
-			cmd = renpy_sh + ' ' + make_cmd([game_root])
-		} else {
-			cmd =
-				renpy_sh +
-				' ' +
-				make_cmd([
-					game_root,
-					'--warp',
-					`${filename_relative}:${line + 1}`,
-				])
-		}
-
-		if (strategy === 'Replace Window') pm.kill_all()
-
-		if (extensions_enabled) {
-			if (!(await has_any_rpe())) {
-				const selection = await vscode.window.showInformationMessage(
-					`Ren'Py Launch and Sync can install a script in your Ren'Py project to synchronize the game and editor. Would you like to install it?`,
-					'Yes, install',
-					'No, do not install'
-				)
-				if (selection === 'Yes, install') {
-					await install_rpe({ game_root, context })
-				} else {
-					extensions_enabled = false
-					await vscode.workspace
-						.getConfiguration('renpyWarp')
-						.update('renpyExtensionsEnabled', false, true)
-
-					vscode.window.showInformationMessage(
-						'No RPE script will be installed. Keep in mind that some features may not work as expected.',
-						'OK'
-					)
-				}
-			} else if (!(await has_current_rpe(renpy_sh))) {
-				await install_rpe({ game_root, context })
-				vscode.window.showInformationMessage(
-					"Ren'Py extensions in this project have been updated.",
-					'OK'
-				)
-			} else if (is_development_mode) {
-				await install_rpe({ game_root, context })
-			}
-		}
-
-		return await vscode.window.withProgress(
+		await vscode.window.withProgress(
 			{
 				title: "Starting Ren'Py",
 				location: vscode.ProgressLocation.Notification,
 				cancellable: true,
 			},
 			async (progress, cancel) => {
-				let rpp: RenpyProcess
+				const renpy_sh = await get_renpy_sh({
+					WARP_ENABLED: extensions_enabled ? '1' : undefined,
+					WARP_WS_PORT: get_config('webSocketsPort'),
+				})
+				if (!renpy_sh) return {}
 
-				rpp = new RenpyProcess({
+				let cmd: string
+
+				if (line === undefined) {
+					cmd = renpy_sh + ' ' + make_cmd([game_root])
+				} else {
+					cmd =
+						renpy_sh +
+						' ' +
+						make_cmd([
+							game_root,
+							'--warp',
+							`${filename_relative}:${line + 1}`,
+						])
+				}
+				progress.report({ increment: 33 })
+
+				if (extensions_enabled) {
+					if (!(await has_any_rpe())) {
+						const selection =
+							await vscode.window.showInformationMessage(
+								`Ren'Py Launch and Sync can install a script in your Ren'Py project to synchronize the game and editor. Would you like to install it?`,
+								'Yes, install',
+								'No, do not install'
+							)
+						if (selection === 'Yes, install') {
+							await install_rpe({ game_root, context })
+						} else {
+							extensions_enabled = false
+							await vscode.workspace
+								.getConfiguration('renpyWarp')
+								.update('renpyExtensionsEnabled', false, true)
+
+							vscode.window.showInformationMessage(
+								'No RPE script will be installed. Keep in mind that some features may not work as expected.',
+								'OK'
+							)
+						}
+					} else if (!(await has_current_rpe(renpy_sh))) {
+						await install_rpe({ game_root, context })
+						vscode.window.showInformationMessage(
+							"Ren'Py extensions in this project have been updated.",
+							'OK'
+						)
+					} else if (is_development_mode) {
+						await install_rpe({ game_root, context })
+					}
+				}
+
+				progress.report({ increment: 33 })
+
+				if (strategy === 'Replace Window') pm.kill_all()
+
+				const rpp = new RenpyProcess({
 					cmd,
 					game_root,
 					async message_handler(message) {
@@ -198,11 +201,11 @@ export async function launch_renpy({
 				pm.add(rpp)
 
 				cancel.onCancellationRequested(() => {
-					rpp.kill()
+					rpp?.kill()
 				})
 
 				if (
-					follow_cursor.active === false &&
+					!follow_cursor.active &&
 					extensions_enabled &&
 					get_config('followCursorOnLaunch') &&
 					pm.length === 1
@@ -226,10 +229,7 @@ export async function launch_renpy({
 				if (extensions_enabled) {
 					logger.info('waiting for process to connect to socket')
 
-					progress.report({
-						message: 'waiting for socket',
-						increment: 70,
-					})
+					progress.report({ increment: 33 })
 
 					while (!rpp.socket) {
 						await new Promise((resolve) => setTimeout(resolve, 100))

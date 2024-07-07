@@ -70,7 +70,7 @@ export async function install_rpe({
 
 export async function has_any_rpe(): Promise<boolean> {
 	return vscode.workspace
-		.findFiles('**/renpy_warp_*.rpe*', null, 1)
+		.findFiles('**/renpy_warp_*.rpe*', undefined, 1)
 		.then((files) => files.length > 0)
 }
 
