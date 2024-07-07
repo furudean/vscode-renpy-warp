@@ -51,6 +51,8 @@ export async function focus_window(pid: number) {
 }
 
 export class RenpyProcess {
+	private pm: ProcessManager
+
 	cmd: string
 	message_handler: (data: SocketMessage) => MaybePromise<void>
 	game_root: string
@@ -62,20 +64,19 @@ export class RenpyProcess {
 	 * a child process of the process we created.
 	 */
 	renpy_pid?: number = undefined
-	pm: ProcessManager
 
 	constructor({
 		cmd,
 		message_handler,
 		game_root,
-		context,
 		pm,
+		context,
 	}: {
 		cmd: string
 		message_handler: (data: SocketMessage) => MaybePromise<void>
 		game_root: string
-		context: vscode.ExtensionContext
 		pm: ProcessManager
+		context: vscode.ExtensionContext
 	}) {
 		this.cmd = cmd
 		this.message_handler = message_handler
@@ -179,7 +180,7 @@ export class RenpyProcess {
 }
 
 export class ProcessManager {
-	processes: Map<number, RenpyProcess>
+	private processes: Map<number, RenpyProcess>
 	instance_status_bar: vscode.StatusBarItem
 	follow_cursor: FollowCursor
 
