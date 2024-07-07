@@ -23,7 +23,7 @@ port = os.getenv("WARP_WS_PORT")
 def py_exec(text: str):
     while renpy.exports.is_init_phase():
         print("in init phase, waiting...")
-        sleep(0.1)
+        sleep(0.2)
 
     fn = functools.partial(renpy.python.py_exec, text)
     renpy.exports.invoke_in_main_thread(fn)
@@ -39,6 +39,7 @@ def socket_listener(websocket: websockets.WebSocketClientProtocol):
         if payload["type"] == "warp_to_line":
             file = payload["file"]
             line = payload["line"]
+
             py_exec(f"renpy.warp_to_line('{file}:{line}')")
 
         else:
@@ -67,7 +68,6 @@ def socket_producer(websocket: websockets.WebSocketClientProtocol):
                 }
             )
 
-            print("socket <", message)
             websocket.send(message)
 
     renpy.config.all_character_callbacks.append(fn)
