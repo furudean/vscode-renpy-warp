@@ -1,11 +1,11 @@
 import * as vscode from 'vscode'
 
-import { ProcessManager } from './process'
-import { FollowCursor } from './follow_cursor'
-import { get_logger } from './logger'
-import { find_game_root } from './sh'
-import { install_rpe } from './rpe'
-import { launch_renpy } from './launch'
+import { ProcessManager } from './lib/process'
+import { FollowCursor } from './lib/follow_cursor'
+import { get_logger } from './lib/logger'
+import { find_game_root } from './lib/sh'
+import { install_rpe } from './lib/rpe'
+import { launch_renpy } from './lib/launch'
 
 const logger = get_logger()
 
