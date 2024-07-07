@@ -1,12 +1,14 @@
 import * as vscode from 'vscode'
 import path from 'node:path'
-import { logger } from './logger'
+import { get_logger } from './logger'
 import { get_config } from './util'
 import { quoteForShell } from 'puka'
 import os from 'node:os'
 import child_process from 'node:child_process'
 import fs from 'node:fs/promises'
 import { resolve_path } from './path'
+
+const logger = get_logger()
 const IS_WINDOWS = os.platform() === 'win32'
 
 /**

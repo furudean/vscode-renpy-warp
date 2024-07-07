@@ -5,13 +5,14 @@ import { WebSocketServer } from 'ws'
 import { focus_window, ProcessManager, RenpyProcess } from './process'
 import { FollowCursor } from './follow_cursor'
 import { get_config } from './util'
-import { logger } from './logger'
+import { get_logger } from './logger'
 import { find_game_root, get_renpy_sh, make_cmd } from './sh'
 import { has_any_rpe, has_current_rpe, install_rpe } from './rpe'
 
+const logger = get_logger()
+
 let wss: WebSocketServer | undefined
 let pm: ProcessManager
-
 let follow_cursor: FollowCursor
 
 let is_development_mode = false
@@ -364,6 +365,10 @@ export function activate(context: vscode.ExtensionContext) {
 				.update('renpyExtensionsEnabled', true, true)
 
 			await install_rpe({ game_root, context })
+
+			await vscode.window.showInformationMessage(
+				"Ren'Py extensions were successfully installed/updated"
+			)
 		})
 	)
 }

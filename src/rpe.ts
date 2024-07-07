@@ -5,12 +5,14 @@ import { get_renpy_sh, get_version } from './sh'
 import { version as pkg_version } from '../package.json'
 import semver from 'semver'
 import { get_config } from './util'
-import { logger } from './logger'
+import { get_logger } from './logger'
 import { WebSocketServer } from 'ws'
 import fs from 'node:fs/promises'
 import AdmZip from 'adm-zip'
 import { ProcessManager, RenpyProcess } from './process'
 import pidtree from 'pidtree'
+
+const logger = get_logger()
 
 let wss: WebSocketServer | undefined
 
@@ -72,7 +74,7 @@ export async function install_rpe({
 
 export async function has_any_rpe(): Promise<boolean> {
 	return vscode.workspace
-		.findFiles('**/renpy_warp_*.rpe*')
+		.findFiles('**/renpy_warp_*.rpe*', null, 1)
 		.then((files) => files.length > 0)
 }
 

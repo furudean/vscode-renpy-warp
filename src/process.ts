@@ -4,11 +4,11 @@ import { WebSocket } from 'ws'
 import { FollowCursor } from './follow_cursor'
 import { get_config } from './util'
 import { ensure_websocket_server } from './rpe'
-import { logger } from './logger'
-import { find_game_root } from './sh'
-import path from 'upath'
+import { get_logger } from './logger'
 import pidtree from 'pidtree'
 import { windowManager } from 'node-window-manager'
+
+const logger = get_logger()
 
 type MaybePromise<T> = T | Promise<T>
 
@@ -127,7 +127,7 @@ export class RenpyProcess {
 					clearInterval(interval)
 					resolve()
 				}
-			}, 10)
+			}, 50)
 		})
 	}
 
@@ -265,45 +265,5 @@ export class ProcessManager {
 
 	get length() {
 		return this.processes.size
-	}
-
-	async warp_renpy_to_cursor() {
-		if (this.length !== 1) {
-			throw new Error(
-				`needs exactly one instance to follow... got ${this.length}`
-			)
-		}
-
-		const editor = vscode.window.activeTextEditor
-
-		if (!editor) return
-
-		const language_id = editor.document.languageId
-		const file = editor.document.uri.fsPath
-		const line = editor.selection.active.line
-
-		if (language_id !== 'renpy') return
-
-		const game_root = find_game_root(file)
-		const filename_relative = path.relative(
-			path.join(game_root, 'game/'),
-			file
-		)
-
-		const warp_spec = `${filename_relative}:${line + 1}`
-
-		// TODO: WTF?
-		// if (warp_spec === last_warp_spec) return // no change
-		// last_warp_spec = warp_spec
-
-		const rp = this.at(0)
-
-		if (!rp) {
-			logger.warn('no renpy process found')
-			return
-		}
-
-		await rp.warp_to_line(filename_relative, line + 1)
-		logger.info('warped to', warp_spec)
 	}
 }
