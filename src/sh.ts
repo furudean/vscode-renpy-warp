@@ -152,21 +152,21 @@ export async function get_sdk_path(): Promise<string | undefined> {
 
 async function get_editor_path(sdk_path: string): Promise<string | undefined> {
 	const editor_setting: string = get_config('editor')
-	let editor: string
+	let editor_path: string
 
 	if (path.isAbsolute(editor_setting)) {
-		editor = resolve_path(editor_setting)
+		editor_path = resolve_path(editor_setting)
 	} else {
 		// relative path to launcher
-		editor = path.resolve(sdk_path, editor_setting)
+		editor_path = path.resolve(sdk_path, editor_setting)
 	}
 
 	try {
-		await fs.access(editor)
+		await fs.access(editor_path)
 	} catch (err: any) {
 		vscode.window
 			.showErrorMessage(
-				`Invalid Ren'Py editor path: '${err.editor_path}'`,
+				`Invalid Ren'Py editor path: '${editor_setting}' (resolved to '${editor_path}')`,
 				'Open Settings'
 			)
 			.then((selection) => {
@@ -180,7 +180,7 @@ async function get_editor_path(sdk_path: string): Promise<string | undefined> {
 		return
 	}
 
-	return editor
+	return editor_path
 }
 
 export async function get_renpy_sh(
