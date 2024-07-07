@@ -3,7 +3,7 @@ import child_process from 'node:child_process'
 import { WebSocket } from 'ws'
 import { FollowCursor } from './follow_cursor'
 import { get_config } from './util'
-import { ensure_websocket_server } from './rpe'
+import { ensure_websocket_server } from './socket'
 import { get_logger } from './logger'
 import pidtree from 'pidtree'
 import { windowManager } from 'node-window-manager'
@@ -119,15 +119,17 @@ export class RenpyProcess {
 		return new Promise((resolve, reject) => {
 			const timeout = setTimeout(() => {
 				reject(new Error('timed out waiting for socket'))
-				vscode.window
-					.showErrorMessage(
-						"Timed out trying to connect to Ren'Py window. Is the socket client running?",
-						'Logs',
-						'OK'
-					)
-					.then((selection) => {
-						if (selection === 'Logs') logger.show()
-					})
+				if (!this.killed) {
+					vscode.window
+						.showErrorMessage(
+							"Timed out trying to connect to Ren'Py window. Is the socket client running?",
+							'Logs',
+							'OK'
+						)
+						.then((selection) => {
+							if (selection === 'Logs') logger.show()
+						})
+				}
 			}, 10_000)
 
 			const interval = setInterval(() => {
@@ -140,11 +142,24 @@ export class RenpyProcess {
 		})
 	}
 
+	kill() {
+		this.process.kill()
+	}
+
+	get killed() {
+		return this.process.killed
+	}
+
 	async ipc(message: SocketMessage): Promise<void> {
 		if (!this.socket) {
 			logger.info('no socket, waiting for connection...')
 			await ensure_websocket_server({ pm: this.pm })
-			await this.wait_for_socket()
+
+			try {
+				await this.wait_for_socket()
+			} catch (e: unknown) {
+				if (this.process.killed) return
+			}
 		}
 
 		return new Promise((resolve, reject) => {

@@ -31,8 +31,7 @@ interface LaunchRenpyOptions {
  * is updated instead.
  *
  * @returns
- * resolves with the child process if a new instance was opened, otherwise
- * undefined
+ * resolves with the process if a new instance was opened, otherwise undefined
  */
 export async function launch_renpy({
 	file,
@@ -71,7 +70,7 @@ export async function launch_renpy({
 	}
 
 	const strategy = get_config('strategy')
-	const extensions_enabled = get_config('renpyExtensionsEnabled')
+	let extensions_enabled = get_config('renpyExtensionsEnabled')
 
 	if (
 		pm.length &&
@@ -80,8 +79,6 @@ export async function launch_renpy({
 		strategy === 'Update Window' &&
 		extensions_enabled
 	) {
-		logger.info('warping in existing window')
-
 		if (pm.length > 1) {
 			vscode.window.showErrorMessage(
 				"Multiple Ren'Py instances running. Cannot warp inside open Ren'Py window.",
@@ -90,14 +87,24 @@ export async function launch_renpy({
 			return
 		}
 
-		const rpp = pm.at(0) as RenpyProcess
+		await vscode.window.withProgress(
+			{
+				title: 'Warping inside window',
+				location: vscode.ProgressLocation.Notification,
+			},
+			async () => {
+				logger.info('warping in existing window')
 
-		await rpp.warp_to_line(filename_relative, line + 1)
+				const rpp = pm.at(0) as RenpyProcess
 
-		if (get_config('focusWindowOnWarp') && rpp.process?.pid) {
-			logger.info('focusing window')
-			await focus_window(rpp.process.pid)
-		}
+				await rpp.warp_to_line(filename_relative, line + 1)
+
+				if (get_config('focusWindowOnWarp') && rpp.process?.pid) {
+					logger.info('focusing window')
+					await focus_window(rpp.process.pid)
+				}
+			}
+		)
 
 		return
 	} else {
@@ -136,6 +143,7 @@ export async function launch_renpy({
 				if (selection === 'Yes, install') {
 					await install_rpe({ game_root, context })
 				} else {
+					extensions_enabled = false
 					await vscode.workspace
 						.getConfiguration('renpyWarp')
 						.update('renpyExtensionsEnabled', false, true)
@@ -156,52 +164,82 @@ export async function launch_renpy({
 			}
 		}
 
-		const rp = new RenpyProcess({
-			cmd,
-			game_root,
-			async message_handler(message) {
-				if (message.type === 'current_line') {
-					logger.debug(
-						`current line reported as ${message.line} in ${message.relative_path}`
-					)
-					if (!follow_cursor.active) return
-
-					await sync_editor_with_renpy({
-						path: message.path,
-						relative_path: message.relative_path,
-						line: message.line - 1,
-					})
-				} else {
-					logger.warn('unhandled message:', message)
-				}
+		return await vscode.window.withProgress(
+			{
+				title: "Starting Ren'Py",
+				location: vscode.ProgressLocation.Notification,
+				cancellable: true,
 			},
-			context,
-			pm,
-		})
-		pm.add(rp)
+			async (progress, cancel) => {
+				let rpp: RenpyProcess
 
-		if (
-			follow_cursor.active === false &&
-			extensions_enabled &&
-			get_config('followCursorOnLaunch') &&
-			pm.length === 1
-		) {
-			logger.info('enabling follow cursor on launch')
-			await follow_cursor.enable()
-		}
+				rpp = new RenpyProcess({
+					cmd,
+					game_root,
+					async message_handler(message) {
+						if (message.type === 'current_line') {
+							logger.debug(
+								`current line reported as ${message.line} in ${message.relative_path}`
+							)
+							if (!follow_cursor.active) return
 
-		if (
-			pm.length > 1 &&
-			follow_cursor.active &&
-			strategy !== 'Replace Window'
-		) {
-			follow_cursor.disable()
-			vscode.window.showInformationMessage(
-				"Follow cursor was disabled because multiple Ren'Py instances are running",
-				'OK'
-			)
-		}
+							await sync_editor_with_renpy({
+								path: message.path,
+								relative_path: message.relative_path,
+								line: message.line - 1,
+							})
+						} else {
+							logger.warn('unhandled message:', message)
+						}
+					},
+					context,
+					pm,
+				})
+				pm.add(rpp)
 
-		return rp
+				cancel.onCancellationRequested(() => {
+					rpp.kill()
+				})
+
+				if (
+					follow_cursor.active === false &&
+					extensions_enabled &&
+					get_config('followCursorOnLaunch') &&
+					pm.length === 1
+				) {
+					logger.info('enabling follow cursor on launch')
+					await follow_cursor.enable()
+				}
+
+				if (
+					pm.length > 1 &&
+					follow_cursor.active &&
+					strategy !== 'Replace Window'
+				) {
+					follow_cursor.disable()
+					vscode.window.showInformationMessage(
+						"Follow cursor was disabled because multiple Ren'Py instances are running",
+						'OK'
+					)
+				}
+
+				if (extensions_enabled) {
+					logger.info('waiting for process to connect to socket')
+
+					progress.report({
+						message: 'waiting for socket',
+						increment: 70,
+					})
+
+					while (!rpp.socket) {
+						await new Promise((resolve) => setTimeout(resolve, 100))
+					}
+
+					logger.info('process connected')
+				}
+
+				return rpp
+			}
+		)
 	}
 }

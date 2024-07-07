@@ -1,6 +1,4 @@
 import * as vscode from 'vscode'
-import path from 'upath'
-import { WebSocketServer } from 'ws'
 
 import { ProcessManager } from './process'
 import { FollowCursor } from './follow_cursor'
@@ -11,34 +9,8 @@ import { launch_renpy } from './launch'
 
 const logger = get_logger()
 
-let wss: WebSocketServer | undefined
 let pm: ProcessManager
 let follow_cursor: FollowCursor
-
-function associate_progress_notification<T>(
-	message: string,
-	run: (...args: any[]) => Promise<T>
-): (...args: any[]) => Promise<T> {
-	return function (...args) {
-		return new Promise((resolve) => {
-			vscode.window.withProgress(
-				{
-					location: vscode.ProgressLocation.Notification,
-					title: message,
-				},
-				async () => {
-					try {
-						const result = await run(...args)
-						resolve(result)
-					} catch (err: any) {
-						logger.error(err)
-						resolve(err)
-					}
-				}
-			)
-		})
-	}
-}
 
 export function activate(context: vscode.ExtensionContext) {
 	follow_cursor = new FollowCursor({ context })
@@ -46,33 +18,28 @@ export function activate(context: vscode.ExtensionContext) {
 	follow_cursor.add_pm(pm)
 
 	context.subscriptions.push(
-		vscode.commands.registerCommand(
-			'renpyWarp.warpToLine',
-			associate_progress_notification(
-				'Warping to line...',
-				async () =>
-					await launch_renpy({
-						file: vscode.window.activeTextEditor?.document.uri
-							.fsPath,
-						line: vscode.window.activeTextEditor?.selection.active
-							.line,
-						context,
-						pm,
-						follow_cursor,
-					})
-			)
-		),
+		vscode.commands.registerCommand('renpyWarp.warpToLine', async () => {
+			try {
+				await launch_renpy({
+					file: vscode.window.activeTextEditor?.document.uri.fsPath,
+					line: vscode.window.activeTextEditor?.selection.active.line,
+					context,
+					pm,
+					follow_cursor,
+				})
+			} catch (error: any) {
+				logger.error(error)
+			}
+		}),
 
 		vscode.commands.registerCommand(
 			'renpyWarp.warpToFile',
-			associate_progress_notification(
-				'Warping to file...',
-				/** @param {vscode.Uri} uri */
-				async (uri: vscode.Uri) => {
-					const fs_path = uri
-						? uri.fsPath
-						: vscode.window.activeTextEditor?.document.uri.fsPath
+			async (uri: vscode.Uri) => {
+				const fs_path = uri
+					? uri.fsPath
+					: vscode.window.activeTextEditor?.document.uri.fsPath
 
+				try {
 					await launch_renpy({
 						file: fs_path,
 						line: 0,
@@ -80,17 +47,19 @@ export function activate(context: vscode.ExtensionContext) {
 						pm,
 						follow_cursor,
 					})
+				} catch (error: any) {
+					logger.error(error)
 				}
-			)
+			}
 		),
 
-		vscode.commands.registerCommand(
-			'renpyWarp.launch',
-			associate_progress_notification(
-				"Launching Ren'Py...",
-				async () => await launch_renpy({ context, pm, follow_cursor })
-			)
-		),
+		vscode.commands.registerCommand('renpyWarp.launch', async () => {
+			try {
+				await launch_renpy({ context, pm, follow_cursor })
+			} catch (error: any) {
+				logger.error(error)
+			}
+		}),
 
 		vscode.commands.registerCommand('renpyWarp.killAll', () =>
 			pm.kill_all()
@@ -134,6 +103,5 @@ export function activate(context: vscode.ExtensionContext) {
 
 export function deactivate() {
 	pm.kill_all()
-	wss?.close()
 	logger.dispose()
 }

@@ -5,7 +5,7 @@ import { get_logger } from './logger'
 import path from 'upath'
 import p_throttle from 'p-throttle'
 import { find_game_root } from './sh'
-import { ensure_websocket_server } from './rpe'
+import { ensure_websocket_server } from './socket'
 
 const logger = get_logger()
 const last_warps = new Map<number, string>()
