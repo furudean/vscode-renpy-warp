@@ -20,6 +20,10 @@ port = os.getenv("WARP_WS_PORT")
 
 
 def py_exec(text: str):
+    while renpy.exports.is_init_phase():
+        print("in init phase, waiting...")
+        sleep(0.5)
+
     fn = functools.partial(renpy.python.py_exec, text)
     renpy.exports.invoke_in_main_thread(fn)
 
