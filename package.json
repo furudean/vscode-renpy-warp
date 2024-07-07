@@ -79,7 +79,7 @@
 			],
 			"editor/title/run": [
 				{
-					"command": "renpyWarp.warpToFile",
+					"command": "renpyWarp.warpToLine",
 					"group": "renpywarp",
 					"when": "editorLangId == renpy"
 				}
