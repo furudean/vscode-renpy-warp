@@ -156,7 +156,7 @@ export async function ensure_websocket_server({
 			let process: RenpyProcess | undefined
 
 			const renpy_pid = Number(req.headers['pid'])
-			for (const pid of pm.processes.keys()) {
+			for (const pid of pm.pids) {
 				// the process might be a child of the process we created
 				const pid_tree = await pidtree(pid, { root: true })
 				logger.debug('pid tree:', pid_tree)

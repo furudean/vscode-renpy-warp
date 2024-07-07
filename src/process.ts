@@ -196,8 +196,6 @@ export class ProcessManager {
 		this.update_status_bar()
 	}
 
-	static create() {}
-
 	/** @param {RenpyProcess} process */
 	async add(process: RenpyProcess) {
 		if (!process.process.pid) throw new Error('no pid in process')
@@ -266,5 +264,9 @@ export class ProcessManager {
 
 	get length() {
 		return this.processes.size
+	}
+
+	get pids(): number[] {
+		return [...this.processes.keys()]
 	}
 }
