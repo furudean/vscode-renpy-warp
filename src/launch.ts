@@ -12,6 +12,7 @@ import { has_any_rpe, has_current_rpe, install_rpe } from './rpe'
 const logger = get_logger()
 
 interface LaunchRenpyOptions {
+	intent?: string
 	/**
 	 * fs path representing the current editor. selects the file to warp to. if
 	 * null, simply open ren'py and detect the project root
@@ -35,6 +36,7 @@ interface LaunchRenpyOptions {
  * resolves with the process if a new instance was opened, otherwise undefined
  */
 export async function launch_renpy({
+	intent,
 	file,
 	line,
 	context,
@@ -90,7 +92,7 @@ export async function launch_renpy({
 
 		await vscode.window.withProgress(
 			{
-				title: 'Warping inside window',
+				title: 'Warping inside window' + (intent ? ' ' + intent : ''),
 				location: vscode.ProgressLocation.Notification,
 			},
 			async () => {
@@ -113,7 +115,7 @@ export async function launch_renpy({
 
 		await vscode.window.withProgress(
 			{
-				title: "Starting Ren'Py",
+				title: "Starting Ren'Py" + (intent ? ' ' + intent : ''),
 				location: vscode.ProgressLocation.Notification,
 				cancellable: true,
 			},

@@ -21,6 +21,7 @@ export function activate(context: vscode.ExtensionContext) {
 		vscode.commands.registerCommand('renpyWarp.warpToLine', async () => {
 			try {
 				await launch_renpy({
+					intent: 'at line',
 					file: vscode.window.activeTextEditor?.document.uri.fsPath,
 					line: vscode.window.activeTextEditor?.selection.active.line,
 					context,
@@ -41,6 +42,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 				try {
 					await launch_renpy({
+						intent: 'at file',
 						file: fs_path,
 						line: 0,
 						context,
