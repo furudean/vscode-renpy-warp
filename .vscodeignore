@@ -13,3 +13,4 @@ src/**
 .github/**
 tsconfig.json
 esbuild.js
+eslint.config.mjs
