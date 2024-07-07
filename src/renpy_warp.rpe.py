@@ -16,6 +16,7 @@ import functools
 import re
 import os
 
+enabled = bool(os.getenv("WARP_ENABLED"))
 port = os.getenv("WARP_WS_PORT")
 
 
@@ -104,7 +105,7 @@ def renpy_warp_service():
     print("renpy warp script exiting")
 
 
-if port:
+if enabled:
     renpy_warp_thread = threading.Thread(target=renpy_warp_service)
     renpy_warp_thread.daemon = True
     renpy_warp_thread.start()

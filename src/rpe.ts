@@ -47,7 +47,6 @@ export async function install_rpe({
 	)
 
 	const rpe_source_code = await fs.readFile(rpe_source_path)
-	/** @type {string} */
 	let file_path: string
 
 	if (supports_rpe_py) {
@@ -120,7 +119,6 @@ export async function ensure_websocket_server({
 		const port = get_config('webSocketsPort')
 		wss = new WebSocketServer({ port })
 
-		/** @type {NodeJS.Timeout} */
 		let close_timeout: NodeJS.Timeout | undefined = undefined
 
 		wss.on('listening', () => {

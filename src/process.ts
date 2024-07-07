@@ -10,6 +10,8 @@ import { windowManager } from 'node-window-manager'
 
 const logger = get_logger()
 
+let output_channel: vscode.OutputChannel | undefined
+
 type MaybePromise<T> = T | Promise<T>
 
 export interface SocketMessage {
@@ -17,9 +19,6 @@ export interface SocketMessage {
 	[key: string]: any
 }
 
-/**
- * @param {number} pid
- */
 export async function focus_window(pid: number) {
 	// windows creates subprocesses for each window, so we need to find
 	// the subprocess associated with the parent process we created
@@ -52,7 +51,6 @@ export async function focus_window(pid: number) {
 }
 
 export class RenpyProcess {
-	output_channel: vscode.OutputChannel
 	cmd: string
 	message_handler: (data: SocketMessage) => MaybePromise<void>
 	game_root: string
@@ -87,16 +85,26 @@ export class RenpyProcess {
 		logger.info('executing subshell:', cmd)
 		this.process = child_process.exec(cmd)
 
-		this.output_channel = vscode.window.createOutputChannel(
-			`Ren'Py Launch and Sync - Process (${this.process.pid})`
-		)
-		context.subscriptions.push(this.output_channel)
+		if (!output_channel) {
+			output_channel = vscode.window.createOutputChannel(
+				`Ren'Py Launch and Sync - Process Output`
+			)
+			context.subscriptions.push(output_channel)
+		}
 
-		this.process.stdout!.on('data', this.output_channel.append)
-		this.process.stderr!.on('data', this.output_channel.append)
+		output_channel.appendLine(`process ${this.process.pid} started`)
+
+		this.process.stdout!.on('data', (data) =>
+			output_channel!.append(`[${this.process.pid} out] ${data}`)
+		)
+		this.process.stderr!.on('data', (data) =>
+			output_channel!.append(`[${this.process.pid} err] ${data}`)
+		)
 		this.process.on('exit', (code) => {
 			logger.info(`process ${this.process.pid} exited with code ${code}`)
-			this.output_channel.appendLine(`process exited with code ${code}`)
+			output_channel!.appendLine(
+				`process ${this.process.pid} exited with code ${code}`
+			)
 		})
 
 		logger.info('created process', this.process.pid)
@@ -119,7 +127,7 @@ export class RenpyProcess {
 					.then((selection) => {
 						if (selection === 'Logs') logger.show()
 					})
-			}, 10000)
+			}, 10_000)
 
 			const interval = setInterval(() => {
 				if (this.socket) {
@@ -158,7 +166,7 @@ export class RenpyProcess {
 	}
 
 	/**
-	 * @param {number} line
+	 * @param line
 	 * 1-indexed line number
 	 */
 	async warp_to_line(file: string, line: number) {
@@ -210,24 +218,16 @@ export class ProcessManager {
 						'Logs'
 					)
 					.then((selected) => {
-						if (selected === 'Logs') process.output_channel.show()
+						if (selected === 'Logs') output_channel!.show()
 					})
 			}
 		})
 	}
 
-	/**
-	 * @param {number} pid
-	 * @returns {RenpyProcess | undefined}
-	 */
 	get(pid: number): RenpyProcess | undefined {
 		return this.processes.get(pid)
 	}
 
-	/**
-	 * @param {number} index
-	 * @returns {RenpyProcess | undefined}
-	 */
 	at(index: number): RenpyProcess | undefined {
 		return Array.from(this.processes.values())[index]
 	}

@@ -47,8 +47,12 @@ export function get_version(renpy_sh: string) {
  * env_string({ FOO: 'bar', BAZ: 'qux' })
  * // 'set "FOO=bar" && set "BAZ=qux"'
  */
-export function env_string(entries: Record<string, string>): string {
+export function env_string(
+	/** undefined values are not included */
+	entries: Record<string, string | undefined>
+): string {
 	return Object.entries(entries)
+		.filter(([key, value]) => value !== undefined)
 		.map(([key, value]) =>
 			IS_WINDOWS ? `set "${key}=${value}"` : `${key}='${value}'`
 		)
@@ -100,8 +104,7 @@ export function find_game_root(
  * Returns the path to the Ren'Py SDK as specified in the settings
  */
 export async function get_sdk_path(): Promise<string | undefined> {
-	/** @type {string} */
-	const sdk_path_setting: string = get_config('sdkPath')
+	const sdk_path_setting = get_config('sdkPath')
 
 	logger.debug('raw sdk path:', sdk_path_setting)
 
@@ -147,8 +150,41 @@ export async function get_sdk_path(): Promise<string | undefined> {
 	return parsed_path
 }
 
+async function get_editor_path(sdk_path: string): Promise<string | undefined> {
+	const editor_setting: string = get_config('editor')
+	let editor: string
+
+	if (path.isAbsolute(editor_setting)) {
+		editor = resolve_path(editor_setting)
+	} else {
+		// relative path to launcher
+		editor = path.resolve(sdk_path, editor_setting)
+	}
+
+	try {
+		await fs.access(editor)
+	} catch (err: any) {
+		vscode.window
+			.showErrorMessage(
+				`Invalid Ren'Py editor path: '${err.editor_path}'`,
+				'Open Settings'
+			)
+			.then((selection) => {
+				if (!selection) return
+
+				vscode.commands.executeCommand(
+					'workbench.action.openSettings',
+					'@ext:PaisleySoftworks.renpyWarp'
+				)
+			})
+		return
+	}
+
+	return editor
+}
+
 export async function get_renpy_sh(
-	environment: Record<string, string | number | boolean> = {}
+	environment: Record<string, string | undefined> = {}
 ): Promise<string | undefined> {
 	const sdk_path = await get_sdk_path()
 
@@ -182,50 +218,21 @@ export async function get_renpy_sh(
 		return
 	}
 
-	/** @type {string} */
-	const editor_setting: string = get_config('editor')
-
-	/** @type {string} */
-	let editor: string
-
-	if (path.isAbsolute(editor_setting)) {
-		editor = resolve_path(editor_setting)
-	} else {
-		// relative path to launcher
-		editor = path.resolve(sdk_path, editor_setting)
-	}
-
-	try {
-		await fs.access(editor)
-	} catch (err: any) {
-		vscode.window
-			.showErrorMessage(
-				`Invalid Ren'Py editor path: '${err.editor_path}'`,
-				'Open Settings'
-			)
-			.then((selection) => {
-				if (!selection) return
-
-				vscode.commands.executeCommand(
-					'workbench.action.openSettings',
-					'@ext:PaisleySoftworks.renpyWarp'
-				)
-			})
-		return
-	}
+	const editor_path = await get_editor_path(sdk_path)
+	if (!editor_path) return
 
 	if (IS_WINDOWS) {
 		const win_renpy_path = path.join(sdk_path, 'renpy.py')
 		// set RENPY_EDIT_PY=editor.edit.py && python.exe renpy.py
 		return (
-			env_string({ ...environment, RENPY_EDIT_PY: editor }) +
+			env_string({ ...environment, RENPY_EDIT_PY: editor_path }) +
 			' && ' +
 			make_cmd([executable, win_renpy_path])
 		)
 	} else {
 		// RENPY_EDIT_PY=editor.edit.py renpy.sh
 		return (
-			env_string({ ...environment, RENPY_EDIT_PY: editor }) +
+			env_string({ ...environment, RENPY_EDIT_PY: editor_path }) +
 			' ' +
 			make_cmd([executable])
 		)
