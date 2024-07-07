@@ -8,6 +8,8 @@ All notable changes to this project will be documented in this file.
 -   Don't link to specific settings (it doesn't work very well)
 -   You can no longer start the extension with `renpyWarp.toggleFollowCursor`
 -   Say what process an output line was from
+-   Redo the notifications. They're cancellable now!
+-   Warp to file is now the title action, as this seems to be what people expect
 
 ## 1.2.0 - 2024-07-06
 
