@@ -10,6 +10,8 @@ All notable changes to this project will be documented in this file.
 -   Say what process an output line was from
 -   Redo the notifications. They're cancellable now!
 -   Warp to file is now the title action, as this seems to be what people expect
+-   Many bugs were found and fixed along the way, but I'm not sure if they're
+    worth mentioning.
 
 ## 1.2.0 - 2024-07-06
 
