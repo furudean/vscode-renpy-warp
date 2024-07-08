@@ -5,10 +5,15 @@ import { get_logger } from './logger'
 import { WebSocketServer } from 'ws'
 import { ProcessManager, RenpyProcess } from './process'
 import pidtree from 'pidtree'
+import get_port from 'get-port'
 
 const logger = get_logger()
 
 let wss: WebSocketServer | undefined
+
+export async function get_open_port() {
+	return await get_port({ port: get_port.makeRange(40111, 40121) })
+}
 
 export async function ensure_websocket_server({
 	pm,
