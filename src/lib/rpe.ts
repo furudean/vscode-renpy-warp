@@ -5,13 +5,10 @@ import { get_renpy_sh, get_version } from './sh'
 import { version as pkg_version } from '../../package.json'
 import semver from 'semver'
 import { get_logger } from './logger'
-import { WebSocketServer } from 'ws'
 import fs from 'node:fs/promises'
 import AdmZip from 'adm-zip'
 
 const logger = get_logger()
-
-let wss: WebSocketServer | undefined
 
 export async function install_rpe({
 	game_root,
