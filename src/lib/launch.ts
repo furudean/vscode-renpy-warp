@@ -1,6 +1,5 @@
 import * as vscode from 'vscode'
 import path from 'upath'
-import { promisify } from 'node:util'
 
 import { focus_window, ProcessManager, RenpyProcess } from './process'
 import { FollowCursor, sync_editor_with_renpy } from './follow_cursor'
