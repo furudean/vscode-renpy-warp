@@ -146,11 +146,24 @@ export async function launch_renpy({
 						await vscode.window.showInformationMessage(
 							`Ren'Py Launch and Sync can install a script in your Ren'Py project to synchronize the game and editor. Would you like to install it?`,
 							'Yes, install',
-							'No, do not install'
+							'No, do not install',
+							'Cancel'
 						)
 					if (selection === 'Yes, install') {
-						await install_rpe({ game_root, context })
-					} else {
+						const installed_path = await install_rpe({
+							game_root,
+							context,
+						})
+						const relative_path = path.relative(
+							vscode.workspace.workspaceFolders?.[0].uri.fsPath ??
+								game_root,
+							installed_path
+						)
+						vscode.window.showInformationMessage(
+							`Ren'Py Extensions were installed at ${relative_path}`,
+							'OK'
+						)
+					} else if (selection === 'No, do not install') {
 						extensions_enabled = false
 						await vscode.workspace
 							.getConfiguration('renpyWarp')
@@ -160,6 +173,8 @@ export async function launch_renpy({
 							'No RPE script will be installed. Keep in mind that some features may not work as expected.',
 							'OK'
 						)
+					} else {
+						throw new Error('user cancelled')
 					}
 				} else if (!(await has_current_rpe(renpy_sh))) {
 					await install_rpe({ game_root, context })

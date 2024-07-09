@@ -267,7 +267,7 @@ export class ProcessManager {
 		this.instance_status_bar.show()
 
 		if (this.show_loading) {
-			this.instance_status_bar.text = `$(loading~spin) Loading...`
+			this.instance_status_bar.text = `$(loading~spin) Starting Ren'Py...`
 			this.instance_status_bar.command = undefined
 			this.instance_status_bar.tooltip = undefined
 
