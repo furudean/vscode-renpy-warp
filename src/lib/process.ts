@@ -3,7 +3,6 @@ import child_process from 'node:child_process'
 import { WebSocket } from 'ws'
 import { FollowCursor } from './follow_cursor'
 import { get_config } from './util'
-import { ensure_websocket_server } from './socket'
 import { get_logger } from './logger'
 import pidtree from 'pidtree'
 import { windowManager } from 'node-window-manager'
@@ -56,31 +55,30 @@ export class RenpyProcess {
 	cmd: string
 	message_handler: (data: SocketMessage) => MaybePromise<void>
 	game_root: string
+	socket_port: number
 	process: child_process.ChildProcess
 	socket?: WebSocket = undefined
-	/**
-	 * The Ren'Py pid might be different from the pid of the process we
-	 * created. This happens on Windows where the actual Ren'Py process is
-	 * a child process of the process we created.
-	 */
-	renpy_pid?: number = undefined
+	dead: boolean = false
 
 	constructor({
 		cmd,
 		message_handler,
 		game_root,
+		socket_port,
 		pm,
 		context,
 	}: {
 		cmd: string
 		message_handler: (data: SocketMessage) => MaybePromise<void>
 		game_root: string
+		socket_port: number
 		pm: ProcessManager
 		context: vscode.ExtensionContext
 	}) {
 		this.cmd = cmd
 		this.message_handler = message_handler
 		this.game_root = game_root
+		this.socket_port = socket_port
 		this.pm = pm
 
 		logger.info('executing subshell:', cmd)
@@ -95,13 +93,18 @@ export class RenpyProcess {
 
 		output_channel.appendLine(`process ${this.process.pid} started`)
 
-		this.process.stdout!.on('data', (data) =>
-			output_channel!.append(`[${this.process.pid} out] ${data}`)
+		this.process.stdout!.on('data', (data: string) =>
+			output_channel!.appendLine(
+				`[${this.process.pid} out] ${data.trim()}`
+			)
 		)
 		this.process.stderr!.on('data', (data) =>
-			output_channel!.append(`[${this.process.pid} err] ${data}`)
+			output_channel!.appendLine(
+				`[${this.process.pid} err] ${data.trim()}`
+			)
 		)
 		this.process.on('exit', (code) => {
+			this.dead = true
 			logger.info(`process ${this.process.pid} exited with code ${code}`)
 			output_channel!.appendLine(
 				`process ${this.process.pid} exited with code ${code}`
@@ -119,7 +122,7 @@ export class RenpyProcess {
 		return new Promise((resolve, reject) => {
 			const timeout = setTimeout(() => {
 				reject(new Error('timed out waiting for socket'))
-				if (!this.killed) {
+				if (!this.dead) {
 					vscode.window
 						.showErrorMessage(
 							"Timed out trying to connect to Ren'Py window. Is the socket client running?",
@@ -147,20 +150,9 @@ export class RenpyProcess {
 		this.process.kill()
 	}
 
-	get killed() {
-		return this.process.killed
-	}
-
 	async ipc(message: SocketMessage): Promise<void> {
-		if (!this.socket) {
-			logger.info('no socket, waiting for connection...')
-			await ensure_websocket_server({ pm: this.pm })
-
-			try {
-				await this.wait_for_socket()
-			} catch (e: unknown) {
-				if (this.process.killed) return
-			}
+		if (!this.socket || this.socket?.readyState !== WebSocket.OPEN) {
+			throw new Error('no socket connection')
 		}
 
 		return new Promise((resolve, reject) => {
@@ -199,6 +191,7 @@ export class ProcessManager {
 	private processes: Map<number, RenpyProcess>
 	instance_status_bar: vscode.StatusBarItem
 	follow_cursor: FollowCursor
+	show_loading: boolean = false
 
 	constructor({ follow_cursor }: { follow_cursor: FollowCursor }) {
 		this.processes = new Map()
@@ -247,6 +240,23 @@ export class ProcessManager {
 		return Array.from(this.processes.values())[index]
 	}
 
+	async find_tracked(candidate: number): Promise<RenpyProcess | undefined> {
+		if (this.processes.has(candidate)) return this.processes.get(candidate)
+
+		for (const pid of this.pids) {
+			// the process might be a child of the process we created
+			const child_pids = await pidtree(pid)
+			logger.debug(`child pids for ${pid}: ${JSON.stringify(child_pids)}`)
+
+			if (child_pids.includes(pid)) {
+				const rpp = this.get(pid)
+
+				if (rpp) return rpp
+			}
+		}
+		return
+	}
+
 	kill_all() {
 		for (const { process: process } of this.processes.values()) {
 			process.kill(9) // SIGKILL, bypasses "are you sure" dialog
@@ -255,6 +265,16 @@ export class ProcessManager {
 
 	update_status_bar() {
 		this.instance_status_bar.show()
+
+		if (this.show_loading) {
+			this.instance_status_bar.text = `$(loading~spin) Loading...`
+			this.instance_status_bar.command = undefined
+			this.instance_status_bar.tooltip = undefined
+
+			this.follow_cursor.status_bar.hide()
+
+			return
+		}
 
 		if (this.length === 1 && get_config('renpyExtensionsEnabled')) {
 			this.follow_cursor.status_bar.show()

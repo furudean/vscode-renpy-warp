@@ -34,7 +34,7 @@ def socket_listener(websocket: websockets.WebSocketClientProtocol):
     for message in websocket:
         payload = json.loads(message)
 
-        print("socket >", message)
+        print("socket <", message)
 
         if payload["type"] == "warp_to_line":
             file = payload["file"]
@@ -68,6 +68,7 @@ def socket_producer(websocket: websockets.WebSocketClientProtocol):
                 }
             )
 
+            print("socket >", message)
             websocket.send(message)
 
     renpy.config.all_character_callbacks.append(fn)
