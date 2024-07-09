@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## Unreleased
+## 1.3.0 - 2024-07-09
 
 -   Migrate source code to TypeScript
 -   Don't link to specific settings (it doesn't work very well)
