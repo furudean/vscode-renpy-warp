@@ -259,7 +259,7 @@ export async function launch_renpy({
 							message: 'Waiting for socket connection',
 						})
 
-						while (true && !rpp.dead) {
+						while (!rpp.socket && !rpp.dead) {
 							await new Promise((resolve) =>
 								setTimeout(resolve, 100)
 							)
