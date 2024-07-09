@@ -117,41 +117,28 @@ export async function launch_renpy({
 			pm.show_loading = true
 			pm.update_status_bar()
 
-			const { cmd, socket_port, renpy_sh } =
-				await vscode.window.withProgress(
-					{
-						title: 'Resolving environment',
-						location: vscode.ProgressLocation.Notification,
-					},
-					async (progress) => {
-						progress.report({ message: 'Resolving environment' })
+			const socket_port = await get_open_port()
 
-						const socket_port = await get_open_port()
+			const renpy_sh = await get_renpy_sh({
+				WARP_ENABLED: extensions_enabled ? '1' : undefined,
+				WARP_WS_PORT: socket_port.toString(),
+			})
+			if (!renpy_sh) throw new Error('no renpy.sh found')
 
-						const renpy_sh = await get_renpy_sh({
-							WARP_ENABLED: extensions_enabled ? '1' : undefined,
-							WARP_WS_PORT: socket_port.toString(),
-						})
-						if (!renpy_sh) throw new Error('no renpy.sh found')
+			let cmd: string
 
-						let cmd: string
-
-						if (line === undefined) {
-							cmd = renpy_sh + ' ' + make_cmd([game_root])
-						} else {
-							cmd =
-								renpy_sh +
-								' ' +
-								make_cmd([
-									game_root,
-									'--warp',
-									`${filename_relative}:${line + 1}`,
-								])
-						}
-
-						return { cmd, socket_port, renpy_sh }
-					}
-				)
+			if (line === undefined) {
+				cmd = renpy_sh + ' ' + make_cmd([game_root])
+			} else {
+				cmd =
+					renpy_sh +
+					' ' +
+					make_cmd([
+						game_root,
+						'--warp',
+						`${filename_relative}:${line + 1}`,
+					])
+			}
 
 			if (extensions_enabled) {
 				if (!(await has_any_rpe())) {
@@ -192,7 +179,7 @@ export async function launch_renpy({
 
 			if (strategy === 'Replace Window') pm.kill_all()
 
-			const rpp = await vscode.window.withProgress(
+			return await vscode.window.withProgress(
 				{
 					title: "Starting Ren'Py" + (intent ? ' ' + intent : ''),
 					location: vscode.ProgressLocation.Notification,
