@@ -16,7 +16,7 @@ export async function install_rpe({
 }: {
 	game_root: string
 	context: vscode.ExtensionContext
-}): Promise<void> {
+}): Promise<string> {
 	const renpy_sh = await get_renpy_sh()
 
 	if (!renpy_sh)
@@ -63,6 +63,8 @@ export async function install_rpe({
 	}
 
 	logger.info('wrote rpe to', file_path)
+
+	return file_path
 }
 
 export async function has_any_rpe(): Promise<boolean> {

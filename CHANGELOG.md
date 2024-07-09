@@ -12,6 +12,10 @@ All notable changes to this project will be documented in this file.
 -   Warp to file is now the title action, as this seems to be what people expect
 -   Many bugs were found and fixed along the way, but I'm not sure if they're
     worth mentioning.
+-   Overhaul socket handling. Now supports many Visual Studio Code workspaces!
+    As a result of this, the setting `renpy.webSocketsPort` was replaced with
+    `renpy.socketPorts`, which is an array of ports to try to connect to. The
+    first one that works will be used.
 
 ## 1.2.0 - 2024-07-06
 

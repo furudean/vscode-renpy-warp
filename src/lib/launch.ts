@@ -1,6 +1,5 @@
 import * as vscode from 'vscode'
 import path from 'upath'
-import { promisify } from 'node:util'
 
 import { focus_window, ProcessManager, RenpyProcess } from './process'
 import { FollowCursor, sync_editor_with_renpy } from './follow_cursor'
@@ -8,6 +7,7 @@ import { get_config } from './util'
 import { get_logger } from './logger'
 import { find_game_root, get_renpy_sh, make_cmd } from './sh'
 import { has_any_rpe, has_current_rpe, install_rpe } from './rpe'
+import { start_websocket_server, get_open_port } from './socket'
 
 const logger = get_logger()
 
@@ -113,135 +113,176 @@ export async function launch_renpy({
 	} else {
 		logger.info("opening new ren'py window")
 
-		await vscode.window.withProgress(
-			{
-				title: "Starting Ren'Py" + (intent ? ' ' + intent : ''),
-				location: vscode.ProgressLocation.Notification,
-				cancellable: true,
-			},
-			async (progress, cancel) => {
-				const renpy_sh = await get_renpy_sh({
-					WARP_ENABLED: extensions_enabled ? '1' : undefined,
-					WARP_WS_PORT: get_config('webSocketsPort'),
-				})
-				if (!renpy_sh) return {}
+		try {
+			pm.show_loading = true
+			pm.update_status_bar()
 
-				let cmd: string
+			const socket_port = await get_open_port()
 
-				if (line === undefined) {
-					cmd = renpy_sh + ' ' + make_cmd([game_root])
-				} else {
-					cmd =
-						renpy_sh +
-						' ' +
-						make_cmd([
+			const renpy_sh = await get_renpy_sh({
+				WARP_ENABLED: extensions_enabled ? '1' : undefined,
+				WARP_WS_PORT: socket_port.toString(),
+			})
+			if (!renpy_sh) throw new Error('no renpy.sh found')
+
+			let cmd: string
+
+			if (line === undefined) {
+				cmd = renpy_sh + ' ' + make_cmd([game_root])
+			} else {
+				cmd =
+					renpy_sh +
+					' ' +
+					make_cmd([
+						game_root,
+						'--warp',
+						`${filename_relative}:${line + 1}`,
+					])
+			}
+
+			if (extensions_enabled) {
+				if (!(await has_any_rpe())) {
+					const selection =
+						await vscode.window.showInformationMessage(
+							`Ren'Py Launch and Sync can install a script in your Ren'Py project to synchronize the game and editor. Would you like to install it?`,
+							'Yes, install',
+							'No, do not install',
+							'Cancel'
+						)
+					if (selection === 'Yes, install') {
+						const installed_path = await install_rpe({
 							game_root,
-							'--warp',
-							`${filename_relative}:${line + 1}`,
-						])
-				}
-				progress.report({ increment: 33 })
-
-				if (extensions_enabled) {
-					if (!(await has_any_rpe())) {
-						const selection =
-							await vscode.window.showInformationMessage(
-								`Ren'Py Launch and Sync can install a script in your Ren'Py project to synchronize the game and editor. Would you like to install it?`,
-								'Yes, install',
-								'No, do not install'
-							)
-						if (selection === 'Yes, install') {
-							await install_rpe({ game_root, context })
-						} else {
-							extensions_enabled = false
-							await vscode.workspace
-								.getConfiguration('renpyWarp')
-								.update('renpyExtensionsEnabled', false, true)
-
-							vscode.window.showInformationMessage(
-								'No RPE script will be installed. Keep in mind that some features may not work as expected.',
-								'OK'
-							)
-						}
-					} else if (!(await has_current_rpe(renpy_sh))) {
-						await install_rpe({ game_root, context })
+							context,
+						})
+						const relative_path = path.relative(
+							vscode.workspace.workspaceFolders?.[0].uri.fsPath ??
+								game_root,
+							installed_path
+						)
 						vscode.window.showInformationMessage(
-							"Ren'Py extensions in this project have been updated.",
+							`Ren'Py Extensions were installed at ${relative_path}`,
 							'OK'
 						)
-					} else if (is_development_mode) {
-						await install_rpe({ game_root, context })
+					} else if (selection === 'No, do not install') {
+						extensions_enabled = false
+						await vscode.workspace
+							.getConfiguration('renpyWarp')
+							.update('renpyExtensionsEnabled', false, true)
+
+						vscode.window.showInformationMessage(
+							'No RPE script will be installed. Keep in mind that some features may not work as expected.',
+							'OK'
+						)
+					} else {
+						throw new Error('user cancelled')
 					}
-				}
-
-				progress.report({ increment: 33 })
-
-				if (strategy === 'Replace Window') pm.kill_all()
-
-				const rpp = new RenpyProcess({
-					cmd,
-					game_root,
-					async message_handler(message) {
-						if (message.type === 'current_line') {
-							logger.debug(
-								`current line reported as ${message.line} in ${message.relative_path}`
-							)
-							if (!follow_cursor.active) return
-
-							await sync_editor_with_renpy({
-								path: message.path,
-								relative_path: message.relative_path,
-								line: message.line - 1,
-							})
-						} else {
-							logger.warn('unhandled message:', message)
-						}
-					},
-					context,
-					pm,
-				})
-				pm.add(rpp)
-
-				cancel.onCancellationRequested(() => {
-					rpp?.kill()
-				})
-
-				if (
-					!follow_cursor.active &&
-					extensions_enabled &&
-					get_config('followCursorOnLaunch') &&
-					pm.length === 1
-				) {
-					logger.info('enabling follow cursor on launch')
-					await follow_cursor.enable()
-				}
-
-				if (
-					pm.length > 1 &&
-					follow_cursor.active &&
-					strategy !== 'Replace Window'
-				) {
-					follow_cursor.disable()
+				} else if (!(await has_current_rpe(renpy_sh))) {
+					await install_rpe({ game_root, context })
 					vscode.window.showInformationMessage(
-						"Follow cursor was disabled because multiple Ren'Py instances are running",
+						"Ren'Py extensions in this project have been updated.",
 						'OK'
 					)
+				} else if (is_development_mode) {
+					await install_rpe({ game_root, context })
 				}
 
-				if (extensions_enabled) {
-					logger.info('waiting for process to connect to socket')
+				await start_websocket_server({
+					pm,
+					port: socket_port,
+				})
+			}
 
-					progress.report({ increment: 33 })
+			if (strategy === 'Replace Window') pm.kill_all()
 
-					while (!rpp.socket) {
-						await new Promise((resolve) => setTimeout(resolve, 100))
+			return await vscode.window.withProgress(
+				{
+					title: "Starting Ren'Py" + (intent ? ' ' + intent : ''),
+					location: vscode.ProgressLocation.Notification,
+					cancellable: true,
+				},
+				async (progress, cancel) => {
+					const rpp = new RenpyProcess({
+						cmd,
+						game_root,
+						socket_port,
+						async message_handler(message) {
+							if (message.type === 'current_line') {
+								logger.debug(
+									`current line reported as ${message.relative_path}:${message.line}`
+								)
+								if (!follow_cursor.active) return
+
+								await sync_editor_with_renpy({
+									path: message.path,
+									relative_path: message.relative_path,
+									line: message.line - 1,
+								})
+							} else {
+								logger.warn('unhandled message:', message)
+							}
+						},
+						context,
+						pm,
+					})
+					pm.add(rpp)
+
+					if (
+						!follow_cursor.active &&
+						extensions_enabled &&
+						get_config('followCursorOnLaunch') &&
+						pm.length === 1
+					) {
+						logger.info('enabling follow cursor on launch')
+						await follow_cursor.enable()
 					}
 
-					logger.info('process connected')
-				}
+					if (
+						pm.length > 1 &&
+						follow_cursor.active &&
+						strategy !== 'Replace Window'
+					) {
+						follow_cursor.disable()
+						vscode.window.showInformationMessage(
+							"Follow cursor was disabled because multiple Ren'Py instances are running",
+							'OK'
+						)
+					}
 
-				return rpp
-			}
-		)
+					cancel.onCancellationRequested(() => {
+						pm.show_loading = false
+						rpp?.kill()
+					})
+
+					if (extensions_enabled) {
+						logger.info('waiting for process to connect to socket')
+
+						progress.report({
+							message: 'Waiting for socket connection',
+						})
+
+						while (!rpp.socket && !rpp.dead) {
+							await new Promise((resolve) =>
+								setTimeout(resolve, 100)
+							)
+						}
+						if (rpp.dead) throw new Error('panic')
+
+						logger.debug('process connected to socket first time')
+					}
+
+					progress.report({ message: '' })
+
+					pm.show_loading = false
+					pm.update_status_bar()
+
+					return rpp
+				}
+			)
+		} catch (e) {
+			throw e
+		} finally {
+			pm.show_loading = false
+			pm.update_status_bar()
+		}
 	}
 }

@@ -203,12 +203,22 @@
 					"markdownDescription": "The interval in milliseconds to execute `renpy.warp_to_line()` when in _Follow Cursor_ mode.\n\nThe lower the value, the more frequently the command is issued, which can feel more responsive at the cost of increased processing.\n\nNeeds a restart to take effect.",
 					"scope": "machine-overridable"
 				},
-				"renpyWarp.webSocketsPort": {
-					"type": "integer",
-					"default": 40124,
-					"minimum": 1,
-					"maximum": 65535,
-					"markdownDescription": "The port to use for the WebSocket server.\n\nNeeds a restart to take effect.",
+				"renpyWarp.socketPorts": {
+					"type": "array",
+					"default": [
+						40111,
+						40112,
+						40113,
+						40114,
+						40115,
+						40116,
+						40117,
+						40118,
+						40119,
+						40120
+					],
+					"minItems": 1,
+					"markdownDescription": "Ports to attempt to use to for the WebSocket server.",
 					"scope": "machine-overridable"
 				},
 				"renpyWarp.renpyExtensionsEnabled": {
@@ -257,6 +267,7 @@
 	},
 	"dependencies": {
 		"adm-zip": "^0.5.14",
+		"get-port": "^5.1.1",
 		"node-window-manager": "^2.2.4",
 		"p-throttle": "^4.1.1",
 		"pidtree": "^0.6.0",
