@@ -2,11 +2,10 @@ import * as vscode from 'vscode'
 import path from 'node:path'
 import { get_logger } from './logger'
 import { get_config } from './util'
-import { quoteForShell } from 'puka'
+import { sh, quoteForShell } from 'puka'
 import os from 'node:os'
 import child_process from 'node:child_process'
-import fs from 'node:fs/promises'
-import { resolve_path } from './path'
+import { get_sdk_path, path_exists, resolve_path } from './path'
 
 const logger = get_logger()
 const IS_WINDOWS = os.platform() === 'win32'
@@ -15,7 +14,13 @@ const IS_WINDOWS = os.platform() === 'win32'
  * @param renpy_sh
  * base renpy.sh command
  */
-export function get_version(renpy_sh: string) {
+export function get_version(renpy_sh: string): {
+	semver: string
+	major: number
+	minor: number
+	patch: number
+	rest: string
+} {
 	const RENPY_VERSION_REGEX =
 		/^(?<major>\d+)\.(?<minor>\d+)\.(?<patch>\d+)(?:\.(?<rest>.*))?$/
 
@@ -27,6 +32,10 @@ export function get_version(renpy_sh: string) {
 
 	const { major, minor, patch, rest } =
 		RENPY_VERSION_REGEX.exec(version_string)?.groups ?? {}
+
+	if (major === undefined || minor === undefined || patch === undefined) {
+		throw new Error('bad version string: ' + version_string)
+	}
 
 	return {
 		semver: `${major}.${minor}.${patch}`,
@@ -100,56 +109,6 @@ export function find_game_root(
 	return find_game_root(filename, haystack, depth + 1)
 }
 
-/**
- * Returns the path to the Ren'Py SDK as specified in the settings
- */
-export async function get_sdk_path(): Promise<string | undefined> {
-	const sdk_path_setting = get_config('sdkPath')
-
-	logger.debug('raw sdk path:', sdk_path_setting)
-
-	if (!sdk_path_setting.trim()) {
-		vscode.window
-			.showErrorMessage(
-				"Please set a Ren'Py SDK path in the settings",
-				'Open Settings'
-			)
-			.then((selection) => {
-				if (!selection) return
-
-				vscode.commands.executeCommand(
-					'workbench.action.openSettings',
-					'@ext:PaisleySoftworks.renpyWarp'
-				)
-			})
-
-		return
-	}
-
-	const parsed_path = resolve_path(sdk_path_setting)
-
-	try {
-		await fs.access(parsed_path)
-	} catch (err) {
-		logger.warn('invalid sdk path:', err)
-		vscode.window
-			.showErrorMessage(
-				`Invalid Ren'Py SDK path: ${sdk_path_setting}`,
-				'Open Settings'
-			)
-			.then((selection) => {
-				if (!selection) return
-				vscode.commands.executeCommand(
-					'workbench.action.openSettings',
-					'@ext:PaisleySoftworks.renpyWarp'
-				)
-			})
-		return
-	}
-
-	return parsed_path
-}
-
 async function get_editor_path(sdk_path: string): Promise<string | undefined> {
 	const editor_setting: string = get_config('editor')
 	let editor_path: string
@@ -161,9 +120,7 @@ async function get_editor_path(sdk_path: string): Promise<string | undefined> {
 		editor_path = path.resolve(sdk_path, editor_setting)
 	}
 
-	try {
-		await fs.access(editor_path)
-	} catch (err: any) {
+	if (!(await path_exists(editor_path))) {
 		vscode.window
 			.showErrorMessage(
 				`Invalid Ren'Py editor path: '${editor_setting}' (resolved to '${editor_path}')`,
@@ -183,13 +140,9 @@ async function get_editor_path(sdk_path: string): Promise<string | undefined> {
 	return editor_path
 }
 
-export async function get_renpy_sh(
-	environment: Record<string, string | undefined> = {}
+export async function get_executable(
+	sdk_path: string
 ): Promise<string | undefined> {
-	const sdk_path = await get_sdk_path()
-
-	if (!sdk_path) return
-
 	// on windows, we call python.exe and pass renpy.py as an argument
 	// on all other systems, we call renpy.sh directly
 	// https://www.renpy.org/doc/html/cli.html#command-line-interface
@@ -199,10 +152,22 @@ export async function get_renpy_sh(
 
 	const executable = path.join(sdk_path, executable_name)
 
-	try {
-		await fs.access(executable)
-	} catch (err) {
-		logger.warn('invalid renpy.sh path:', err)
+	if (await path_exists(executable)) {
+		return IS_WINDOWS ? `${executable} renpy.py` : executable
+	} else {
+		return undefined
+	}
+}
+
+export async function get_renpy_sh(
+	environment: Record<string, string | undefined> = {}
+): Promise<string | undefined> {
+	const sdk_path = await get_sdk_path()
+	if (!sdk_path) return
+
+	const executable = await get_executable(sdk_path)
+
+	if (!executable) {
 		vscode.window
 			.showErrorMessage(
 				`Invalid Ren'Py SDK path: ${sdk_path}`,
@@ -222,19 +187,18 @@ export async function get_renpy_sh(
 	if (!editor_path) return
 
 	if (IS_WINDOWS) {
-		const win_renpy_path = path.join(sdk_path, 'renpy.py')
-		// set RENPY_EDIT_PY=editor.edit.py && python.exe renpy.py
+		// set RENPY_EDIT_PY=editor.edit.py && /path/to/python.exe renpy.py
 		return (
 			env_string({ ...environment, RENPY_EDIT_PY: editor_path }) +
 			' && ' +
-			make_cmd([executable, win_renpy_path])
+			sh`${executable}`
 		)
 	} else {
-		// RENPY_EDIT_PY=editor.edit.py renpy.sh
+		// RENPY_EDIT_PY=editor.edit.py /path/to/renpy.sh
 		return (
 			env_string({ ...environment, RENPY_EDIT_PY: editor_path }) +
 			' ' +
-			make_cmd([executable])
+			sh`${executable}`
 		)
 	}
 }

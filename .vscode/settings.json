@@ -5,8 +5,12 @@
 	"typescript.tsc.autoDetect": "off",
 	"files.exclude": {
 		"out": true,
-		"dist": false,
-		".vscode-test": true
+		"dist": true,
+		".vscode-test": true,
+		"**/*.rpyc": true,
+		"**/*.rpa": true,
+		"**/*.rpymc": true,
+		"**/cache/": true
 	},
 	"search.exclude": {
 		"out": true,

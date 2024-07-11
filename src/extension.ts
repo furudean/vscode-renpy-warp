@@ -6,6 +6,8 @@ import { get_logger } from './lib/logger'
 import { find_game_root } from './lib/sh'
 import { install_rpe } from './lib/rpe'
 import { launch_renpy } from './lib/launch'
+import { get_config, set_config } from './lib/util'
+import { resolve_path, path_exists, path_is_sdk } from './lib/path'
 
 const logger = get_logger()
 
@@ -107,8 +109,62 @@ export function activate(context: vscode.ExtensionContext) {
 			await vscode.window.showInformationMessage(
 				"Ren'Py extensions were successfully installed/updated"
 			)
+		}),
+
+		vscode.commands.registerCommand('renpyWarp.setSdkPath', async () => {
+			const input_path = await vscode.window.showInputBox({
+				title: "Set Ren'Py SDK path",
+				prompt: "Input path to the Ren'Py SDK you want to use",
+				value: get_config('sdkPath'),
+				placeHolder: '~/renpy-8.2.3-sdk',
+				ignoreFocusOut: true,
+				async validateInput(value) {
+					const parsed_path = resolve_path(value)
+					const exists = await path_exists(parsed_path)
+					if (!exists) return "Path doesn't exist"
+
+					const is_sdk = await path_is_sdk(parsed_path)
+					if (!is_sdk) return "Path is not a Ren'Py SDK"
+
+					return null
+				},
+			})
+			if (!input_path) return
+
+			set_config('sdkPath', input_path)
+
+			return input_path
 		})
 	)
+
+	if (!get_config('sdkPath')) {
+		vscode.window
+			.showInformationMessage(
+				"Please take a moment to set up Ren'Py Launch and Sync",
+				'OK',
+				'Not now'
+			)
+			.then(async (selection) => {
+				if (selection === 'OK') {
+					const selection = await vscode.commands.executeCommand(
+						'renpyWarp.setSdkPath'
+					)
+
+					if (!selection) return
+
+					await vscode.window.showInformationMessage(
+						"Ren'Py Launch and Sync is now set up. You can review additional settings in the extension settings.",
+						'Show settings',
+						'OK'
+					)
+					if (selection === 'Show settings')
+						await vscode.commands.executeCommand(
+							'workbench.action.openSettings',
+							'@ext:PaisleySoftworks.renpyWarp'
+						)
+				}
+			})
+	}
 }
 
 export function deactivate() {

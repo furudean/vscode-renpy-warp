@@ -4,6 +4,7 @@ import untildify from 'untildify'
 import fs from 'node:fs/promises'
 import { get_logger } from './logger'
 import { get_config } from './util'
+import { get_executable, get_version } from './sh'
 
 const logger = get_logger()
 
@@ -13,6 +14,15 @@ const logger = get_logger()
  */
 export function resolve_path(str: string): string {
 	return path.resolve(untildify(str))
+}
+
+export async function path_exists(path: string): Promise<boolean> {
+	try {
+		await fs.access(path, fs.constants.F_OK)
+		return true
+	} catch {
+		return false
+	}
 }
 
 export function find_game_root(
@@ -48,52 +58,47 @@ export function find_game_root(
 	return find_game_root(filename, haystack, depth + 1)
 }
 
+export async function path_is_sdk(absolute_path: string): Promise<boolean> {
+	const exists = await path_exists(absolute_path)
+	if (!exists) return false
+
+	const executable = await get_executable(absolute_path)
+	if (executable === undefined) return false
+
+	const version = get_version(executable)
+	if (!version) return false
+
+	return true
+}
+
 /**
  * Returns the path to the Ren'Py SDK as specified in the settings
  */
 export async function get_sdk_path(): Promise<string | undefined> {
 	/** @type {string} */
-	const sdk_path_setting: string = get_config('sdkPath')
+	let sdk_path_setting: string = get_config('sdkPath')
 
 	logger.debug('raw sdk path:', sdk_path_setting)
 
 	if (!sdk_path_setting.trim()) {
-		vscode.window
-			.showErrorMessage(
-				"Please set a Ren'Py SDK path in the settings",
-				'Open Settings'
+		const selection = await vscode.window.showInformationMessage(
+			"Please set a Ren'Py SDK path to continue",
+			'Set SDK Path',
+			'Cancel'
+		)
+		if (selection === 'Set SDK Path') {
+			sdk_path_setting = await vscode.commands.executeCommand(
+				'renpyWarp.setSdkPath'
 			)
-			.then((selection) => {
-				if (!selection) return
-
-				vscode.commands.executeCommand(
-					'workbench.action.openSettings',
-					'@ext:PaisleySoftworks.renpyWarp'
-				)
-			})
-
-		return
+			if (!sdk_path_setting) return
+		}
 	}
 
 	const parsed_path = resolve_path(sdk_path_setting)
+	const is_sdk_path = await path_is_sdk(parsed_path)
 
-	try {
-		await fs.access(parsed_path)
-	} catch (err) {
-		logger.warn('invalid sdk path:', err)
-		vscode.window
-			.showErrorMessage(
-				`Invalid Ren'Py SDK path: ${sdk_path_setting}`,
-				'Open Settings'
-			)
-			.then((selection) => {
-				if (!selection) return
-				vscode.commands.executeCommand(
-					'workbench.action.openSettings',
-					'@ext:PaisleySoftworks.renpyWarp'
-				)
-			})
-		return
+	if (!is_sdk_path) {
+		throw new Error("Invalid Ren'Py SDK path")
 	}
 
 	return parsed_path

@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## Unreleased
+
+-   Improve first time setup experience by prompting the user to set the Ren'Py
+    SDK path and direct to additional settings
+
 ## 1.3.0 - 2024-07-09
 
 -   Migrate source code to TypeScript

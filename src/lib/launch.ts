@@ -144,7 +144,7 @@ export async function launch_renpy({
 				if (!(await has_any_rpe())) {
 					const selection =
 						await vscode.window.showInformationMessage(
-							`Ren'Py Launch and Sync can install a script in your Ren'Py project to synchronize the game and editor. Would you like to install it?`,
+							`Before we start: Ren'Py Launch and Sync can install a script in your Ren'Py project to synchronize the game and editor. Would you like to install it?`,
 							'Yes, install',
 							'No, do not install',
 							'Cancel'

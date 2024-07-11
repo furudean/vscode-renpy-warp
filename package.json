@@ -56,6 +56,11 @@
 				"command": "renpyWarp.installRpe",
 				"title": "Install Ren'Py Extension (.rpe)",
 				"category": "Ren'Py Launch"
+			},
+			{
+				"command": "renpyWarp.setSdkPath",
+				"title": "Set Ren'Py SDK path",
+				"category": "Ren'Py Launch"
 			}
 		],
 		"menus": {
@@ -75,6 +80,9 @@
 				{
 					"command": "renpyWarp.killAll",
 					"when": "editorLangId == renpy"
+				},
+				{
+					"command": "renpyWarp.setSdkPath"
 				}
 			],
 			"editor/title/run": [
