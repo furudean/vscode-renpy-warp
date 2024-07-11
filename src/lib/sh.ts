@@ -145,7 +145,9 @@ export async function get_executable(
 	const executable = path.join(sdk_path, executable_name)
 
 	if (await path_exists(executable)) {
-		return IS_WINDOWS ? [sh`${executable}`, 'renpy.py'] : [executable]
+		const renpy_path = path.join(sdk_path, 'renpy.py')
+
+		return IS_WINDOWS ? [executable, renpy_path] : [executable]
 	} else {
 		return undefined
 	}
@@ -179,7 +181,7 @@ export async function get_renpy_sh(
 	if (!editor_path) return
 
 	if (IS_WINDOWS) {
-		// set RENPY_EDIT_PY=editor.edit.py && /path/to/python.exe renpy.py
+		// set RENPY_EDIT_PY=editor.edit.py && /path/to/python.exe /path/to/renpy.py
 		return (
 			env_string({ ...environment, RENPY_EDIT_PY: editor_path }) +
 			' && ' +
