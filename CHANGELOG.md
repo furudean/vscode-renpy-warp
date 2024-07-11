@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## Unreleased
+## 1.4.0 - 2024-07-11
 
 -   Improve first time setup experience by prompting the user to set the Ren'Py
     SDK path and direct to additional settings
