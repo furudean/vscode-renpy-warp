@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file.
 
 -   Improve first time setup experience by prompting the user to set the Ren'Py
     SDK path and direct to additional settings
+-   Install the .rpe.py file in the SDK root on version 8.3.0 and above
 
 ## 1.3.0 - 2024-07-09
 
