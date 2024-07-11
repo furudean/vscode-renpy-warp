@@ -194,7 +194,5 @@ export class FollowCursor {
 
 		this.text_editor_handle?.dispose()
 		this.text_editor_handle = undefined
-
-		// kill socket server?
 	}
 }

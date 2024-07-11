@@ -1,11 +1,12 @@
 import * as vscode from 'vscode'
 import path from 'upath'
+import { sh } from 'puka'
 
 import { focus_window, ProcessManager, RenpyProcess } from './process'
 import { FollowCursor, sync_editor_with_renpy } from './follow_cursor'
 import { get_config } from './util'
 import { get_logger } from './logger'
-import { find_game_root, get_renpy_sh, make_cmd } from './sh'
+import { find_game_root, get_renpy_sh } from './sh'
 import { has_any_rpe, has_current_rpe, install_rpe } from './rpe'
 import { start_websocket_server, get_open_port } from './socket'
 
@@ -113,10 +114,10 @@ export async function launch_renpy({
 	} else {
 		logger.info("opening new ren'py window")
 
-		try {
-			pm.show_loading = true
-			pm.update_status_bar()
+		const ref = pm.join()
+		pm.update_status_bar()
 
+		try {
 			const socket_port = await get_open_port()
 
 			const renpy_sh = await get_renpy_sh({
@@ -128,16 +129,12 @@ export async function launch_renpy({
 			let cmd: string
 
 			if (line === undefined) {
-				cmd = renpy_sh + ' ' + make_cmd([game_root])
+				cmd = renpy_sh + ' ' + sh`${game_root}`
 			} else {
 				cmd =
 					renpy_sh +
 					' ' +
-					make_cmd([
-						game_root,
-						'--warp',
-						`${filename_relative}:${line + 1}`,
-					])
+					sh`${game_root} --warp ${filename_relative}:${line + 1}`
 			}
 
 			if (extensions_enabled) {
@@ -176,6 +173,7 @@ export async function launch_renpy({
 					} else {
 						throw new Error('user cancelled')
 					}
+					logger.info('selected:', selection)
 				} else if (!(await has_current_rpe(renpy_sh))) {
 					await install_rpe({ game_root, context })
 					vscode.window.showInformationMessage(
@@ -200,7 +198,7 @@ export async function launch_renpy({
 					location: vscode.ProgressLocation.Notification,
 					cancellable: true,
 				},
-				async (progress, cancel) => {
+				async (_, cancel) => {
 					const rpp = new RenpyProcess({
 						cmd,
 						game_root,
@@ -249,16 +247,13 @@ export async function launch_renpy({
 					}
 
 					cancel.onCancellationRequested(() => {
-						pm.show_loading = false
 						rpp?.kill()
+						pm.leave(ref)
+						pm.update_status_bar()
 					})
 
 					if (extensions_enabled) {
 						logger.info('waiting for process to connect to socket')
-
-						progress.report({
-							message: 'Waiting for socket connection',
-						})
 
 						while (!rpp.socket && !rpp.dead) {
 							await new Promise((resolve) =>
@@ -270,9 +265,7 @@ export async function launch_renpy({
 						logger.debug('process connected to socket first time')
 					}
 
-					progress.report({ message: '' })
-
-					pm.show_loading = false
+					pm.leave(ref)
 					pm.update_status_bar()
 
 					return rpp
@@ -281,7 +274,7 @@ export async function launch_renpy({
 		} catch (e) {
 			throw e
 		} finally {
-			pm.show_loading = false
+			pm.leave(ref)
 			pm.update_status_bar()
 		}
 	}

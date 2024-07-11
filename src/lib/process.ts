@@ -191,7 +191,7 @@ export class ProcessManager {
 	private processes: Map<number, RenpyProcess>
 	instance_status_bar: vscode.StatusBarItem
 	follow_cursor: FollowCursor
-	show_loading: boolean = false
+	joins = new Set<number>()
 
 	constructor({ follow_cursor }: { follow_cursor: FollowCursor }) {
 		this.processes = new Map()
@@ -266,7 +266,7 @@ export class ProcessManager {
 	update_status_bar() {
 		this.instance_status_bar.show()
 
-		if (this.show_loading) {
+		if (this.joins.size) {
 			this.instance_status_bar.text = `$(loading~spin) Starting Ren'Py...`
 			this.instance_status_bar.command = undefined
 			this.instance_status_bar.tooltip = undefined
@@ -304,5 +304,19 @@ export class ProcessManager {
 
 	get pids(): number[] {
 		return [...this.processes.keys()]
+	}
+
+	join(): number {
+		const ref = Math.random()
+		logger.trace('join', ref)
+
+		this.joins.add(ref)
+
+		return ref
+	}
+
+	leave(ref: number): void {
+		this.joins.delete(ref)
+		logger.trace('leave', ref)
 	}
 }

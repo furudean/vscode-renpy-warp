@@ -68,14 +68,6 @@ export function env_string(
 		.join(IS_WINDOWS ? ' && ' : ' ')
 }
 
-export function make_cmd(cmds: string[]): string {
-	return cmds
-		.filter(Boolean)
-		.map((i) => ' ' + quoteForShell(i))
-		.join('')
-		.trim()
-}
-
 export function find_game_root(
 	filename: string,
 	haystack: string | null = null,

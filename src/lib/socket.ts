@@ -3,7 +3,6 @@ import * as vscode from 'vscode'
 import { get_logger } from './logger'
 import { WebSocketServer } from 'ws'
 import { ProcessManager, RenpyProcess } from './process'
-import pidtree from 'pidtree'
 import get_port from 'get-port'
 import { get_config } from './util'
 
