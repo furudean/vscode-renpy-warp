@@ -11,10 +11,10 @@ const logger = get_logger()
 const IS_WINDOWS = os.platform() === 'win32'
 
 /**
- * @param renpy_sh
+ * @param executable_str
  * base renpy.sh command
  */
-export function get_version(renpy_sh: string): {
+export function get_version(executable_str: string): {
 	semver: string
 	major: number
 	minor: number
@@ -25,7 +25,7 @@ export function get_version(renpy_sh: string): {
 		/^(?<major>\d+)\.(?<minor>\d+)\.(?<patch>\d+)(?:\.(?<rest>.*))?$/
 
 	const version_string = child_process
-		.execSync(renpy_sh + ' --version')
+		.execSync(executable_str + ' --version')
 		.toString('utf-8')
 		.trim()
 		.replace("Ren'Py ", '')
@@ -134,7 +134,7 @@ async function get_editor_path(sdk_path: string): Promise<string | undefined> {
 
 export async function get_executable(
 	sdk_path: string
-): Promise<string | undefined> {
+): Promise<string[] | undefined> {
 	// on windows, we call python.exe and pass renpy.py as an argument
 	// on all other systems, we call renpy.sh directly
 	// https://www.renpy.org/doc/html/cli.html#command-line-interface
@@ -145,7 +145,7 @@ export async function get_executable(
 	const executable = path.join(sdk_path, executable_name)
 
 	if (await path_exists(executable)) {
-		return IS_WINDOWS ? `${executable} renpy.py` : executable
+		return IS_WINDOWS ? [sh`${executable}`, 'renpy.py'] : [executable]
 	} else {
 		return undefined
 	}
@@ -183,14 +183,14 @@ export async function get_renpy_sh(
 		return (
 			env_string({ ...environment, RENPY_EDIT_PY: editor_path }) +
 			' && ' +
-			sh`${executable}`
+			executable.join(' ')
 		)
 	} else {
 		// RENPY_EDIT_PY=editor.edit.py /path/to/renpy.sh
 		return (
 			env_string({ ...environment, RENPY_EDIT_PY: editor_path }) +
 			' ' +
-			sh`${executable}`
+			executable.join(' ')
 		)
 	}
 }

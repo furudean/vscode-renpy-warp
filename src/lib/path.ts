@@ -65,7 +65,7 @@ export async function path_is_sdk(absolute_path: string): Promise<boolean> {
 	const executable = await get_executable(absolute_path)
 	if (executable === undefined) return false
 
-	const version = get_version(executable)
+	const version = get_version(executable.join(' '))
 	if (!version) return false
 
 	return true
