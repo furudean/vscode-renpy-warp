@@ -248,7 +248,7 @@ export class ProcessManager {
 			const child_pids = await pidtree(pid)
 			logger.debug(`child pids for ${pid}: ${JSON.stringify(child_pids)}`)
 
-			if (child_pids.includes(pid)) {
+			if (child_pids.includes(candidate)) {
 				const rpp = this.get(pid)
 
 				if (rpp) return rpp
