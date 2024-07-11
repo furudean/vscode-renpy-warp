@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.4.1 - 2024-07-11
+
+-   Fixes a few bugs that broke the extension on Windows. Sorry about that!
+
 ## 1.4.0 - 2024-07-11
 
 -   Improve first time setup experience by prompting the user to set the Ren'Py
