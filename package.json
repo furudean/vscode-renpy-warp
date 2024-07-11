@@ -54,7 +54,12 @@
 			},
 			{
 				"command": "renpyWarp.installRpe",
-				"title": "Install Ren'Py Extension (.rpe)",
+				"title": "Install Ren'Py Extensions (.rpe)",
+				"category": "Ren'Py Launch"
+			},
+			{
+				"command": "renpyWarp.uninstallRpe",
+				"title": "Uninstall Ren'Py Extensions (.rpe)",
 				"category": "Ren'Py Launch"
 			},
 			{
@@ -80,9 +85,6 @@
 				{
 					"command": "renpyWarp.killAll",
 					"when": "editorLangId == renpy"
-				},
-				{
-					"command": "renpyWarp.setSdkPath"
 				}
 			],
 			"editor/title/run": [
@@ -276,6 +278,7 @@
 	"dependencies": {
 		"adm-zip": "^0.5.14",
 		"get-port": "^5.1.1",
+		"glob": "^11.0.0",
 		"node-window-manager": "^2.2.4",
 		"p-throttle": "^4.1.1",
 		"pidtree": "^0.6.0",

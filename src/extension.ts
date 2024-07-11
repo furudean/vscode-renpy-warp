@@ -3,8 +3,8 @@ import * as vscode from 'vscode'
 import { ProcessManager } from './lib/process'
 import { FollowCursor } from './lib/follow_cursor'
 import { get_logger } from './lib/logger'
-import { find_game_root } from './lib/sh'
-import { install_rpe } from './lib/rpe'
+import { find_game_root, get_renpy_sh } from './lib/sh'
+import { install_rpe, uninstall_rpes } from './lib/rpe'
 import { launch_renpy } from './lib/launch'
 import { get_config, set_config } from './lib/util'
 import { resolve_path, path_exists, path_is_sdk } from './lib/path'
@@ -104,10 +104,30 @@ export function activate(context: vscode.ExtensionContext) {
 				.getConfiguration('renpyWarp')
 				.update('renpyExtensionsEnabled', true, true)
 
-			await install_rpe({ game_root, context })
+			const renpy_sh = await get_renpy_sh()
+			if (!renpy_sh) {
+				vscode.window.showErrorMessage(
+					"Unable to find 'renpy.sh'. Make sure you've set the Ren'Py SDK path in the extension settings.",
+					'OK'
+				)
+				return
+			}
+
+			await install_rpe({
+				game_root,
+				context,
+				renpy_sh,
+			})
 
 			await vscode.window.showInformationMessage(
 				"Ren'Py extensions were successfully installed/updated"
+			)
+		}),
+
+		vscode.commands.registerCommand('renpyWarp.uninstallRpe', async () => {
+			await uninstall_rpes()
+			vscode.window.showInformationMessage(
+				"Ren'Py extensions were successfully uninstalled from the project and SDK"
 			)
 		}),
 

@@ -94,12 +94,5 @@ export async function get_sdk_path(): Promise<string | undefined> {
 		}
 	}
 
-	const parsed_path = resolve_path(sdk_path_setting)
-	const is_sdk_path = await path_is_sdk(parsed_path)
-
-	if (!is_sdk_path) {
-		throw new Error("Invalid Ren'Py SDK path")
-	}
-
-	return parsed_path
+	return resolve_path(sdk_path_setting)
 }

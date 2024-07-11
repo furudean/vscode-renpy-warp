@@ -141,23 +141,20 @@ export async function launch_renpy({
 				if (!(await has_any_rpe())) {
 					const selection =
 						await vscode.window.showInformationMessage(
-							`Before we start: Ren'Py Launch and Sync can install a script in your Ren'Py project to synchronize the game and editor. Would you like to install it?`,
+							`Before we start: Ren'Py Launch and Sync can install a script to synchronize the game and editor. Would you like to install it?`,
 							'Yes, install',
 							'No, do not install',
 							'Cancel'
 						)
 					if (selection === 'Yes, install') {
 						const installed_path = await install_rpe({
+							renpy_sh,
 							game_root,
 							context,
 						})
-						const relative_path = path.relative(
-							vscode.workspace.workspaceFolders?.[0].uri.fsPath ??
-								game_root,
-							installed_path
-						)
+
 						vscode.window.showInformationMessage(
-							`Ren'Py Extensions were installed at ${relative_path}`,
+							`Ren'Py Extensions were installed at ${installed_path}`,
 							'OK'
 						)
 					} else if (selection === 'No, do not install') {
@@ -175,13 +172,13 @@ export async function launch_renpy({
 					}
 					logger.info('selected:', selection)
 				} else if (!(await has_current_rpe(renpy_sh))) {
-					await install_rpe({ game_root, context })
+					await install_rpe({ game_root, context, renpy_sh })
 					vscode.window.showInformationMessage(
 						"Ren'Py extensions in this project have been updated.",
 						'OK'
 					)
 				} else if (is_development_mode) {
-					await install_rpe({ game_root, context })
+					await install_rpe({ game_root, context, renpy_sh })
 				}
 
 				await start_websocket_server({
