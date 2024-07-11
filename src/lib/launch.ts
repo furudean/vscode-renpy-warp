@@ -143,7 +143,7 @@ export async function launch_renpy({
 						await vscode.window.showInformationMessage(
 							`Before we start: Ren'Py Launch and Sync can install a script to synchronize the game and editor. Would you like to install it?`,
 							'Yes, install',
-							'No, do not install',
+							'No, never install',
 							'Cancel'
 						)
 					if (selection === 'Yes, install') {
@@ -157,14 +157,14 @@ export async function launch_renpy({
 							`Ren'Py Extensions were installed at ${installed_path}`,
 							'OK'
 						)
-					} else if (selection === 'No, do not install') {
+					} else if (selection === 'No, never install') {
 						extensions_enabled = false
 						await vscode.workspace
 							.getConfiguration('renpyWarp')
 							.update('renpyExtensionsEnabled', false, true)
 
 						vscode.window.showInformationMessage(
-							'No RPE script will be installed. Keep in mind that some features may not work as expected.',
+							'No RPE script will be installed. Keep in mind that some features are disabled without it.',
 							'OK'
 						)
 					} else {
@@ -174,7 +174,7 @@ export async function launch_renpy({
 				} else if (!(await has_current_rpe(renpy_sh))) {
 					await install_rpe({ game_root, context, renpy_sh })
 					vscode.window.showInformationMessage(
-						"Ren'Py extensions in this project have been updated.",
+						"Ren'Py extensions in project/SDK have been updated.",
 						'OK'
 					)
 				} else if (is_development_mode) {

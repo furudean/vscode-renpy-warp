@@ -120,14 +120,16 @@ export function activate(context: vscode.ExtensionContext) {
 			})
 
 			await vscode.window.showInformationMessage(
-				"Ren'Py extensions were successfully installed/updated"
+				"Ren'Py extensions were successfully installed/updated",
+				'OK'
 			)
 		}),
 
 		vscode.commands.registerCommand('renpyWarp.uninstallRpe', async () => {
 			await uninstall_rpes()
 			vscode.window.showInformationMessage(
-				"Ren'Py extensions were successfully uninstalled from the project and SDK"
+				"Ren'Py extensions were successfully uninstalled from the project and SDK",
+				'OK'
 			)
 		}),
 
