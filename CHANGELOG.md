@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## Unreleased
+## 1.5.0 - 2024-07-13
 
 -   Pin a supported version of `glob`
 -   Refactor of data plumbing. Less dependencies on classes and less duplicate
