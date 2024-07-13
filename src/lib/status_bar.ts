@@ -1,5 +1,8 @@
 import * as vscode from 'vscode'
 import { get_config } from './util'
+import { get_logger } from './logger'
+
+const logger = get_logger()
 
 export class StatusBar {
 	private instance_bar: vscode.StatusBarItem
@@ -11,28 +14,41 @@ export class StatusBar {
 		is_follow_cursor: false,
 	}
 
-	constructor({ context }: { context: vscode.ExtensionContext }) {
+	constructor() {
 		this.instance_bar = vscode.window.createStatusBarItem(
 			vscode.StatusBarAlignment.Left,
 			0
 		)
-		this.instance_bar.show()
 
 		this.follow_cursor_bar = vscode.window.createStatusBarItem(
 			vscode.StatusBarAlignment.Left,
 			0
 		)
 
-		context.subscriptions.push(this.instance_bar, this.follow_cursor_bar)
 		this.update_status_bar()
 	}
 
 	update(fn: (state: typeof this.state) => Partial<typeof this.state>) {
 		this.state = { ...this.state, ...fn(this.state) }
+
+		if (this.state.starting_processes < 0) {
+			logger.error('starting_processes underflow')
+			this.state.starting_processes = 0
+		}
+
+		if (this.state.running_processes < 0) {
+			logger.error('running_processes underflow')
+			this.state.running_processes = 0
+		}
+
+		logger.debug('status bar state:', this.state)
+
 		this.update_status_bar()
 	}
 
 	private update_status_bar() {
+		this.instance_bar.show()
+
 		if (this.state.starting_processes > 0) {
 			this.instance_bar.text = `$(loading~spin) Starting Ren'Py...`
 			this.instance_bar.command = undefined
@@ -44,7 +60,7 @@ export class StatusBar {
 		}
 
 		if (
-			this.state.running_processes > 0 &&
+			this.state.running_processes == 1 &&
 			get_config('renpyExtensionsEnabled')
 		) {
 			this.follow_cursor_bar.show()
@@ -52,7 +68,7 @@ export class StatusBar {
 			this.follow_cursor_bar.hide()
 		}
 
-		if (this.state.is_follow_cursor && this.state.running_processes > 0) {
+		if (this.state.is_follow_cursor) {
 			this.follow_cursor_bar.text = '$(pinned) Following Cursor'
 			this.follow_cursor_bar.color = new vscode.ThemeColor(
 				'statusBarItem.warningForeground'
@@ -78,5 +94,10 @@ export class StatusBar {
 			this.instance_bar.command = 'renpyWarp.launch'
 			this.instance_bar.tooltip = "Launch new Ren'Py instance"
 		}
+	}
+
+	dispose() {
+		this.instance_bar.dispose()
+		this.follow_cursor_bar.dispose()
 	}
 }

@@ -1,6 +1,6 @@
 import * as vscode from 'vscode'
 import { get_config } from './util'
-import { ProcessManager, RenpyProcess } from './process'
+import { RenpyProcess } from './process'
 import { get_logger } from './logger'
 import path from 'upath'
 import p_throttle from 'p-throttle'
@@ -96,20 +96,12 @@ const throttle = p_throttle({
 const warp_renpy_to_cursor_throttled = throttle(warp_renpy_to_cursor)
 
 export class FollowCursor {
-	private context: vscode.ExtensionContext
 	private status_bar: StatusBar
-	private text_editor_handle: vscode.Disposable | undefined = undefined
+	private text_editor_handle: vscode.Disposable | undefined
 
 	active: boolean = false
 
-	constructor({
-		context,
-		status_bar,
-	}: {
-		context: vscode.ExtensionContext
-		status_bar: StatusBar
-	}) {
-		this.context = context
+	constructor({ status_bar }: { status_bar: StatusBar }) {
 		this.status_bar = status_bar
 
 		this.disable()
@@ -140,7 +132,6 @@ export class FollowCursor {
 				}
 			}
 		)
-		this.context.subscriptions.push(this.text_editor_handle)
 
 		this.active = true
 		this.status_bar.update(() => ({
@@ -166,5 +157,9 @@ export class FollowCursor {
 
 		this.text_editor_handle?.dispose()
 		this.text_editor_handle = undefined
+	}
+
+	dispose() {
+		this.text_editor_handle?.dispose()
 	}
 }

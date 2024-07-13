@@ -45,7 +45,7 @@ async function main() {
 					from: ['./src/**/*.py'],
 					to: ['./dist/'],
 				},
-				watch: true,
+				watch,
 			}),
 		],
 	})

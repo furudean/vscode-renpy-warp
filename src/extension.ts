@@ -3,22 +3,26 @@ import * as vscode from 'vscode'
 import { ProcessManager } from './lib/process'
 import { FollowCursor } from './lib/follow_cursor'
 import { get_logger } from './lib/logger'
-import { find_game_root, get_renpy_sh } from './lib/sh'
+import { find_game_root, get_executable } from './lib/sh'
 import { install_rpe, uninstall_rpes } from './lib/rpe'
 import { launch_renpy } from './lib/launch'
 import { get_config, set_config } from './lib/util'
-import { resolve_path, path_exists, path_is_sdk } from './lib/path'
+import {
+	resolve_path,
+	path_exists,
+	path_is_sdk,
+	get_sdk_path,
+} from './lib/path'
 import { StatusBar } from './lib/status_bar'
 
 const logger = get_logger()
 
-let pm: ProcessManager
-
 export function activate(context: vscode.ExtensionContext) {
-	const status_bar = new StatusBar({ context })
-	const follow_cursor = new FollowCursor({ context, status_bar })
+	const status_bar = new StatusBar()
+	const follow_cursor = new FollowCursor({ status_bar })
+	const pm = new ProcessManager({ status_bar })
 
-	pm = new ProcessManager({ status_bar })
+	context.subscriptions.push(pm, follow_cursor, status_bar)
 
 	context.subscriptions.push(
 		vscode.commands.registerCommand('renpyWarp.warpToLine', async () => {
@@ -125,29 +129,45 @@ export function activate(context: vscode.ExtensionContext) {
 				.getConfiguration('renpyWarp')
 				.update('renpyExtensionsEnabled', true, true)
 
-			const renpy_sh = await get_renpy_sh()
-			if (!renpy_sh) {
-				vscode.window.showErrorMessage(
-					"Unable to find 'renpy.sh'. Make sure you've set the Ren'Py SDK path in the extension settings.",
-					'OK'
-				)
+			const sdk_path = await get_sdk_path()
+			if (!sdk_path) return
+
+			const executable = (await get_executable(sdk_path))?.join(' ')
+			if (!executable) {
+				vscode.window
+					.showErrorMessage(
+						"Ren'Py SDK path is invalid. Please set it in the extension settings.",
+						'Open settings'
+					)
+					.then((selection) => {
+						if (selection === 'Open settings') {
+							vscode.commands.executeCommand(
+								'workbench.action.openSettings',
+								'@ext:PaisleySoftworks.renpyWarp'
+							)
+						}
+					})
 				return
 			}
 
-			await install_rpe({
+			const installed_path = await install_rpe({
+				sdk_path,
 				game_root,
 				context,
-				renpy_sh,
+				executable,
 			})
 
 			await vscode.window.showInformationMessage(
-				"Ren'Py extensions were successfully installed/updated",
+				`Ren'Py extensions were successfully installed at ${installed_path}`,
 				'OK'
 			)
 		}),
 
 		vscode.commands.registerCommand('renpyWarp.uninstallRpe', async () => {
-			await uninstall_rpes()
+			const sdk_path = await get_sdk_path()
+			if (!sdk_path) return
+
+			await uninstall_rpes(sdk_path)
 			vscode.window.showInformationMessage(
 				"Ren'Py extensions were successfully uninstalled from the project and SDK",
 				'OK'
@@ -211,6 +231,5 @@ export function activate(context: vscode.ExtensionContext) {
 }
 
 export function deactivate() {
-	pm.kill_all()
 	logger.dispose()
 }

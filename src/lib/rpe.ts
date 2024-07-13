@@ -1,24 +1,23 @@
 import * as vscode from 'vscode'
 
 import path from 'upath'
-import { get_renpy_sh, get_version } from './sh'
+import { get_version } from './sh'
 import { version as pkg_version } from '../../package.json'
 import semver from 'semver'
 import { get_logger } from './logger'
 import fs from 'node:fs/promises'
 import AdmZip from 'adm-zip'
 import { glob } from 'glob'
-import { get_sdk_path } from './path'
 
 const logger = get_logger()
 
-export async function list_rpes(): Promise<string[]> {
+export async function list_rpes(sdk_path: string): Promise<string[]> {
 	const [rpe, rpe_in_sdk] = await Promise.all([
 		vscode.workspace
 			.findFiles(`**/game/**/renpy_warp_*.rpe`)
 			.then((files) => files.map((f) => f.fsPath)),
 		glob('renpy_warp_*.rpe.py', {
-			cwd: await get_sdk_path(),
+			cwd: sdk_path,
 			absolute: true,
 		}),
 	])
@@ -27,19 +26,21 @@ export async function list_rpes(): Promise<string[]> {
 }
 
 export async function install_rpe({
-	renpy_sh,
+	sdk_path,
+	executable,
 	game_root,
 	context,
 }: {
-	renpy_sh: string
+	sdk_path: string
+	executable: string
 	game_root: string
 	context: vscode.ExtensionContext
 }): Promise<string> {
-	const version = get_version(renpy_sh)
+	const version = get_version(executable)
 	const supports_rpe_py = semver.gte(version.semver, '8.3.0')
-	const sdk_path = await get_sdk_path()
+	if (!sdk_path) throw new Error('bad sdk path')
 
-	await uninstall_rpes()
+	await uninstall_rpes(sdk_path)
 
 	const rpe_source_path = path.join(
 		context.extensionPath,
@@ -68,22 +69,28 @@ export async function install_rpe({
 	return file_path
 }
 
-export async function uninstall_rpes(): Promise<void> {
-	const rpes = await list_rpes()
+export async function uninstall_rpes(sdk_path: string): Promise<void> {
+	const rpes = await list_rpes(sdk_path)
 
 	await Promise.all(rpes.map((rpe) => fs.unlink(rpe)))
 	logger.info('uninstalled rpes:', rpes)
 }
 
-export async function has_any_rpe(): Promise<boolean> {
-	return (await list_rpes()).length > 0
+export async function has_any_rpe(sdk_path: string): Promise<boolean> {
+	return (await list_rpes(sdk_path)).length > 0
 }
 
-export async function has_current_rpe(renpy_sh: string): Promise<boolean> {
-	const files = await list_rpes()
+export async function has_current_rpe({
+	executable,
+	sdk_path,
+}: {
+	executable: string
+	sdk_path: string
+}): Promise<boolean> {
+	const files = await list_rpes(sdk_path)
 	logger.debug('check rpe:', files)
 
-	const renpy_version = get_version(renpy_sh)
+	const renpy_version = get_version(executable)
 	const supports_rpe_py = semver.gte(renpy_version.semver, '8.3.0')
 
 	for (const file of files) {

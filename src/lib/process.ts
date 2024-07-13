@@ -253,6 +253,10 @@ export class ProcessManager {
 		}
 	}
 
+	dispose() {
+		this.kill_all()
+	}
+
 	get length() {
 		return this.processes.size
 	}

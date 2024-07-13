@@ -4,7 +4,7 @@ import untildify from 'untildify'
 import fs from 'node:fs/promises'
 import { get_logger } from './logger'
 import { get_config } from './util'
-import { get_executable, get_version } from './sh'
+import { get_executable } from './sh'
 
 const logger = get_logger()
 
@@ -69,7 +69,8 @@ export async function path_is_sdk(absolute_path: string): Promise<boolean> {
 }
 
 /**
- * Returns the path to the Ren'Py SDK as specified in the settings
+ * Returns the path to the Ren'Py SDK as specified in the settings. Prompts the
+ * user to set the path if it is not set.
  */
 export async function get_sdk_path(): Promise<string | undefined> {
 	/** @type {string} */
@@ -87,8 +88,8 @@ export async function get_sdk_path(): Promise<string | undefined> {
 			sdk_path_setting = await vscode.commands.executeCommand(
 				'renpyWarp.setSdkPath'
 			)
-			if (!sdk_path_setting) return
 		}
+		if (!sdk_path_setting) return
 	}
 
 	return resolve_path(sdk_path_setting)

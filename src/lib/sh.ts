@@ -2,7 +2,6 @@ import * as vscode from 'vscode'
 import path from 'node:path'
 import { get_logger } from './logger'
 import { get_config } from './util'
-import { sh, quoteForShell } from 'puka'
 import os from 'node:os'
 import child_process from 'node:child_process'
 import { get_sdk_path, path_exists, resolve_path } from './path'
@@ -101,7 +100,9 @@ export function find_game_root(
 	return find_game_root(filename, haystack, depth + 1)
 }
 
-async function get_editor_path(sdk_path: string): Promise<string | undefined> {
+export async function get_editor_path(
+	sdk_path: string
+): Promise<string | undefined> {
 	const editor_setting: string = get_config('editor')
 	let editor_path: string
 
@@ -154,45 +155,33 @@ export async function get_executable(
 }
 
 export async function get_renpy_sh(
+	sdk_path: string,
 	environment: Record<string, string | undefined> = {}
 ): Promise<string | undefined> {
-	const sdk_path = await get_sdk_path()
-	if (!sdk_path) return
-
 	const executable = await get_executable(sdk_path)
 
 	if (!executable) {
 		vscode.window
 			.showErrorMessage(
-				`Invalid Ren'Py SDK path: ${sdk_path}`,
-				'Open Settings'
+				"Ren'Py SDK path is invalid. Please set it in the extension settings.",
+				'Open settings'
 			)
 			.then((selection) => {
-				if (!selection) return
-				vscode.commands.executeCommand(
-					'workbench.action.openSettings',
-					'@ext:PaisleySoftworks.renpyWarp'
-				)
+				if (selection === 'Open settings') {
+					vscode.commands.executeCommand(
+						'workbench.action.openSettings',
+						'@ext:PaisleySoftworks.renpyWarp'
+					)
+				}
 			})
 		return
 	}
 
-	const editor_path = await get_editor_path(sdk_path)
-	if (!editor_path) return
-
 	if (IS_WINDOWS) {
 		// set RENPY_EDIT_PY=editor.edit.py && /path/to/python.exe /path/to/renpy.py
-		return (
-			env_string({ ...environment, RENPY_EDIT_PY: editor_path }) +
-			' && ' +
-			executable.join(' ')
-		)
+		return env_string(environment) + ' && ' + executable.join(' ')
 	} else {
 		// RENPY_EDIT_PY=editor.edit.py /path/to/renpy.sh
-		return (
-			env_string({ ...environment, RENPY_EDIT_PY: editor_path }) +
-			' ' +
-			executable.join(' ')
-		)
+		return env_string(environment) + ' ' + executable.join(' ')
 	}
 }

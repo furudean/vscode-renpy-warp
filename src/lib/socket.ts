@@ -2,11 +2,10 @@ import * as vscode from 'vscode'
 
 import { get_logger } from './logger'
 import { WebSocketServer } from 'ws'
-import { ProcessManager, RenpyProcess } from './process'
+import { ProcessManager } from './process'
 import get_port from 'get-port'
 import { get_config } from './util'
 
-const servers = new Map<number, WebSocketServer>()
 const logger = get_logger()
 
 export async function get_open_port() {
@@ -23,8 +22,6 @@ export async function start_websocket_server({
 	return new Promise(async (resolve, reject) => {
 		let has_listened = false
 		const wss = new WebSocketServer({ port })
-
-		servers.set(port, wss)
 
 		let close_timeout: NodeJS.Timeout | undefined = undefined
 
@@ -49,12 +46,12 @@ export async function start_websocket_server({
 							logger.show()
 						}
 					})
+				wss.close()
 				reject()
 			}
 		})
 
 		wss.on('close', () => {
-			servers.delete(port)
 			reject()
 		})
 
@@ -96,7 +93,7 @@ export async function start_websocket_server({
 						'closing socket server if no clients connected'
 					)
 					if (wss.clients.size === 0) {
-						logger.debug(
+						logger.info(
 							`closing socket server :${port} as nobody was connected for 10 seconds`
 						)
 						wss.close()
