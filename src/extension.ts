@@ -164,7 +164,7 @@ export function activate(context: vscode.ExtensionContext) {
 				async validateInput(value) {
 					const parsed_path = resolve_path(value)
 					const exists = await path_exists(parsed_path)
-					if (!exists) return "Path doesn't exist"
+					if (!exists) return 'Path does not exist'
 
 					const is_sdk = await path_is_sdk(parsed_path)
 					if (!is_sdk) return "Path is not a Ren'Py SDK"
