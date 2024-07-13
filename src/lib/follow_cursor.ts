@@ -5,6 +5,7 @@ import { get_logger } from './logger'
 import path from 'upath'
 import p_throttle from 'p-throttle'
 import { find_game_root } from './sh'
+import { StatusBar } from './status_bar'
 
 const logger = get_logger()
 const last_warps = new Map<number, string>()
@@ -96,48 +97,26 @@ const warp_renpy_to_cursor_throttled = throttle(warp_renpy_to_cursor)
 
 export class FollowCursor {
 	private context: vscode.ExtensionContext
-	private pm: ProcessManager | undefined
+	private status_bar: StatusBar
 	private text_editor_handle: vscode.Disposable | undefined = undefined
 
-	status_bar: vscode.StatusBarItem
 	active: boolean = false
 
-	constructor({ context }: { context: vscode.ExtensionContext }) {
+	constructor({
+		context,
+		status_bar,
+	}: {
+		context: vscode.ExtensionContext
+		status_bar: StatusBar
+	}) {
 		this.context = context
-
-		this.status_bar = vscode.window.createStatusBarItem(
-			vscode.StatusBarAlignment.Left,
-			0
-		)
-
-		this.context.subscriptions.push(this.status_bar)
+		this.status_bar = status_bar
 
 		this.disable()
 	}
 
-	add_pm(pm: ProcessManager) {
-		this.pm = pm
-	}
-
-	async enable() {
-		if (!this.pm) throw new Error('no ProcessManager in FollowCursor')
-
-		if (this.pm.length > 1) {
-			vscode.window.showErrorMessage(
-				"Can't follow cursor with multiple open processes",
-				'OK'
-			)
-		}
-
-		const process = this.pm.at(0)
-
-		if (process === undefined) {
-			vscode.window.showErrorMessage(
-				"Ren'Py not running. Cannot follow cursor.",
-				'OK'
-			)
-			return
-		}
+	async enable(process: RenpyProcess) {
+		if (this.active) return
 
 		if (!get_config('renpyExtensionsEnabled')) {
 			vscode.window.showErrorMessage(
@@ -146,16 +125,6 @@ export class FollowCursor {
 			)
 			return
 		}
-
-		this.active = true
-
-		this.status_bar.text = '$(pinned) Following Cursor'
-		this.status_bar.color = new vscode.ThemeColor(
-			'statusBarItem.warningForeground'
-		)
-		this.status_bar.backgroundColor = new vscode.ThemeColor(
-			'statusBarItem.warningBackground'
-		)
 
 		this.text_editor_handle?.dispose()
 		this.text_editor_handle = vscode.window.onDidChangeTextEditorSelection(
@@ -173,6 +142,11 @@ export class FollowCursor {
 		)
 		this.context.subscriptions.push(this.text_editor_handle)
 
+		this.active = true
+		this.status_bar.update(() => ({
+			is_follow_cursor: true,
+		}))
+
 		if (
 			["Visual Studio Code updates Ren'Py", 'Update both'].includes(
 				get_config('followCursorMode')
@@ -183,14 +157,12 @@ export class FollowCursor {
 	}
 
 	disable() {
+		if (!this.active) return
 		this.active = false
 
-		this.status_bar.text = '$(pin) Follow Cursor'
-		this.status_bar.command = 'renpyWarp.toggleFollowCursor'
-		this.status_bar.tooltip =
-			"When enabled, keep editor cursor and Ren'Py in sync"
-		this.status_bar.color = undefined
-		this.status_bar.backgroundColor = undefined
+		this.status_bar.update(() => ({
+			is_follow_cursor: false,
+		}))
 
 		this.text_editor_handle?.dispose()
 		this.text_editor_handle = undefined

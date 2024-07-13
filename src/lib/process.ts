@@ -6,6 +6,7 @@ import { get_config } from './util'
 import { get_logger } from './logger'
 import pidtree from 'pidtree'
 import { windowManager } from 'node-window-manager'
+import { StatusBar } from './status_bar'
 
 const logger = get_logger()
 
@@ -188,21 +189,12 @@ export class RenpyProcess {
 }
 
 export class ProcessManager {
-	private processes: Map<number, RenpyProcess>
-	instance_status_bar: vscode.StatusBarItem
-	follow_cursor: FollowCursor
-	joins = new Set<number>()
+	private processes = new Map<number, RenpyProcess>()
+	private status_bar: StatusBar
 
-	constructor({ follow_cursor }: { follow_cursor: FollowCursor }) {
+	constructor({ status_bar }: { status_bar: StatusBar }) {
 		this.processes = new Map()
-		this.follow_cursor = follow_cursor
-
-		this.instance_status_bar = vscode.window.createStatusBarItem(
-			vscode.StatusBarAlignment.Left,
-			0
-		)
-
-		this.update_status_bar()
+		this.status_bar = status_bar
 	}
 
 	/** @param {RenpyProcess} process */
@@ -210,13 +202,16 @@ export class ProcessManager {
 		if (!process.process.pid) throw new Error('no pid in process')
 
 		this.processes.set(process.process.pid, process)
-		this.update_status_bar()
-
+		this.status_bar.update(({ running_processes }) => ({
+			running_processes: running_processes + 1,
+		}))
 		process.process.on('exit', (code) => {
 			if (!process.process.pid) throw new Error('no pid in process')
 
 			this.processes.delete(process.process.pid)
-			this.update_status_bar()
+			this.status_bar.update(({ running_processes }) => ({
+				running_processes: running_processes - 1,
+			}))
 
 			if (code) {
 				vscode.window
@@ -263,60 +258,11 @@ export class ProcessManager {
 		}
 	}
 
-	update_status_bar() {
-		this.instance_status_bar.show()
-
-		if (this.joins.size) {
-			this.instance_status_bar.text = `$(loading~spin) Starting Ren'Py...`
-			this.instance_status_bar.command = undefined
-			this.instance_status_bar.tooltip = undefined
-
-			this.follow_cursor.status_bar.hide()
-
-			return
-		}
-
-		if (this.length === 1 && get_config('renpyExtensionsEnabled')) {
-			this.follow_cursor.status_bar.show()
-		} else {
-			this.follow_cursor.status_bar.hide()
-		}
-
-		if (this.length) {
-			this.instance_status_bar.text = `$(debug-stop) Quit Ren'Py`
-			this.instance_status_bar.command = 'renpyWarp.killAll'
-			this.instance_status_bar.tooltip =
-				"Kill all running Ren'Py instances"
-		} else {
-			this.instance_status_bar.text = `$(play) Launch Project`
-			this.instance_status_bar.command = 'renpyWarp.launch'
-			this.instance_status_bar.tooltip = "Launch new Ren'Py instance"
-
-			if (this.follow_cursor.active) {
-				this.follow_cursor.disable()
-			}
-		}
-	}
-
 	get length() {
 		return this.processes.size
 	}
 
 	get pids(): number[] {
 		return [...this.processes.keys()]
-	}
-
-	join(): number {
-		const ref = Math.random()
-		logger.trace('join', ref)
-
-		this.joins.add(ref)
-
-		return ref
-	}
-
-	leave(ref: number): void {
-		this.joins.delete(ref)
-		logger.trace('leave', ref)
 	}
 }

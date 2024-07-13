@@ -8,16 +8,17 @@ import { install_rpe, uninstall_rpes } from './lib/rpe'
 import { launch_renpy } from './lib/launch'
 import { get_config, set_config } from './lib/util'
 import { resolve_path, path_exists, path_is_sdk } from './lib/path'
+import { StatusBar } from './lib/status_bar'
 
 const logger = get_logger()
 
 let pm: ProcessManager
-let follow_cursor: FollowCursor
 
 export function activate(context: vscode.ExtensionContext) {
-	follow_cursor = new FollowCursor({ context })
-	pm = new ProcessManager({ follow_cursor })
-	follow_cursor.add_pm(pm)
+	const status_bar = new StatusBar({ context })
+	const follow_cursor = new FollowCursor({ context, status_bar })
+
+	pm = new ProcessManager({ status_bar })
 
 	context.subscriptions.push(
 		vscode.commands.registerCommand('renpyWarp.warpToLine', async () => {
@@ -29,6 +30,7 @@ export function activate(context: vscode.ExtensionContext) {
 					context,
 					pm,
 					follow_cursor,
+					status_bar,
 				})
 			} catch (error: any) {
 				logger.error(error)
@@ -50,6 +52,7 @@ export function activate(context: vscode.ExtensionContext) {
 						context,
 						pm,
 						follow_cursor,
+						status_bar,
 					})
 				} catch (error: any) {
 					logger.error(error)
@@ -59,7 +62,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 		vscode.commands.registerCommand('renpyWarp.launch', async () => {
 			try {
-				await launch_renpy({ context, pm, follow_cursor })
+				await launch_renpy({ context, pm, follow_cursor, status_bar })
 			} catch (error: any) {
 				logger.error(error)
 			}
@@ -69,7 +72,25 @@ export function activate(context: vscode.ExtensionContext) {
 			if (follow_cursor.active) {
 				follow_cursor.disable()
 			} else {
-				follow_cursor.enable()
+				if (pm.length > 1) {
+					vscode.window.showErrorMessage(
+						"Can't follow cursor with multiple open processes",
+						'OK'
+					)
+					return
+				}
+
+				const process = pm.at(0)
+
+				if (process === undefined) {
+					vscode.window.showErrorMessage(
+						"Ren'Py not running. Cannot follow cursor.",
+						'OK'
+					)
+					return
+				}
+
+				follow_cursor.enable(process)
 			}
 		}),
 

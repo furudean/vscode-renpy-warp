@@ -9,6 +9,7 @@ import { get_logger } from './logger'
 import { find_game_root, get_renpy_sh } from './sh'
 import { has_any_rpe, has_current_rpe, install_rpe } from './rpe'
 import { start_websocket_server, get_open_port } from './socket'
+import { StatusBar } from './status_bar'
 
 const logger = get_logger()
 
@@ -24,6 +25,7 @@ interface LaunchRenpyOptions {
 	context: vscode.ExtensionContext
 	pm: ProcessManager
 	follow_cursor: FollowCursor
+	status_bar: StatusBar
 }
 
 /**
@@ -42,6 +44,7 @@ export async function launch_renpy({
 	line,
 	context,
 	pm,
+	status_bar,
 	follow_cursor,
 }: LaunchRenpyOptions): Promise<RenpyProcess | undefined> {
 	const is_development_mode =
@@ -114,8 +117,9 @@ export async function launch_renpy({
 	} else {
 		logger.info("opening new ren'py window")
 
-		const ref = pm.join()
-		pm.update_status_bar()
+		status_bar.update(({ starting_processes }) => ({
+			starting_processes: starting_processes + 1,
+		}))
 
 		try {
 			const socket_port = await get_open_port()
@@ -228,7 +232,7 @@ export async function launch_renpy({
 						pm.length === 1
 					) {
 						logger.info('enabling follow cursor on launch')
-						await follow_cursor.enable()
+						await follow_cursor.enable(rpp)
 					}
 
 					if (
@@ -243,10 +247,11 @@ export async function launch_renpy({
 						)
 					}
 
-					cancel.onCancellationRequested(() => {
+					const cancelation = cancel.onCancellationRequested(() => {
 						rpp?.kill()
-						pm.leave(ref)
-						pm.update_status_bar()
+						status_bar.update(({ starting_processes }) => ({
+							starting_processes: starting_processes - 1,
+						}))
 					})
 
 					if (extensions_enabled) {
@@ -262,8 +267,10 @@ export async function launch_renpy({
 						logger.debug('process connected to socket first time')
 					}
 
-					pm.leave(ref)
-					pm.update_status_bar()
+					status_bar.update(({ starting_processes }) => ({
+						starting_processes: starting_processes - 1,
+					}))
+					cancelation.dispose()
 
 					return rpp
 				}
@@ -271,8 +278,9 @@ export async function launch_renpy({
 		} catch (e) {
 			throw e
 		} finally {
-			pm.leave(ref)
-			pm.update_status_bar()
+			status_bar.update(({ starting_processes }) => ({
+				starting_processes: starting_processes - 1,
+			}))
 		}
 	}
 }
