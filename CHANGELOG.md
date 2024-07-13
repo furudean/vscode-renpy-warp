@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## Unreleased
+
+-   Pin a supported version of `glob`
+-   Refactor of data plumbing. Less dependencies on classes and less duplicate
+    calls. Things should overall be a bit faster.
+
 ## 1.4.1 - 2024-07-11
 
 -   Fixes a few bugs that broke the extension on Windows. Sorry about that!
