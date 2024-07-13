@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## Unreleased
+
+-   Use a quick pick for the extension selection
+
 ## 1.5.0 - 2024-07-13
 
 -   Pin a supported version of `glob`

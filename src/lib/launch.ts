@@ -147,15 +147,20 @@ export async function launch_renpy({
 
 			if (extensions_enabled) {
 				if (!(await has_any_rpe(sdk_path))) {
-					const selection =
-						await vscode.window.showInformationMessage(
-							`Before we start: Ren'Py Launch and Sync can install a script to synchronize the game and editor. Would you like to install it?`,
-							'Yes, install',
+					const selection = await vscode.window.showQuickPick(
+						[
+							'Yes, install (recommended)',
 							'No, never install',
-							'Cancel'
-						)
+							'Cancel',
+						],
+						{
+							ignoreFocusOut: true,
+							title: "Before we start: Ren'Py Launch and Sync can install a script to synchronize the game and editor. Would you like to install it?",
+							placeHolder: 'Choose an option',
+						}
+					)
 
-					if (selection === 'Yes, install') {
+					if (selection === 'Yes, install (recommended)') {
 						const installed_path = await install_rpe({
 							sdk_path,
 							executable: renpy_sh,
