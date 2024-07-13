@@ -51,8 +51,6 @@ export async function focus_window(pid: number) {
 }
 
 export class RenpyProcess {
-	private pm: ProcessManager
-
 	cmd: string
 	message_handler: (data: SocketMessage) => MaybePromise<void>
 	game_root: string
@@ -66,21 +64,18 @@ export class RenpyProcess {
 		message_handler,
 		game_root,
 		socket_port,
-		pm,
 		context,
 	}: {
 		cmd: string
 		message_handler: (data: SocketMessage) => MaybePromise<void>
 		game_root: string
 		socket_port: number
-		pm: ProcessManager
 		context: vscode.ExtensionContext
 	}) {
 		this.cmd = cmd
 		this.message_handler = message_handler
 		this.game_root = game_root
 		this.socket_port = socket_port
-		this.pm = pm
 
 		logger.info('executing subshell:', cmd)
 		this.process = child_process.exec(cmd)

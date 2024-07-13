@@ -221,7 +221,6 @@ export async function launch_renpy({
 							}
 						},
 						context,
-						pm,
 					})
 					pm.add(rpp)
 
@@ -248,7 +247,7 @@ export async function launch_renpy({
 					}
 
 					const cancelation = cancel.onCancellationRequested(() => {
-						rpp?.kill()
+						rpp.kill()
 						status_bar.update(({ starting_processes }) => ({
 							starting_processes: starting_processes - 1,
 						}))
