@@ -17,12 +17,15 @@ interface SyncEditorWithRenpyOptions {
 	relative_path: string
 	/** 0-indexed line number */
 	line: number
+	/** 0-indexed column number */
+	character?: number
 }
 
 export async function sync_editor_with_renpy({
 	path,
 	relative_path,
 	line,
+	character,
 }: SyncEditorWithRenpyOptions): Promise<void> {
 	if (
 		!["Ren'Py updates Visual Studio Code", 'Update both'].includes(
@@ -46,18 +49,23 @@ export async function sync_editor_with_renpy({
 		logger.warn('no active text editor')
 		return
 	}
+	const current_pos = editor.selection.start
 
 	// if the cursor is already on the correct line, don't munge it
-	if (editor.selection.start.line !== line) {
-		logger.debug(`syncing editor to ${relative_path}:${line}`)
+	if (current_pos?.line === line && current_pos?.character === character)
+		return
 
-		const end_of_line = editor.document.lineAt(line).range.end.character
-		const pos = new vscode.Position(line, end_of_line)
-		const selection = new vscode.Selection(pos, pos)
+	logger.debug(
+		`syncing editor to ${relative_path}:${line}:${character ?? -1}`
+	)
 
-		editor.selection = selection
-		editor.revealRange(selection)
-	}
+	const set_character =
+		character ?? editor.document.lineAt(line).range.end.character
+	const pos = new vscode.Position(line, set_character)
+	const selection = new vscode.Selection(pos, pos)
+
+	editor.selection = selection
+	editor.revealRange(selection)
 }
 
 export async function warp_renpy_to_cursor(rp: RenpyProcess) {

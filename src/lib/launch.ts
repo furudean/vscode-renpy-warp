@@ -228,7 +228,9 @@ export async function launch_renpy({
 						async message_handler(message) {
 							if (message.type === 'current_line') {
 								logger.debug(
-									`current line reported as ${message.relative_path}:${message.line}`
+									`current line reported as ${
+										message.relative_path
+									}:${message.line}:${message.end ?? -1}`
 								)
 								if (!follow_cursor.active) return
 
@@ -236,6 +238,7 @@ export async function launch_renpy({
 									path: message.path,
 									relative_path: message.relative_path,
 									line: message.line - 1,
+									character: message.end,
 								})
 							} else {
 								logger.warn('unhandled message:', message)

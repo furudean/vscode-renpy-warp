@@ -7,8 +7,8 @@
 
 from time import sleep
 import renpy  # type: ignore
-from websockets.sync.client import connect
-import websockets
+from websockets.sync.client import connect  # type: ignore
+import websockets  # type: ignore
 
 import threading
 import json
@@ -49,12 +49,16 @@ def socket_listener(websocket: websockets.WebSocketClientProtocol):
 def socket_producer(websocket: websockets.WebSocketClientProtocol):
     """produces messages to the socket server"""
 
+    last = None
+
     # report current line to warp server
-    def fn(event, interact=True, **kwargs):
+    def fn(event, interact=True, what=None, start=None, end=None, **kwargs):
+        nonlocal last
+
         if not interact:
             return
 
-        if event == "begin":
+        if event == "show":
             filename, line = renpy.exports.get_filename_line()
             relative_filename = re.sub(r"^game/", "", filename)
             filename_abs = os.path.join(
@@ -66,8 +70,15 @@ def socket_producer(websocket: websockets.WebSocketClientProtocol):
                     "line": line,
                     "path": filename_abs,
                     "relative_path": relative_filename,
+                    "what": what,
+                    "start": start,
+                    "end": end,
                 }
             )
+            if message == last:
+                return
+
+            last = message
 
             print("socket >", message)
             websocket.send(message)
