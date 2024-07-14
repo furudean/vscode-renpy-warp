@@ -54,7 +54,7 @@ export class RenpyProcess {
 	cmd: string
 	message_handler: (data: SocketMessage) => MaybePromise<void>
 	game_root: string
-	socket_port: number
+	socket_port: number | undefined
 	process: child_process.ChildProcess
 	socket?: WebSocket = undefined
 	dead: boolean = false
@@ -69,7 +69,7 @@ export class RenpyProcess {
 		cmd: string
 		message_handler: (data: SocketMessage) => MaybePromise<void>
 		game_root: string
-		socket_port: number
+		socket_port: number | undefined
 		context: vscode.ExtensionContext
 	}) {
 		this.cmd = cmd

@@ -4,7 +4,8 @@ import { get_logger } from './logger'
 import { get_config } from './util'
 import os from 'node:os'
 import child_process from 'node:child_process'
-import { get_sdk_path, path_exists, resolve_path } from './path'
+import { path_exists, resolve_path } from './path'
+import { sh } from 'puka'
 
 const logger = get_logger()
 const IS_WINDOWS = os.platform() === 'win32'
@@ -83,10 +84,7 @@ export function find_game_root(
 	}
 
 	const workspace_root =
-		vscode.workspace.workspaceFolders &&
-		vscode.workspace.workspaceFolders[0]
-			? vscode.workspace.workspaceFolders[0].uri.fsPath
-			: null
+		vscode.workspace.workspaceFolders?.[0].uri.fsPath ?? null
 
 	if (
 		haystack === workspace_root ||
@@ -133,9 +131,13 @@ export async function get_editor_path(
 	return editor_path
 }
 
+/**
+ * Returns the path to the Ren'Py SDK directory, if not set, prompts the user with an error message.
+ */
 export async function get_executable(
-	sdk_path: string
-): Promise<string[] | undefined> {
+	sdk_path: string,
+	prompt = false
+): Promise<string | undefined> {
 	// on windows, we call python.exe and pass renpy.py as an argument
 	// on all other systems, we call renpy.sh directly
 	// https://www.renpy.org/doc/html/cli.html#command-line-interface
@@ -148,40 +150,37 @@ export async function get_executable(
 	if (await path_exists(executable)) {
 		const renpy_path = path.join(sdk_path, 'renpy.py')
 
-		return IS_WINDOWS ? [executable, renpy_path] : [executable]
+		return IS_WINDOWS ? sh`${executable} ${renpy_path}` : sh`${executable}`
 	} else {
+		if (prompt) {
+			vscode.window
+				.showErrorMessage(
+					"Ren'Py SDK path is invalid. Please set it in the extension settings.",
+					'Open settings'
+				)
+				.then((selection) => {
+					if (selection === 'Open settings') {
+						vscode.commands.executeCommand(
+							'workbench.action.openSettings',
+							'@ext:PaisleySoftworks.renpyWarp'
+						)
+					}
+				})
+		}
+
 		return undefined
 	}
 }
 
-export async function get_renpy_sh(
-	sdk_path: string,
+export async function add_env(
+	executable: string,
 	environment: Record<string, string | undefined> = {}
 ): Promise<string | undefined> {
-	const executable = await get_executable(sdk_path)
-
-	if (!executable) {
-		vscode.window
-			.showErrorMessage(
-				"Ren'Py SDK path is invalid. Please set it in the extension settings.",
-				'Open settings'
-			)
-			.then((selection) => {
-				if (selection === 'Open settings') {
-					vscode.commands.executeCommand(
-						'workbench.action.openSettings',
-						'@ext:PaisleySoftworks.renpyWarp'
-					)
-				}
-			})
-		return
-	}
-
 	if (IS_WINDOWS) {
 		// set RENPY_EDIT_PY=editor.edit.py && /path/to/python.exe /path/to/renpy.py
-		return env_string(environment) + ' && ' + executable.join(' ')
+		return env_string(environment) + ' && ' + executable
 	} else {
 		// RENPY_EDIT_PY=editor.edit.py /path/to/renpy.sh
-		return env_string(environment) + ' ' + executable.join(' ')
+		return env_string(environment) + ' ' + executable
 	}
 }

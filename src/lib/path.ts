@@ -73,7 +73,6 @@ export async function path_is_sdk(absolute_path: string): Promise<boolean> {
  * user to set the path if it is not set.
  */
 export async function get_sdk_path(): Promise<string | undefined> {
-	/** @type {string} */
 	let sdk_path_setting: string = get_config('sdkPath')
 
 	logger.debug('raw sdk path:', sdk_path_setting)

@@ -54,17 +54,22 @@
 			},
 			{
 				"command": "renpyWarp.installRpe",
-				"title": "Install Ren'Py Extensions (.rpe)",
+				"title": "Install Ren'Py extensions (.rpe)",
 				"category": "Ren'Py Launch"
 			},
 			{
 				"command": "renpyWarp.uninstallRpe",
-				"title": "Uninstall Ren'Py Extensions (.rpe)",
+				"title": "Uninstall Ren'Py extensions (.rpe)",
 				"category": "Ren'Py Launch"
 			},
 			{
 				"command": "renpyWarp.setSdkPath",
 				"title": "Set Ren'Py SDK path",
+				"category": "Ren'Py Launch"
+			},
+			{
+				"command": "renpyWarp.setExtensionsPreference",
+				"title": "Set Ren'Py extensions preference",
 				"category": "Ren'Py Launch"
 			}
 		],
@@ -232,9 +237,15 @@
 					"scope": "machine-overridable"
 				},
 				"renpyWarp.renpyExtensionsEnabled": {
-					"type": "boolean",
-					"default": true,
-					"markdownDescription": "Enable Ren'Py Extension (.rpe) support."
+					"type": "string",
+					"enum": [
+						"Not set",
+						"Enabled",
+						"Disabled"
+					],
+					"default": "Not set",
+					"markdownDescription": "Enable Ren'Py Extension (.rpe) support.",
+					"scope": "machine-overridable"
 				}
 			}
 		}

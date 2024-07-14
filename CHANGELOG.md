@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+-   `renpyWarp.renpyExtensionsEnabled` is now a tri-state setting, with the
+    default being `Unset`. The user will be prompted to set this setting when
+    launching a game for the first time.
 -   Use a quick pick for the extension selection
 
 ## 1.5.0 - 2024-07-13

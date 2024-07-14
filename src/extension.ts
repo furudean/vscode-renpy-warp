@@ -6,7 +6,7 @@ import { get_logger } from './lib/logger'
 import { find_game_root, get_executable } from './lib/sh'
 import { install_rpe, uninstall_rpes } from './lib/rpe'
 import { launch_renpy } from './lib/launch'
-import { get_config, set_config } from './lib/util'
+import { get_config, get_configuration_object, set_config } from './lib/util'
 import {
 	resolve_path,
 	path_exists,
@@ -14,6 +14,7 @@ import {
 	get_sdk_path,
 } from './lib/path'
 import { StatusBar } from './lib/status_bar'
+import { prompt_configure_extensions } from './lib/onboard'
 
 const logger = get_logger()
 
@@ -26,11 +27,14 @@ export function activate(context: vscode.ExtensionContext) {
 
 	context.subscriptions.push(
 		vscode.commands.registerCommand('renpyWarp.warpToLine', async () => {
+			const editor = vscode.window.activeTextEditor
+			if (!editor) return
+
 			try {
 				await launch_renpy({
 					intent: 'at line',
-					file: vscode.window.activeTextEditor?.document.uri.fsPath,
-					line: vscode.window.activeTextEditor?.selection.active.line,
+					file: editor?.document.uri.fsPath,
+					line: editor?.selection.active.line,
 					context,
 					pm,
 					follow_cursor,
@@ -125,30 +129,11 @@ export function activate(context: vscode.ExtensionContext) {
 				return
 			}
 
-			await vscode.workspace
-				.getConfiguration('renpyWarp')
-				.update('renpyExtensionsEnabled', true, true)
-
 			const sdk_path = await get_sdk_path()
 			if (!sdk_path) return
 
-			const executable = (await get_executable(sdk_path))?.join(' ')
-			if (!executable) {
-				vscode.window
-					.showErrorMessage(
-						"Ren'Py SDK path is invalid. Please set it in the extension settings.",
-						'Open settings'
-					)
-					.then((selection) => {
-						if (selection === 'Open settings') {
-							vscode.commands.executeCommand(
-								'workbench.action.openSettings',
-								'@ext:PaisleySoftworks.renpyWarp'
-							)
-						}
-					})
-				return
-			}
+			const executable = await get_executable(sdk_path, true)
+			if (!executable) return
 
 			const installed_path = await install_rpe({
 				sdk_path,
@@ -194,39 +179,42 @@ export function activate(context: vscode.ExtensionContext) {
 			})
 			if (!input_path) return
 
-			set_config('sdkPath', input_path)
+			await set_config('sdkPath', input_path)
 
 			return input_path
-		})
+		}),
+
+		vscode.commands.registerCommand(
+			'renpyWarp.setExtensionsPreference',
+			async () => {
+				const sdk_path = await get_sdk_path()
+				if (!sdk_path) return
+
+				const executable = await get_executable(sdk_path, true)
+				if (!executable) return
+
+				try {
+					await prompt_configure_extensions(executable)
+				} catch (error: any) {
+					logger.error(error)
+				}
+			}
+		)
 	)
 
-	if (!get_config('sdkPath')) {
-		vscode.window
-			.showInformationMessage(
-				"Please take a moment to set up Ren'Py Launch and Sync",
-				'OK',
-				'Not now'
-			)
-			.then(async (selection) => {
-				if (selection === 'OK') {
-					const selection = await vscode.commands.executeCommand(
-						'renpyWarp.setSdkPath'
-					)
+	const conf = get_configuration_object()
 
-					if (!selection) return
-
-					await vscode.window.showInformationMessage(
-						"Ren'Py Launch and Sync is now set up. You can review additional settings in the extension settings.",
-						'Show settings',
-						'OK'
-					)
-					if (selection === 'Show settings')
-						await vscode.commands.executeCommand(
-							'workbench.action.openSettings',
-							'@ext:PaisleySoftworks.renpyWarp'
-						)
-				}
-			})
+	// migrate settings from version<=1.5.0 where renpyExtensionsEnabled was a boolean
+	if (
+		typeof conf.inspect('renpyExtensionsEnabled')?.globalValue === 'boolean'
+	) {
+		set_config('renpyExtensionsEnabled', undefined, false)
+	}
+	if (
+		typeof conf.inspect('renpyExtensionsEnabled')?.workspaceValue ===
+		'boolean'
+	) {
+		set_config('renpyExtensionsEnabled', undefined, true)
 	}
 }
 
