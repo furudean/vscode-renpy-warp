@@ -4,9 +4,9 @@ import { sh } from 'puka'
 
 import { focus_window, ProcessManager, RenpyProcess } from './process'
 import { FollowCursor, sync_editor_with_renpy } from './follow_cursor'
-import { get_config, get_extensions_enabled } from './util'
+import { get_config, show_file } from './util'
 import { get_logger } from './logger'
-import { find_game_root, get_editor_path, get_executable, set_env } from './sh'
+import { find_game_root, get_editor_path, get_executable, add_env } from './sh'
 import { has_any_rpe, has_current_rpe, install_rpe } from './rpe'
 import { start_websocket_server, get_open_port } from './socket'
 import { StatusBar } from './status_bar'
@@ -86,7 +86,7 @@ export async function launch_renpy({
 		line !== undefined &&
 		Number.isInteger(line) &&
 		strategy === 'Update Window' &&
-		extensions_enabled
+		extensions_enabled === 'Enabled'
 	) {
 		if (pm.length > 1) {
 			vscode.window.showErrorMessage(
@@ -127,34 +127,35 @@ export async function launch_renpy({
 			const sdk_path = await get_sdk_path()
 			if (!sdk_path) return
 
-			const executable = await get_executable(sdk_path)
-
-			if (!executable) {
-				vscode.window
-					.showErrorMessage(
-						"Ren'Py SDK path is invalid. Update it in the extension settings.",
-						'Open settings'
-					)
-					.then((selection) => {
-						if (selection === 'Open settings') {
-							vscode.commands.executeCommand(
-								'workbench.action.openSettings',
-								'@ext:PaisleySoftworks.renpyWarp'
-							)
-						}
-					})
-				return
-			}
+			const executable = await get_executable(sdk_path, true)
+			if (!executable) return
 
 			if (extensions_enabled === 'Not set') {
-				extensions_enabled = await prompt_configure_extensions({
-					executable,
-					sdk_path,
-					game_root,
-					context,
-				})
-			} else if (extensions_enabled === 'Enabled') {
-				if (!(await has_current_rpe({ executable, sdk_path }))) {
+				extensions_enabled = await prompt_configure_extensions(
+					executable
+				)
+			}
+
+			if (extensions_enabled === 'Enabled') {
+				if (!(await has_any_rpe(sdk_path))) {
+					const installed_path = await install_rpe({
+						sdk_path,
+						game_root,
+						context,
+						executable,
+					})
+					vscode.window
+						.showInformationMessage(
+							`Ren'Py Extensions were installed at ${installed_path}`,
+							'OK',
+							'Show'
+						)
+						.then((selection) => {
+							if (selection === 'Show') {
+								show_file(installed_path)
+							}
+						})
+				} else if (!(await has_current_rpe({ executable, sdk_path }))) {
 					const installed_path = await install_rpe({
 						sdk_path,
 						game_root,
@@ -169,25 +170,22 @@ export async function launch_renpy({
 						)
 						.then((selection) => {
 							if (selection === 'Show') {
-								vscode.commands.executeCommand(
-									'workbench.action.openFolder',
-									vscode.Uri.file(installed_path)
-								)
+								show_file(installed_path)
 							}
 						})
+				} else if (is_development_mode) {
+					await install_rpe({
+						sdk_path,
+						game_root,
+						context,
+						executable,
+					})
 				}
-			} else if (is_development_mode) {
-				await install_rpe({
-					sdk_path,
-					game_root,
-					context,
-					executable,
-				})
 			}
 
 			let socket_port: number | undefined
 
-			if (extensions_enabled) {
+			if (extensions_enabled === 'Enabled') {
 				socket_port = await get_open_port()
 				await start_websocket_server({
 					pm,
@@ -197,9 +195,9 @@ export async function launch_renpy({
 
 			if (strategy === 'Replace Window') pm.kill_all()
 
-			const renpy_sh = await set_env(executable, {
+			const renpy_sh = await add_env(executable, {
 				WARP_ENABLED:
-					extensions_enabled !== 'Disabled' ? '1' : undefined,
+					extensions_enabled === 'Enabled' ? '1' : undefined,
 				WARP_WS_PORT: socket_port?.toString(),
 				RENPY_EDIT_PY: await get_editor_path(sdk_path),
 			})
@@ -249,7 +247,7 @@ export async function launch_renpy({
 
 					if (
 						!follow_cursor.active &&
-						extensions_enabled &&
+						extensions_enabled === 'Enabled' &&
 						get_config('followCursorOnLaunch') &&
 						pm.length === 1
 					) {
@@ -264,8 +262,7 @@ export async function launch_renpy({
 					) {
 						follow_cursor.disable()
 						vscode.window.showInformationMessage(
-							"Follow cursor was disabled because multiple Ren'Py instances are running",
-							'OK'
+							"Follow cursor was disabled because multiple Ren'Py instances are running"
 						)
 					}
 
@@ -276,7 +273,7 @@ export async function launch_renpy({
 						}))
 					})
 
-					if (extensions_enabled) {
+					if (extensions_enabled === 'Enabled') {
 						logger.info('waiting for process to connect to socket')
 
 						while (!rpp.socket && !rpp.dead) {

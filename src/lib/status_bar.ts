@@ -61,7 +61,7 @@ export class StatusBar {
 
 		if (
 			this.state.running_processes == 1 &&
-			get_config('renpyExtensionsEnabled')
+			get_config('renpyExtensionsEnabled') === 'Enabled'
 		) {
 			this.follow_cursor_bar.show()
 		} else {

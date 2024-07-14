@@ -84,10 +84,7 @@ export function find_game_root(
 	}
 
 	const workspace_root =
-		vscode.workspace.workspaceFolders &&
-		vscode.workspace.workspaceFolders[0]
-			? vscode.workspace.workspaceFolders[0].uri.fsPath
-			: null
+		vscode.workspace.workspaceFolders?.[0].uri.fsPath ?? null
 
 	if (
 		haystack === workspace_root ||
@@ -134,8 +131,12 @@ export async function get_editor_path(
 	return editor_path
 }
 
+/**
+ * Returns the path to the Ren'Py SDK directory, if not set, prompts the user with an error message.
+ */
 export async function get_executable(
-	sdk_path: string
+	sdk_path: string,
+	prompt = false
 ): Promise<string | undefined> {
 	// on windows, we call python.exe and pass renpy.py as an argument
 	// on all other systems, we call renpy.sh directly
@@ -151,11 +152,27 @@ export async function get_executable(
 
 		return IS_WINDOWS ? sh`${executable} ${renpy_path}` : sh`${executable}`
 	} else {
+		if (prompt) {
+			vscode.window
+				.showErrorMessage(
+					"Ren'Py SDK path is invalid. Please set it in the extension settings.",
+					'Open settings'
+				)
+				.then((selection) => {
+					if (selection === 'Open settings') {
+						vscode.commands.executeCommand(
+							'workbench.action.openSettings',
+							'@ext:PaisleySoftworks.renpyWarp'
+						)
+					}
+				})
+		}
+
 		return undefined
 	}
 }
 
-export async function set_env(
+export async function add_env(
 	executable: string,
 	environment: Record<string, string | undefined> = {}
 ): Promise<string | undefined> {
