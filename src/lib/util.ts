@@ -4,8 +4,18 @@ export function get_config(key: string): any {
 	return vscode.workspace.getConfiguration('renpyWarp').get(key)
 }
 
-export function set_config(key: string, value: any): void {
-	vscode.workspace
+export async function set_config(
+	key: string,
+	value: any,
+	workspace = false
+): Promise<void> {
+	return vscode.workspace
 		.getConfiguration('renpyWarp')
-		.update(key, value, vscode.ConfigurationTarget.Global)
+		.update(
+			key,
+			value,
+			workspace
+				? vscode.ConfigurationTarget.Workspace
+				: vscode.ConfigurationTarget.Global
+		)
 }

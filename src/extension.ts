@@ -125,14 +125,10 @@ export function activate(context: vscode.ExtensionContext) {
 				return
 			}
 
-			await vscode.workspace
-				.getConfiguration('renpyWarp')
-				.update('renpyExtensionsEnabled', true, true)
-
 			const sdk_path = await get_sdk_path()
 			if (!sdk_path) return
 
-			const executable = (await get_executable(sdk_path))?.join(' ')
+			const executable = await get_executable(sdk_path)
 			if (!executable) {
 				vscode.window
 					.showErrorMessage(
@@ -199,35 +195,6 @@ export function activate(context: vscode.ExtensionContext) {
 			return input_path
 		})
 	)
-
-	if (!get_config('sdkPath')) {
-		vscode.window
-			.showInformationMessage(
-				"Please take a moment to set up Ren'Py Launch and Sync",
-				'OK',
-				'Not now'
-			)
-			.then(async (selection) => {
-				if (selection === 'OK') {
-					const selection = await vscode.commands.executeCommand(
-						'renpyWarp.setSdkPath'
-					)
-
-					if (!selection) return
-
-					await vscode.window.showInformationMessage(
-						"Ren'Py Launch and Sync is now set up. You can review additional settings in the extension settings.",
-						'Show settings',
-						'OK'
-					)
-					if (selection === 'Show settings')
-						await vscode.commands.executeCommand(
-							'workbench.action.openSettings',
-							'@ext:PaisleySoftworks.renpyWarp'
-						)
-				}
-			})
-	}
 }
 
 export function deactivate() {

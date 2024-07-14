@@ -232,8 +232,13 @@
 					"scope": "machine-overridable"
 				},
 				"renpyWarp.renpyExtensionsEnabled": {
-					"type": "boolean",
-					"default": true,
+					"type": "string",
+					"enum": [
+						"Not set",
+						"Enabled",
+						"Disabled"
+					],
+					"default": "Not set",
 					"markdownDescription": "Enable Ren'Py Extension (.rpe) support."
 				}
 			}

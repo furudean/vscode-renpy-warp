@@ -4,13 +4,14 @@ import { sh } from 'puka'
 
 import { focus_window, ProcessManager, RenpyProcess } from './process'
 import { FollowCursor, sync_editor_with_renpy } from './follow_cursor'
-import { get_config } from './util'
+import { get_config, get_extensions_enabled } from './util'
 import { get_logger } from './logger'
-import { find_game_root, get_editor_path, get_renpy_sh } from './sh'
+import { find_game_root, get_editor_path, get_executable, set_env } from './sh'
 import { has_any_rpe, has_current_rpe, install_rpe } from './rpe'
 import { start_websocket_server, get_open_port } from './socket'
 import { StatusBar } from './status_bar'
 import { get_sdk_path } from './path'
+import { prompt_configure_extensions } from './onboard'
 
 const logger = get_logger()
 
@@ -123,13 +124,83 @@ export async function launch_renpy({
 		}))
 
 		try {
-			const socket_port = await get_open_port()
 			const sdk_path = await get_sdk_path()
-			if (!sdk_path) throw new Error('no sdk path')
+			if (!sdk_path) return
 
-			const renpy_sh = await get_renpy_sh(sdk_path, {
-				WARP_ENABLED: extensions_enabled ? '1' : undefined,
-				WARP_WS_PORT: socket_port.toString(),
+			const executable = await get_executable(sdk_path)
+
+			if (!executable) {
+				vscode.window
+					.showErrorMessage(
+						"Ren'Py SDK path is invalid. Update it in the extension settings.",
+						'Open settings'
+					)
+					.then((selection) => {
+						if (selection === 'Open settings') {
+							vscode.commands.executeCommand(
+								'workbench.action.openSettings',
+								'@ext:PaisleySoftworks.renpyWarp'
+							)
+						}
+					})
+				return
+			}
+
+			if (extensions_enabled === 'Not set') {
+				extensions_enabled = await prompt_configure_extensions({
+					executable,
+					sdk_path,
+					game_root,
+					context,
+				})
+			} else if (extensions_enabled === 'Enabled') {
+				if (!(await has_current_rpe({ executable, sdk_path }))) {
+					const installed_path = await install_rpe({
+						sdk_path,
+						game_root,
+						context,
+						executable,
+					})
+					vscode.window
+						.showInformationMessage(
+							"Ren'Py extensions have been updated",
+							'OK',
+							'Show'
+						)
+						.then((selection) => {
+							if (selection === 'Show') {
+								vscode.commands.executeCommand(
+									'workbench.action.openFolder',
+									vscode.Uri.file(installed_path)
+								)
+							}
+						})
+				}
+			} else if (is_development_mode) {
+				await install_rpe({
+					sdk_path,
+					game_root,
+					context,
+					executable,
+				})
+			}
+
+			let socket_port: number | undefined
+
+			if (extensions_enabled) {
+				socket_port = await get_open_port()
+				await start_websocket_server({
+					pm,
+					port: socket_port,
+				})
+			}
+
+			if (strategy === 'Replace Window') pm.kill_all()
+
+			const renpy_sh = await set_env(executable, {
+				WARP_ENABLED:
+					extensions_enabled !== 'Disabled' ? '1' : undefined,
+				WARP_WS_PORT: socket_port?.toString(),
 				RENPY_EDIT_PY: await get_editor_path(sdk_path),
 			})
 			if (!renpy_sh) throw new Error('no renpy.sh found')
@@ -144,79 +215,6 @@ export async function launch_renpy({
 					' ' +
 					sh`${game_root} --warp ${filename_relative}:${line + 1}`
 			}
-
-			if (extensions_enabled) {
-				if (!(await has_any_rpe(sdk_path))) {
-					const selection = await vscode.window.showQuickPick(
-						[
-							'Yes, install (recommended)',
-							'No, never install',
-							'Cancel',
-						],
-						{
-							ignoreFocusOut: true,
-							title: "Before we start: Ren'Py Launch and Sync can install a script to synchronize the game and editor. Would you like to install it?",
-							placeHolder: 'Choose an option',
-						}
-					)
-
-					if (selection === 'Yes, install (recommended)') {
-						const installed_path = await install_rpe({
-							sdk_path,
-							executable: renpy_sh,
-							game_root,
-							context,
-						})
-
-						vscode.window.showInformationMessage(
-							`Ren'Py Extensions were installed at ${installed_path}`,
-							'OK'
-						)
-					} else if (selection === 'No, never install') {
-						extensions_enabled = false
-						await vscode.workspace
-							.getConfiguration('renpyWarp')
-							.update('renpyExtensionsEnabled', false, true)
-
-						vscode.window.showInformationMessage(
-							'No RPE script will be installed. Keep in mind that some features are disabled without it.',
-							'OK'
-						)
-					} else {
-						throw new Error('user cancelled')
-					}
-				} else if (
-					!(await has_current_rpe({
-						executable: renpy_sh,
-						sdk_path,
-					}))
-				) {
-					await install_rpe({
-						sdk_path,
-						game_root,
-						context,
-						executable: renpy_sh,
-					})
-					vscode.window.showInformationMessage(
-						"Ren'Py extensions in project/SDK have been updated.",
-						'OK'
-					)
-				} else if (is_development_mode) {
-					await install_rpe({
-						sdk_path,
-						game_root,
-						context,
-						executable: renpy_sh,
-					})
-				}
-
-				await start_websocket_server({
-					pm,
-					port: socket_port,
-				})
-			}
-
-			if (strategy === 'Replace Window') pm.kill_all()
 
 			return await vscode.window.withProgress(
 				{

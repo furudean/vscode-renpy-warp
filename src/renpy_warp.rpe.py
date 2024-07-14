@@ -57,7 +57,8 @@ def socket_producer(websocket: websockets.WebSocketClientProtocol):
         if event == "begin":
             filename, line = renpy.exports.get_filename_line()
             relative_filename = re.sub(r"^game/", "", filename)
-            filename_abs = os.path.join(renpy.config.gamedir, relative_filename)
+            filename_abs = os.path.join(
+                renpy.config.gamedir, relative_filename)
 
             message = json.dumps(
                 {
