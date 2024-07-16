@@ -88,24 +88,16 @@ export async function launch_renpy({
 		strategy === 'Update Window' &&
 		extensions_enabled === 'Enabled'
 	) {
-		await vscode.window.withProgress(
-			{
-				title: 'Warping inside window' + (intent ? ' ' + intent : ''),
-				location: vscode.ProgressLocation.Notification,
-			},
-			async () => {
-				logger.info('warping in existing window')
+		logger.info('warping in existing window')
 
-				const rpp = pm.at(-1) as RenpyProcess
+		const rpp = pm.at(-1) as RenpyProcess
 
-				await rpp.warp_to_line(filename_relative, line + 1)
+		await rpp.warp_to_line(filename_relative, line + 1)
 
-				if (get_config('focusWindowOnWarp') && rpp.process?.pid) {
-					logger.info('focusing window')
-					await focus_window(rpp.process.pid)
-				}
-			}
-		)
+		if (get_config('focusWindowOnWarp') && rpp.process?.pid) {
+			logger.info('focusing window')
+			await focus_window(rpp.process.pid)
+		}
 
 		return
 	} else {
