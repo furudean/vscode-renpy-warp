@@ -77,18 +77,10 @@ export function activate(context: vscode.ExtensionContext) {
 		}),
 
 		vscode.commands.registerCommand('renpyWarp.toggleFollowCursor', () => {
-			if (follow_cursor.active) {
-				follow_cursor.disable()
+			if (follow_cursor.active_process) {
+				follow_cursor.off()
 			} else {
-				if (pm.length > 1) {
-					vscode.window.showErrorMessage(
-						"Can't follow cursor with multiple open processes",
-						'OK'
-					)
-					return
-				}
-
-				const process = pm.at(0)
+				const process = pm.at(-1)
 
 				if (process === undefined) {
 					vscode.window.showErrorMessage(
@@ -98,7 +90,7 @@ export function activate(context: vscode.ExtensionContext) {
 					return
 				}
 
-				follow_cursor.enable(process)
+				follow_cursor.set(process)
 			}
 		}),
 

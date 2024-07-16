@@ -88,14 +88,6 @@ export async function launch_renpy({
 		strategy === 'Update Window' &&
 		extensions_enabled === 'Enabled'
 	) {
-		if (pm.length > 1) {
-			vscode.window.showErrorMessage(
-				"Multiple Ren'Py instances running. Cannot warp inside open Ren'Py window.",
-				'OK'
-			)
-			return
-		}
-
 		await vscode.window.withProgress(
 			{
 				title: 'Warping inside window' + (intent ? ' ' + intent : ''),
@@ -104,7 +96,7 @@ export async function launch_renpy({
 			async () => {
 				logger.info('warping in existing window')
 
-				const rpp = pm.at(0) as RenpyProcess
+				const rpp = pm.at(-1) as RenpyProcess
 
 				await rpp.warp_to_line(filename_relative, line + 1)
 
@@ -230,7 +222,7 @@ export async function launch_renpy({
 								logger.debug(
 									`current line reported as ${message.relative_path}:${message.line}`
 								)
-								if (!follow_cursor.active) return
+								if (!follow_cursor.active_process) return
 
 								await sync_editor_with_renpy({
 									path: message.path,
@@ -246,24 +238,12 @@ export async function launch_renpy({
 					pm.add(rpp)
 
 					if (
-						!follow_cursor.active &&
 						extensions_enabled === 'Enabled' &&
-						get_config('followCursorOnLaunch') &&
-						pm.length === 1
+						(get_config('followCursorOnLaunch') ||
+							follow_cursor.active_process) // follow cursor is already active, replace it
 					) {
-						logger.info('enabling follow cursor on launch')
-						await follow_cursor.enable(rpp)
-					}
-
-					if (
-						pm.length > 1 &&
-						follow_cursor.active &&
-						strategy !== 'Replace Window'
-					) {
-						follow_cursor.disable()
-						vscode.window.showInformationMessage(
-							"Follow cursor was disabled because multiple Ren'Py instances are running"
-						)
+						logger.info('enabling follow cursor for new process')
+						await follow_cursor.set(rpp)
 					}
 
 					const cancelation = cancel.onCancellationRequested(() => {

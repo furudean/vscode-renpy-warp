@@ -227,7 +227,7 @@ export class ProcessManager {
 	}
 
 	at(index: number): RenpyProcess | undefined {
-		return Array.from(this.processes.values())[index]
+		return Array.from(this.processes.values()).at(index)
 	}
 
 	async find_tracked(candidate: number): Promise<RenpyProcess | undefined> {

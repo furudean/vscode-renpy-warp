@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## Unreleased
+
+-   Now supports sync features multiple Ren'Py instances, only affecting the
+    process that was most recently opened
+
 ## 1.6.0 - 2024-07-14
 
 -   `renpyWarp.renpyExtensionsEnabled` is now a tri-state setting, with the

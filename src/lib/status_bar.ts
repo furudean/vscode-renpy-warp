@@ -54,13 +54,11 @@ export class StatusBar {
 			this.instance_bar.command = undefined
 			this.instance_bar.tooltip = undefined
 
-			this.follow_cursor_bar.hide()
-
 			return
 		}
 
 		if (
-			this.state.running_processes == 1 &&
+			this.state.running_processes > 0 &&
 			get_config('renpyExtensionsEnabled') === 'Enabled'
 		) {
 			this.follow_cursor_bar.show()

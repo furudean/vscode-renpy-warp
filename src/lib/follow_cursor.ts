@@ -99,16 +99,14 @@ export class FollowCursor {
 	private status_bar: StatusBar
 	private text_editor_handle: vscode.Disposable | undefined
 
-	active: boolean = false
+	active_process: RenpyProcess | undefined
 
 	constructor({ status_bar }: { status_bar: StatusBar }) {
 		this.status_bar = status_bar
-
-		this.disable()
 	}
 
-	async enable(process: RenpyProcess) {
-		if (this.active) return
+	async set(process: RenpyProcess) {
+		if (this.active_process === process) return
 
 		if (get_config('renpyExtensionsEnabled') !== 'Enabled') {
 			vscode.window.showErrorMessage(
@@ -117,6 +115,8 @@ export class FollowCursor {
 			)
 			return
 		}
+
+		this.active_process = process
 
 		this.text_editor_handle?.dispose()
 		this.text_editor_handle = vscode.window.onDidChangeTextEditorSelection(
@@ -133,7 +133,6 @@ export class FollowCursor {
 			}
 		)
 
-		this.active = true
 		this.status_bar.update(() => ({
 			is_follow_cursor: true,
 		}))
@@ -147,9 +146,9 @@ export class FollowCursor {
 		}
 	}
 
-	disable() {
-		if (!this.active) return
-		this.active = false
+	off() {
+		if (!this.active_process) return
+		this.active_process = undefined
 
 		this.status_bar.update(() => ({
 			is_follow_cursor: false,
