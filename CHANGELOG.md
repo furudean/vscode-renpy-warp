@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## Unreleased
+## 1.7.2 - 2024-07-15
 
 -   Fix a bug where follow cursor would be enabled when a process was closed
 
