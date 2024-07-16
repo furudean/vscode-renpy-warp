@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## Unreleased
+
+-   Fix a bug where follow cursor would be enabled when a process was closed
+
 ## 1.7.1 - 2024-07-15
 
 -   Handles cancelation state more gracefully

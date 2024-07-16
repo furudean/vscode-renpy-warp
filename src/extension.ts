@@ -27,9 +27,13 @@ export function activate(context: vscode.ExtensionContext) {
 				running_processes: running_processes - 1,
 			}))
 
-			if (pm.length) {
-				const most_recent = pm.at(-1) as RenpyProcess
-				follow_cursor.set(most_recent)
+			if (
+				follow_cursor.active_process &&
+				get_config('renpyExtensionsEnabled') === 'Enabled'
+			) {
+				const most_recent = pm.at(-1)
+
+				if (most_recent) follow_cursor.set(most_recent)
 			}
 		},
 	})
