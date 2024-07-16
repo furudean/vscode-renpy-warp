@@ -217,18 +217,18 @@ export async function launch_renpy({
 						cmd,
 						game_root,
 						socket_port,
-						async message_handler(message) {
+						async message_handler(process, message) {
 							if (message.type === 'current_line') {
 								logger.debug(
 									`current line reported as ${message.relative_path}:${message.line}`
 								)
-								if (!follow_cursor.active_process) return
-
-								await sync_editor_with_renpy({
-									path: message.path,
-									relative_path: message.relative_path,
-									line: message.line - 1,
-								})
+								if (follow_cursor.active_process === process) {
+									await sync_editor_with_renpy({
+										path: message.path,
+										relative_path: message.relative_path,
+										line: message.line - 1,
+									})
+								}
 							} else {
 								logger.warn('unhandled message:', message)
 							}
@@ -236,6 +236,10 @@ export async function launch_renpy({
 						context,
 					})
 					pm.add(rpp)
+
+					status_bar.update(({ running_processes }) => ({
+						running_processes: running_processes + 1,
+					}))
 
 					if (
 						extensions_enabled === 'Enabled' &&

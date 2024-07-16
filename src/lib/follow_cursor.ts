@@ -106,8 +106,6 @@ export class FollowCursor {
 	}
 
 	async set(process: RenpyProcess) {
-		if (this.active_process === process) return
-
 		if (get_config('renpyExtensionsEnabled') !== 'Enabled') {
 			vscode.window.showErrorMessage(
 				"Follow cursor only works with Ren'Py extensions enabled.",
@@ -148,14 +146,15 @@ export class FollowCursor {
 
 	off() {
 		if (!this.active_process) return
+
 		this.active_process = undefined
+
+		this.text_editor_handle?.dispose()
+		this.text_editor_handle = undefined
 
 		this.status_bar.update(() => ({
 			is_follow_cursor: false,
 		}))
-
-		this.text_editor_handle?.dispose()
-		this.text_editor_handle = undefined
 	}
 
 	dispose() {

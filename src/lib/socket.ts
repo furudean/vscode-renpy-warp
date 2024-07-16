@@ -78,7 +78,7 @@ export async function start_websocket_server({
 				logger.debug('websocket <', data.toString())
 				const message = JSON.parse(data.toString())
 
-				await rpp.message_handler(message)
+				await rpp.message_handler(rpp, message)
 			})
 
 			ws.on('close', () => {

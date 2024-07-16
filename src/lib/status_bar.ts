@@ -49,14 +49,6 @@ export class StatusBar {
 	private update_status_bar() {
 		this.instance_bar.show()
 
-		if (this.state.starting_processes > 0) {
-			this.instance_bar.text = `$(loading~spin) Starting Ren'Py...`
-			this.instance_bar.command = undefined
-			this.instance_bar.tooltip = undefined
-
-			return
-		}
-
 		if (
 			this.state.running_processes > 0 &&
 			get_config('renpyExtensionsEnabled') === 'Enabled'
@@ -91,6 +83,12 @@ export class StatusBar {
 			this.instance_bar.text = `$(play) Launch Project`
 			this.instance_bar.command = 'renpyWarp.launch'
 			this.instance_bar.tooltip = "Launch new Ren'Py instance"
+		}
+
+		if (this.state.starting_processes > 0) {
+			this.instance_bar.text = `$(loading~spin) Starting Ren'Py...`
+			this.instance_bar.command = undefined
+			this.instance_bar.tooltip = undefined
 		}
 	}
 

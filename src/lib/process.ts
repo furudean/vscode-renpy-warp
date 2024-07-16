@@ -52,7 +52,10 @@ export async function focus_window(pid: number) {
 
 export class RenpyProcess {
 	cmd: string
-	message_handler: (data: SocketMessage) => MaybePromise<void>
+	message_handler: (
+		process: RenpyProcess,
+		data: SocketMessage
+	) => MaybePromise<void>
 	game_root: string
 	socket_port: number | undefined
 	process: child_process.ChildProcess
@@ -67,7 +70,7 @@ export class RenpyProcess {
 		context,
 	}: {
 		cmd: string
-		message_handler: (data: SocketMessage) => MaybePromise<void>
+		message_handler: typeof RenpyProcess.prototype.message_handler
 		game_root: string
 		socket_port: number | undefined
 		context: vscode.ExtensionContext
@@ -185,11 +188,16 @@ export class RenpyProcess {
 
 export class ProcessManager {
 	private processes = new Map<number, RenpyProcess>()
-	private status_bar: StatusBar
 
-	constructor({ status_bar }: { status_bar: StatusBar }) {
-		this.processes = new Map()
-		this.status_bar = status_bar
+	/** Runs on process exit, after process has been removed */
+	private exit_handler: (process: RenpyProcess) => MaybePromise<void>
+
+	constructor({
+		exit_handler,
+	}: {
+		exit_handler: typeof ProcessManager.prototype.exit_handler
+	}) {
+		this.exit_handler = exit_handler
 	}
 
 	/** @param {RenpyProcess} process */
@@ -197,16 +205,11 @@ export class ProcessManager {
 		if (!process.process.pid) throw new Error('no pid in process')
 
 		this.processes.set(process.process.pid, process)
-		this.status_bar.update(({ running_processes }) => ({
-			running_processes: running_processes + 1,
-		}))
+
 		process.process.on('exit', (code) => {
 			if (!process.process.pid) throw new Error('no pid in process')
 
 			this.processes.delete(process.process.pid)
-			this.status_bar.update(({ running_processes }) => ({
-				running_processes: running_processes - 1,
-			}))
 
 			if (code) {
 				vscode.window
@@ -219,6 +222,8 @@ export class ProcessManager {
 						if (selected === 'Logs') output_channel!.show()
 					})
 			}
+
+			this.exit_handler(process)
 		})
 	}
 

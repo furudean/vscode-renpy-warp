@@ -1,6 +1,6 @@
 import * as vscode from 'vscode'
 
-import { ProcessManager } from './lib/process'
+import { ProcessManager, RenpyProcess } from './lib/process'
 import { FollowCursor } from './lib/follow_cursor'
 import { get_logger } from './lib/logger'
 import { find_game_root, get_executable } from './lib/sh'
@@ -21,7 +21,18 @@ const logger = get_logger()
 export function activate(context: vscode.ExtensionContext) {
 	const status_bar = new StatusBar()
 	const follow_cursor = new FollowCursor({ status_bar })
-	const pm = new ProcessManager({ status_bar })
+	const pm = new ProcessManager({
+		exit_handler() {
+			status_bar.update(({ running_processes }) => ({
+				running_processes: running_processes - 1,
+			}))
+
+			if (pm.length) {
+				const most_recent = pm.at(-1) as RenpyProcess
+				follow_cursor.set(most_recent)
+			}
+		},
+	})
 
 	context.subscriptions.push(pm, follow_cursor, status_bar)
 
