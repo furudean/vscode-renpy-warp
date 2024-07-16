@@ -113,7 +113,7 @@ export class RenpyProcess {
 		logger.info('created process', this.process.pid)
 	}
 
-	async wait_for_socket(): Promise<void> {
+	async wait_for_socket(timeout_ms: number): Promise<void> {
 		if (this.socket) return
 
 		logger.info('waiting for socket connection from renpy window...')
@@ -121,25 +121,20 @@ export class RenpyProcess {
 		return new Promise((resolve, reject) => {
 			const timeout = setTimeout(() => {
 				reject(new Error('timed out waiting for socket'))
-				if (!this.dead) {
-					vscode.window
-						.showErrorMessage(
-							"Timed out trying to connect to Ren'Py window. Is the socket client running?",
-							'Logs',
-							'OK'
-						)
-						.then((selection) => {
-							if (selection === 'Logs') logger.show()
-						})
-					this.kill()
-				}
-			}, 10_000)
+			}, timeout_ms)
 
 			const interval = setInterval(() => {
-				if (this.socket) {
+				if (this.socket || this.dead) {
 					clearTimeout(timeout)
 					clearInterval(interval)
-					resolve()
+
+					this.socket
+						? resolve()
+						: reject(
+								new Error(
+									'process died before socket connected'
+								)
+						  )
 				}
 			}, 50)
 		})

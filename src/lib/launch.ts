@@ -250,30 +250,29 @@ export async function launch_renpy({
 						await follow_cursor.set(rpp)
 					}
 
-					const cancelation = cancel.onCancellationRequested(() => {
+					cancel.onCancellationRequested(() => {
 						rpp.kill()
-						status_bar.update(({ starting_processes }) => ({
-							starting_processes: starting_processes - 1,
-						}))
 					})
 
 					if (extensions_enabled === 'Enabled') {
 						logger.info('waiting for process to connect to socket')
 
-						while (!rpp.socket && !rpp.dead) {
-							await new Promise((resolve) =>
-								setTimeout(resolve, 100)
-							)
+						try {
+							await rpp.wait_for_socket(10_000)
+						} catch (e) {
+							if (rpp.dead === false) {
+								logger.error('timed out waiting for socket')
+								vscode.window.showErrorMessage(
+									"Timed out trying to connect to Ren'Py window. Is the socket client running?",
+									'OK'
+								)
+							}
 						}
-						if (rpp.dead) throw new Error('panic')
-
-						logger.debug('process connected to socket first time')
 					}
 
 					status_bar.update(({ starting_processes }) => ({
 						starting_processes: starting_processes - 1,
 					}))
-					cancelation.dispose()
 
 					return rpp
 				}
