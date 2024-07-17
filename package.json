@@ -198,7 +198,7 @@
 					"type": "boolean",
 					"default": false,
 					"order": 3,
-					"markdownDescription": "Automatically enter _Follow Cursor_ mode when launching Ren'Py. This setting is ignored if `#renpyWarp.renpyExtensionsEnabled#` is enabled."
+					"markdownDescription": "Automatically enter _Follow Cursor_ mode when launching Ren'Py. This is ignored if `#renpyWarp.renpyExtensionsEnabled#` is set to _Disabled_."
 				},
 				"renpyWarp.focusWindowOnWarp": {
 					"type": "boolean",
