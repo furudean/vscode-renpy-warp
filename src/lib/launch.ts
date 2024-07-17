@@ -182,6 +182,7 @@ export async function launch_renpy({
 				WARP_ENABLED:
 					extensions_enabled === 'Enabled' ? '1' : undefined,
 				WARP_WS_PORT: socket_port?.toString(),
+				// see: https://www.renpy.org/doc/html/editor.html
 				RENPY_EDIT_PY: await get_editor_path(sdk_path),
 			})
 			if (!renpy_sh) throw new Error('no renpy.sh found')
