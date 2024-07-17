@@ -10,17 +10,13 @@ import { set_config, set_config_exclusive } from './util'
  */
 export async function prompt_configure_extensions(
 	executable: string
-): Promise<string> {
-	const selection_map: Record<string, () => Promise<string>> = {
+): Promise<void> {
+	const selection_map: Record<string, () => Promise<void>> = {
 		'Always use extensions (recommended)': async () => {
 			await set_config_exclusive('renpyExtensionsEnabled', 'Enabled')
-
-			return 'Enabled'
 		},
 		'Use extensions only in this project': async () => {
 			await set_config('renpyExtensionsEnabled', 'Enabled', true)
-
-			return 'Enabled'
 		},
 		'Disable extensions only in this project': async () => {
 			await set_config('renpyExtensionsEnabled', 'Disabled', true)
@@ -28,8 +24,6 @@ export async function prompt_configure_extensions(
 			vscode.window.showInformationMessage(
 				"Ren'Py extension features disabled for this project"
 			)
-
-			return 'Disabled'
 		},
 		'Never install extensions': async () => {
 			await set_config_exclusive('renpyExtensionsEnabled', 'Disabled')
@@ -37,8 +31,6 @@ export async function prompt_configure_extensions(
 			vscode.window.showInformationMessage(
 				"Ren'Py extension features disabled globally"
 			)
-
-			return 'Disabled'
 		},
 	}
 
@@ -55,9 +47,7 @@ export async function prompt_configure_extensions(
 		}
 	)
 
-	if (selection) {
-		return await selection_map[selection]()
-	}
+	if (!selection) throw new Error('user cancelled')
 
-	throw new Error('user cancelled')
+	await selection_map[selection]()
 }

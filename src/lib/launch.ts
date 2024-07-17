@@ -115,9 +115,8 @@ export async function launch_renpy({
 			if (!executable) return
 
 			if (extensions_enabled === 'Not set') {
-				extensions_enabled = await prompt_configure_extensions(
-					executable
-				)
+				await prompt_configure_extensions(executable)
+				extensions_enabled = get_config('renpyExtensionsEnabled')
 			}
 
 			if (extensions_enabled === 'Enabled') {
