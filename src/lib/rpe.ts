@@ -8,8 +8,28 @@ import { get_logger } from './logger'
 import fs from 'node:fs/promises'
 import AdmZip from 'adm-zip'
 import { glob } from 'glob'
+import { createHash } from 'node:crypto'
 
+const RPE_FILE_PATTERN =
+	/renpy_warp_(?<version>\d\.\d\.\d)(?:_(?<checksum>[a-z0-9]+))?\.rpe(?:\.py)?/
 const logger = get_logger()
+
+function get_checksum(data: Buffer): string {
+	const hash = createHash('md5').update(data)
+
+	return hash.digest('hex').slice(0, 10) // yeah, i know
+}
+
+async function get_rpe_source(
+	context: vscode.ExtensionContext
+): Promise<Buffer> {
+	const rpe_source_path = path.join(
+		context.extensionPath,
+		'dist/',
+		'renpy_warp.rpe.py'
+	)
+	return await fs.readFile(rpe_source_path)
+}
 
 export async function list_rpes(sdk_path: string): Promise<string[]> {
 	const [rpe, rpe_in_sdk] = await Promise.all([
@@ -42,25 +62,18 @@ export async function install_rpe({
 
 	await uninstall_rpes(sdk_path)
 
-	const rpe_source_path = path.join(
-		context.extensionPath,
-		'dist/',
-		'renpy_warp.rpe.py'
-	)
-	const rpe_source_code = await fs.readFile(rpe_source_path)
+	const rpe_source = await get_rpe_source(context)
+	const file_base = `renpy_warp_${pkg_version}_${get_checksum(rpe_source)}`
+
 	let file_path: string
 
 	if (supports_rpe_py) {
-		file_path = path.join(sdk_path, `renpy_warp_${pkg_version}.rpe.py`)
-		await fs.writeFile(file_path, rpe_source_code)
+		file_path = path.join(sdk_path, `${file_base}.rpe.py`)
+		await fs.writeFile(file_path, rpe_source)
 	} else {
-		file_path = path.join(
-			game_root,
-			'game/',
-			`renpy_warp_${pkg_version}.rpe`
-		)
+		file_path = path.join(game_root, 'game/', `${file_base}.rpe`)
 		const zip = new AdmZip()
-		zip.addFile('autorun.py', rpe_source_code)
+		zip.addFile('autorun.py', rpe_source)
 		await fs.writeFile(file_path, zip.toBuffer())
 	}
 
@@ -83,12 +96,17 @@ export async function has_any_rpe(sdk_path: string): Promise<boolean> {
 export async function has_current_rpe({
 	executable,
 	sdk_path,
+	context,
 }: {
 	executable: string
 	sdk_path: string
+	context: vscode.ExtensionContext
 }): Promise<boolean> {
 	const files = await list_rpes(sdk_path)
 	logger.debug('check rpe:', files)
+
+	const rpe_source = await get_rpe_source(context)
+	const checksum = get_checksum(rpe_source)
 
 	const renpy_version = get_version(executable)
 	const supports_rpe_py = semver.gte(renpy_version.semver, '8.3.0')
@@ -100,11 +118,9 @@ export async function has_current_rpe({
 		if (!supports_rpe_py && basename.endsWith('.rpe.py')) return false
 		if (supports_rpe_py && basename.endsWith('.rpe')) return false
 
-		const file_version = basename.match(
-			/renpy_warp_(?<version>.+)\.rpe(?:\.py)?/
-		)?.groups?.version
+		const match = basename.match(RPE_FILE_PATTERN)?.groups
 
-		if (file_version === pkg_version) {
+		if (match?.checksum === checksum) {
 			return true
 		}
 	}

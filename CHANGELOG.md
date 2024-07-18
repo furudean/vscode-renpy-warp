@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## Unreleased
+
+-   Remove notifications for warping in open window
+-   Adds a 'Show' button when .rpe is installed manually
+-   Append a hash to the .rpe file so that the file only updates when the
+    contents change
+-   Fix some inaccuracies with settings documentation
+
 ## 1.7.2 - 2024-07-15
 
 -   Fix a bug where follow cursor would be enabled when a process was closed

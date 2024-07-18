@@ -6,7 +6,12 @@ import { get_logger } from './lib/logger'
 import { find_game_root, get_executable } from './lib/sh'
 import { install_rpe, uninstall_rpes } from './lib/rpe'
 import { launch_renpy } from './lib/launch'
-import { get_config, get_configuration_object, set_config } from './lib/util'
+import {
+	get_config,
+	get_configuration_object,
+	set_config,
+	show_file,
+} from './lib/util'
 import {
 	resolve_path,
 	path_exists,
@@ -149,10 +154,15 @@ export function activate(context: vscode.ExtensionContext) {
 				executable,
 			})
 
-			await vscode.window.showInformationMessage(
+			const selection = await vscode.window.showInformationMessage(
 				`Ren'Py extensions were successfully installed at ${installed_path}`,
-				'OK'
+				'OK',
+				'Show'
 			)
+
+			if (selection === 'Show') {
+				await show_file(installed_path)
+			}
 		}),
 
 		vscode.commands.registerCommand('renpyWarp.uninstallRpe', async () => {

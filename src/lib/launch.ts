@@ -138,7 +138,9 @@ export async function launch_renpy({
 								show_file(installed_path)
 							}
 						})
-				} else if (!(await has_current_rpe({ executable, sdk_path }))) {
+				} else if (
+					!(await has_current_rpe({ executable, sdk_path, context }))
+				) {
 					const installed_path = await install_rpe({
 						sdk_path,
 						game_root,
