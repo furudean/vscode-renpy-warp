@@ -252,7 +252,7 @@ export async function launch_renpy({
 						logger.info('waiting for process to connect to socket')
 
 						try {
-							await rpp.wait_for_socket(10_000)
+							await rpp.wait_for_socket_alive(10_000)
 						} catch (e) {
 							if (rpp.dead === false) {
 								logger.error('timed out waiting for socket')

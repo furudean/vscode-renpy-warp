@@ -198,7 +198,7 @@
 					"type": "boolean",
 					"default": false,
 					"order": 3,
-					"markdownDescription": "Automatically enter _Follow Cursor_ mode when launching Ren'Py. This is ignored if `#renpyWarp.renpyExtensionsEnabled#` is set to _Disabled_."
+					"markdownDescription": "Automatically enter _Follow Cursor_ mode when launching Ren'Py"
 				},
 				"renpyWarp.focusWindowOnWarp": {
 					"type": "boolean",
@@ -246,6 +246,12 @@
 					"default": "Not set",
 					"markdownDescription": "Enable Ren'Py Extension (.rpe) support.",
 					"scope": "machine-overridable"
+				},
+				"renpyWarp.reloadProcessOnSave": {
+					"type": "boolean",
+					"default": false,
+					"order": 2,
+					"markdownDescription": "When in _Follow Cursor_ mode, reload the Ren'Py process when a file is saved, and then warp to that line"
 				}
 			}
 		}

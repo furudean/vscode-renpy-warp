@@ -20,6 +20,7 @@ import {
 } from './lib/path'
 import { StatusBar } from './lib/status_bar'
 import { prompt_configure_extensions } from './lib/onboard'
+import path from 'upath'
 
 const logger = get_logger()
 
@@ -233,6 +234,43 @@ export function activate(context: vscode.ExtensionContext) {
 	) {
 		set_config('renpyExtensionsEnabled', undefined, true)
 	}
+
+	const save_text_handler = vscode.workspace.onWillSaveTextDocument(
+		async ({ document }) => {
+			try {
+				if (document.languageId !== 'renpy') return
+				if (document.isDirty === false) return
+				if (!follow_cursor.active_process) return
+				if (get_config('reloadProcessOnSave') !== true) return
+				if (get_config('renpyExtensionsEnabled') !== 'Enabled') return
+
+				const line =
+					vscode.window.activeTextEditor?.selection.active.line
+
+				if (line === undefined) return
+
+				for (const process of pm) {
+					if (!process.socket) return
+
+					logger.info(
+						'reloading process on save',
+						process.process.pid
+					)
+					await process.reload()
+
+					const relative_path = path.relative(
+						process.game_root,
+						document.fileName
+					)
+					await process.warp_to_line(relative_path, line + 1)
+				}
+			} catch (error: any) {
+				logger.error(error)
+			}
+		}
+	)
+
+	context.subscriptions.push(save_text_handler)
 }
 
 export function deactivate() {

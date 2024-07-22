@@ -1,12 +1,9 @@
 import * as vscode from 'vscode'
 import child_process from 'node:child_process'
 import { WebSocket } from 'ws'
-import { FollowCursor } from './follow_cursor'
-import { get_config } from './util'
 import { get_logger } from './logger'
 import pidtree from 'pidtree'
 import { windowManager } from 'node-window-manager'
-import { StatusBar } from './status_bar'
 
 const logger = get_logger()
 
@@ -113,13 +110,14 @@ export class RenpyProcess {
 		logger.info('created process', this.process.pid)
 	}
 
-	async wait_for_socket(timeout_ms: number): Promise<void> {
+	async wait_for_socket_alive(timeout_ms: number): Promise<void> {
 		if (this.socket) return
 
 		logger.info('waiting for socket connection from renpy window...')
 
 		return new Promise((resolve, reject) => {
 			const timeout = setTimeout(() => {
+				clearInterval(interval)
 				reject(new Error('timed out waiting for socket'))
 			}, timeout_ms)
 
@@ -135,6 +133,30 @@ export class RenpyProcess {
 									'process died before socket connected'
 								)
 						  )
+				}
+			}, 50)
+		})
+	}
+
+	async wait_for_socket_death(timeout_ms: number): Promise<void> {
+		if (!this.socket) return
+
+		logger.info('waiting for socket to close...')
+
+		return new Promise((resolve, reject) => {
+			const timeout = setTimeout(() => {
+				clearInterval(interval)
+				reject(new Error('timed out waiting for socket to close'))
+			}, timeout_ms)
+
+			const interval = setInterval(() => {
+				if (!this.socket || this.dead) {
+					clearTimeout(timeout)
+					clearInterval(interval)
+
+					this.socket
+						? reject(new Error('process died before socket closed'))
+						: resolve()
 				}
 			}, 50)
 		})
@@ -179,6 +201,19 @@ export class RenpyProcess {
 			line,
 		})
 	}
+
+	/**
+	 * await this promise to ensure the process has reloaded and is ready to
+	 * receive IPC
+	 */
+	async reload() {
+		await this.ipc({
+			type: 'reload',
+		})
+
+		await this.wait_for_socket_death(5000)
+		await this.wait_for_socket_alive(10_000)
+	}
 }
 
 export class ProcessManager {
@@ -193,6 +228,10 @@ export class ProcessManager {
 		exit_handler: typeof ProcessManager.prototype.exit_handler
 	}) {
 		this.exit_handler = exit_handler
+	}
+
+	[Symbol.iterator]() {
+		return this.processes.values()
 	}
 
 	/** @param {RenpyProcess} process */
@@ -248,7 +287,7 @@ export class ProcessManager {
 	}
 
 	kill_all() {
-		for (const { process: process } of this.processes.values()) {
+		for (const { process } of this) {
 			process.kill(9) // SIGKILL, bypasses "are you sure" dialog
 		}
 	}
