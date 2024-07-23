@@ -66,15 +66,11 @@ jobs:
             - name: publish to open vsx registry
               uses: HaaLeo/publish-vscode-extension@v1
               with:
-                  target: ${{ matrix.target }}
-                  packagePath: null
                   registryUrl: https://open-vsx.org
                   pat: ${{ secrets.OVSX_TOKEN }}
 
             - name: publish to visual studio marketplace
               uses: HaaLeo/publish-vscode-extension@v1
               with:
-                  target: ${{ matrix.target }}
-                  packagePath: null
                   registryUrl: https://marketplace.visualstudio.com
                   pat: ${{ secrets.VSCE_PAT }}
