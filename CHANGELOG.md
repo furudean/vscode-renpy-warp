@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.8.1 - 2024-07-22
+
+-   Fix deployment issues (hopefully)
+
 ## 1.8.0 - 2024-07-22
 
 -   Remove notifications for warping in open window
