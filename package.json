@@ -261,7 +261,7 @@
 	],
 	"scripts": {
 		"vscode:prepublish": "npm run check-types && npm run lint && node esbuild.js --production",
-		"publish": "vsce publish",
+		"publish": "echo 'this extension can only be published by github actions'",
 		"compile": "npm run check-types && npm run lint && node esbuild.js",
 		"watch": "npm-run-all -p watch:*",
 		"watch:esbuild": "node esbuild.js --watch",
