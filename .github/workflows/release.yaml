@@ -11,7 +11,13 @@ jobs:
         strategy:
             matrix:
                 os: [ubuntu-latest, macos-latest, windows-latest]
-                target: [linux-x64, darwin-x64, darwin-arm64, win32-x64]
+                include:
+                    - os: ubuntu-latest
+                      targets: [linux-x64]
+                    - os: macos-latest
+                      targets: [darwin-x64, darwin-arm64]
+                    - os: windows-latest
+                      targets: [win32-x64]
 
         runs-on: '${{ matrix.os }}'
         steps:
@@ -39,7 +45,10 @@ jobs:
             - run: npm install
 
             - name: create extension package
-              run: npm run package -- --target ${{ matrix.target }}
+              run: |
+                  for target in ${{ matrix.targets }}; do
+                    npm run package -- --target $target
+                  done
 
             - name: create github release
               uses: ncipollo/release-action@v1
@@ -57,13 +66,13 @@ jobs:
             - name: publish to open vsx registry
               uses: HaaLeo/publish-vscode-extension@v1
               with:
-                  target: ${{ matrix.target }}
+                  target: ${{ join(matrix.targets, ' ') }}
                   registryUrl: https://open-vsx.org
                   pat: ${{ secrets.OVSX_TOKEN }}
 
             - name: publish to visual studio marketplace
               uses: HaaLeo/publish-vscode-extension@v1
               with:
-                  target: ${{ matrix.target }}
+                  target: ${{ join(matrix.targets, ' ') }}
                   registryUrl: https://marketplace.visualstudio.com
                   pat: ${{ secrets.VSCE_PAT }}
