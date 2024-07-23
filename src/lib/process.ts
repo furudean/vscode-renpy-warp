@@ -1,12 +1,9 @@
 import * as vscode from 'vscode'
 import child_process from 'node:child_process'
 import { WebSocket } from 'ws'
-import { FollowCursor } from './follow_cursor'
-import { get_config } from './util'
 import { get_logger } from './logger'
 import pidtree from 'pidtree'
 import { windowManager } from 'node-window-manager'
-import { StatusBar } from './status_bar'
 
 const logger = get_logger()
 
@@ -120,6 +117,7 @@ export class RenpyProcess {
 
 		return new Promise((resolve, reject) => {
 			const timeout = setTimeout(() => {
+				clearInterval(interval)
 				reject(new Error('timed out waiting for socket'))
 			}, timeout_ms)
 
@@ -179,6 +177,16 @@ export class RenpyProcess {
 			line,
 		})
 	}
+
+	/**
+	 * await this promise to ensure the process has reloaded and is ready to
+	 * receive IPC
+	 */
+	async set_autoreload() {
+		await this.ipc({
+			type: 'set_autoreload',
+		})
+	}
 }
 
 export class ProcessManager {
@@ -193,6 +201,10 @@ export class ProcessManager {
 		exit_handler: typeof ProcessManager.prototype.exit_handler
 	}) {
 		this.exit_handler = exit_handler
+	}
+
+	[Symbol.iterator]() {
+		return this.processes.values()
 	}
 
 	/** @param {RenpyProcess} process */
@@ -248,7 +260,7 @@ export class ProcessManager {
 	}
 
 	kill_all() {
-		for (const { process: process } of this.processes.values()) {
+		for (const { process } of this) {
 			process.kill(9) // SIGKILL, bypasses "are you sure" dialog
 		}
 	}

@@ -1,6 +1,6 @@
 import * as vscode from 'vscode'
 
-import { ProcessManager, RenpyProcess } from './lib/process'
+import { ProcessManager } from './lib/process'
 import { FollowCursor } from './lib/follow_cursor'
 import { get_logger } from './lib/logger'
 import { find_game_root, get_executable } from './lib/sh'
@@ -233,6 +233,36 @@ export function activate(context: vscode.ExtensionContext) {
 	) {
 		set_config('renpyExtensionsEnabled', undefined, true)
 	}
+
+	const save_text_handler = vscode.workspace.onWillSaveTextDocument(
+		async ({ document }) => {
+			try {
+				if (document.languageId !== 'renpy') return
+				if (document.isDirty === false) return
+				if (get_config('warpOnSave') !== true) return
+
+				if (
+					vscode.window.activeTextEditor?.selection.active.line ===
+					undefined
+				)
+					return
+
+				for (const process of pm) {
+					if (!process.socket) return
+
+					logger.info(
+						'reloading process on save',
+						process.process.pid
+					)
+					await process.set_autoreload()
+				}
+			} catch (error: any) {
+				logger.error(error)
+			}
+		}
+	)
+
+	context.subscriptions.push(save_text_handler)
 }
 
 export function deactivate() {

@@ -9,6 +9,8 @@ All notable changes to this project will be documented in this file.
 -   Append a hash to the .rpe file so that the file only updates when the
     contents change
 -   Fix some inaccuracies with settings documentation
+-   Enable auto reloading of the game when a game file first is saved with the
+    setting `renpyWarp.setAutoReloadOnSave` enabled.
 
 ## 1.7.2 - 2024-07-15
 

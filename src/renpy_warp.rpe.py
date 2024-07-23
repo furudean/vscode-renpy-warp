@@ -7,9 +7,10 @@
 
 from time import sleep
 import renpy  # type: ignore
-from websockets.sync.client import connect
-import websockets
+from websockets.sync.client import connect  # type: ignore
+import websockets  # type: ignore
 
+import textwrap
 import threading
 import json
 import functools
@@ -42,6 +43,14 @@ def socket_listener(websocket: websockets.WebSocketClientProtocol):
 
             py_exec(f"renpy.warp_to_line('{file}:{line}')")
 
+        elif payload["type"] == "set_autoreload":
+            script = textwrap.dedent("""
+                if renpy.get_autoreload() == False:
+                    renpy.set_autoreload(True)
+                    renpy.reload_script()
+            """)
+            py_exec(script)
+
         else:
             print(f"unhandled message type '{payload['type']}'")
 
@@ -49,12 +58,21 @@ def socket_listener(websocket: websockets.WebSocketClientProtocol):
 def socket_producer(websocket: websockets.WebSocketClientProtocol):
     """produces messages to the socket server"""
 
+    first = True
+
     # report current line to warp server
     def fn(event, interact=True, **kwargs):
+        nonlocal first
+
         if not interact:
             return
 
         if event == "begin":
+            # skip the first event, as it usually is not useful
+            if first:
+                first = False
+                return
+
             filename, line = renpy.exports.get_filename_line()
             relative_filename = re.sub(r"^game/", "", filename)
             filename_abs = os.path.join(
@@ -85,7 +103,11 @@ def renpy_warp_service():
         ) as websocket:
             print("connected to renpy warp socket server")
 
-            renpy.config.quit_callbacks.append(lambda: websocket.close())
+            def quit():
+                print("closing websocket connection")
+                websocket.close()
+
+            renpy.config.quit_callbacks.append(quit)
 
             socket_producer(websocket)
             socket_listener(websocket)  # this blocks until socket is closed

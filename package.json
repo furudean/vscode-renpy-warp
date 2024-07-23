@@ -246,6 +246,12 @@
 					"default": "Not set",
 					"markdownDescription": "Enable Ren'Py Extension (.rpe) support.",
 					"scope": "machine-overridable"
+				},
+				"renpyWarp.setAutoReloadOnSave": {
+					"type": "boolean",
+					"default": false,
+					"order": 2,
+					"markdownDescription": "Enable autoreload in the Ren'Py process when a file is saved."
 				}
 			}
 		}
