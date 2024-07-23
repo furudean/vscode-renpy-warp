@@ -2,9 +2,9 @@
 
 All notable changes to this project will be documented in this file.
 
-## 1.8.1 - 2024-07-22
+## 1.8.1~2 - 2024-07-22
 
--   Fix deployment issues (hopefully)
+-   CI deployment issues
 
 ## 1.8.0 - 2024-07-22
 
