@@ -241,7 +241,7 @@ export function activate(context: vscode.ExtensionContext) {
 				if (document.languageId !== 'renpy') return
 				if (document.isDirty === false) return
 				if (!follow_cursor.active_process) return
-				if (get_config('reloadProcessOnSave') !== true) return
+				if (get_config('warpOnSave') !== true) return
 				if (get_config('renpyExtensionsEnabled') !== 'Enabled') return
 
 				const line =
