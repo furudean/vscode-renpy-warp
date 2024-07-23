@@ -14,10 +14,16 @@ jobs:
                 include:
                     - os: ubuntu-latest
                       target: linux-x64
+                      platformName: linux
                     - os: macos-latest
                       target: darwin-x64 darwin-arm64
+                      platformName: mac
                     - os: windows-latest
                       target: win32-x64
+                      platformName: win
+
+        env:
+            EXTENSION_FILE_NAME: renpy-warp-${{ github.ref_name }}-${{ matrix.platformName }}.vsix
 
         runs-on: '${{ matrix.os }}'
         steps:
@@ -45,10 +51,9 @@ jobs:
             - run: npm install
 
             - name: create extension package
-              run: |
-                  for target in ${{ matrix.target }}; do
-                    npm run package -- --target $target
-                  done
+              run: >-
+                  npm run package --
+                  --out ${{ env.EXTENSION_FILE_NAME }}
 
             - name: create github release
               uses: ncipollo/release-action@v1
@@ -63,14 +68,17 @@ jobs:
                   omitPrereleaseDuringUpdate: true
                   omitDraftDuringUpdate: true
 
-            - name: publish to open vsx registry
-              uses: HaaLeo/publish-vscode-extension@v1
-              with:
-                  registryUrl: https://open-vsx.org
-                  pat: ${{ secrets.OVSX_TOKEN }}
+            - name: release to vscode marketplace
+              run: >-
+                  npm run publish:vsce --
+                  --target ${{ matrix.target }}
+                  --packagePath ${{ env.EXTENSION_FILE_NAME }}
+              env:
+                  VSCE_PAT: '${{ secrets.VSCE_PAT }}'
 
-            - name: publish to visual studio marketplace
-              uses: HaaLeo/publish-vscode-extension@v1
-              with:
-                  registryUrl: https://marketplace.visualstudio.com
-                  pat: ${{ secrets.VSCE_PAT }}
+            - name: release to open vsx
+              run: >-
+                  npm run publish:ovsx --
+                  --target ${{ matrix.target }}
+                  --pat ${{ secrets.OVSX_TOKEN }}
+                  ${{ env.EXTENSION_FILE_NAME }}

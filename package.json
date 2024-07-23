@@ -261,7 +261,9 @@
 	],
 	"scripts": {
 		"vscode:prepublish": "npm run check-types && npm run lint && node esbuild.js --production",
-		"publish": "echo 'this extension can only be published by github actions'",
+		"publish": "echo 'use `npm run publish:ovsx` or `npm run publish:vsce` instead'",
+		"publish:ovsx": "ovsx publish",
+		"publish:vsce": "vsce publish",
 		"compile": "npm run check-types && npm run lint && node esbuild.js",
 		"watch": "npm-run-all -p watch:*",
 		"watch:esbuild": "node esbuild.js --watch",
@@ -297,6 +299,7 @@
 		"get-port": "^5.1.1",
 		"glob": "^10.4.5",
 		"node-window-manager": "^2.2.4",
+		"ovsx": "^0.9.1",
 		"p-throttle": "^4.1.1",
 		"pidtree": "^0.6.0",
 		"puka": "^1.0.1",
