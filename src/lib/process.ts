@@ -110,7 +110,7 @@ export class RenpyProcess {
 		logger.info('created process', this.process.pid)
 	}
 
-	async wait_for_socket_alive(timeout_ms: number): Promise<void> {
+	async wait_for_socket(timeout_ms: number): Promise<void> {
 		if (this.socket) return
 
 		logger.info('waiting for socket connection from renpy window...')
@@ -133,30 +133,6 @@ export class RenpyProcess {
 									'process died before socket connected'
 								)
 						  )
-				}
-			}, 50)
-		})
-	}
-
-	async wait_for_socket_death(timeout_ms: number): Promise<void> {
-		if (!this.socket) return
-
-		logger.info('waiting for socket to close...')
-
-		return new Promise((resolve, reject) => {
-			const timeout = setTimeout(() => {
-				clearInterval(interval)
-				reject(new Error('timed out waiting for socket to close'))
-			}, timeout_ms)
-
-			const interval = setInterval(() => {
-				if (!this.socket || this.dead) {
-					clearTimeout(timeout)
-					clearInterval(interval)
-
-					this.socket
-						? reject(new Error('process died before socket closed'))
-						: resolve()
 				}
 			}, 50)
 		})
@@ -206,13 +182,10 @@ export class RenpyProcess {
 	 * await this promise to ensure the process has reloaded and is ready to
 	 * receive IPC
 	 */
-	async reload() {
+	async set_autoreload() {
 		await this.ipc({
-			type: 'reload',
+			type: 'set_autoreload',
 		})
-
-		await this.wait_for_socket_death(5000)
-		await this.wait_for_socket_alive(10_000)
 	}
 }
 

@@ -1,6 +1,6 @@
 import * as vscode from 'vscode'
 
-import { ProcessManager, RenpyProcess } from './lib/process'
+import { ProcessManager } from './lib/process'
 import { FollowCursor } from './lib/follow_cursor'
 import { get_logger } from './lib/logger'
 import { find_game_root, get_executable } from './lib/sh'
@@ -20,7 +20,6 @@ import {
 } from './lib/path'
 import { StatusBar } from './lib/status_bar'
 import { prompt_configure_extensions } from './lib/onboard'
-import path from 'upath'
 
 const logger = get_logger()
 
@@ -240,14 +239,13 @@ export function activate(context: vscode.ExtensionContext) {
 			try {
 				if (document.languageId !== 'renpy') return
 				if (document.isDirty === false) return
-				if (!follow_cursor.active_process) return
 				if (get_config('warpOnSave') !== true) return
-				if (get_config('renpyExtensionsEnabled') !== 'Enabled') return
 
-				const line =
-					vscode.window.activeTextEditor?.selection.active.line
-
-				if (line === undefined) return
+				if (
+					vscode.window.activeTextEditor?.selection.active.line ===
+					undefined
+				)
+					return
 
 				for (const process of pm) {
 					if (!process.socket) return
@@ -256,13 +254,7 @@ export function activate(context: vscode.ExtensionContext) {
 						'reloading process on save',
 						process.process.pid
 					)
-					await process.reload()
-
-					const relative_path = path.relative(
-						process.game_root,
-						document.fileName
-					)
-					await process.warp_to_line(relative_path, line + 1)
+					await process.set_autoreload()
 				}
 			} catch (error: any) {
 				logger.error(error)

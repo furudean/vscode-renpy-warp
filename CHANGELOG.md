@@ -10,7 +10,7 @@ All notable changes to this project will be documented in this file.
     contents change
 -   Fix some inaccuracies with settings documentation
 -   Enable auto reloading of the game when a game file first is saved with the
-    setting `renpyWarp.warpOnSave` enabled.
+    setting `renpyWarp.setAutoReloadOnSave` enabled.
 
 ## 1.7.2 - 2024-07-15
 

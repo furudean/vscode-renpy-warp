@@ -247,11 +247,11 @@
 					"markdownDescription": "Enable Ren'Py Extension (.rpe) support.",
 					"scope": "machine-overridable"
 				},
-				"renpyWarp.warpOnSave": {
+				"renpyWarp.setAutoReloadOnSave": {
 					"type": "boolean",
 					"default": false,
 					"order": 2,
-					"markdownDescription": "When in _Follow Cursor_ mode, reload the Ren'Py process when a file is saved, and then warp to that line"
+					"markdownDescription": "Enable autoreload in the Ren'Py process when a file is saved."
 				}
 			}
 		}

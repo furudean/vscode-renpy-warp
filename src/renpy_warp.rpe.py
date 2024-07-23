@@ -43,9 +43,10 @@ def socket_listener(websocket: websockets.WebSocketClientProtocol):
 
             py_exec(f"renpy.warp_to_line('{file}:{line}')")
 
-        elif payload["type"] == "reload":
+        elif payload["type"] == "set_autoreload":
             script = textwrap.dedent("""
                 if renpy.get_autoreload() == False:
+                    renpy.set_autoreload(True)
                     renpy.reload_script()
             """)
             py_exec(script)
