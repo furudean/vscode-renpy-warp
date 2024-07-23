@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## Unreleased
+## 1.8.0 - 2024-07-22
 
 -   Remove notifications for warping in open window
 -   Adds a 'Show' button when .rpe is installed manually
