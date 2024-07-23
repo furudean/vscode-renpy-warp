@@ -46,7 +46,7 @@ jobs:
 
             - name: create extension package
               run: |
-                  for target in ${{ matrix.targets }}; do
+                  for target in ${{ join(matrix.targets, ' ') }}; do
                     npm run package -- --target $target
                   done
 
