@@ -2,9 +2,9 @@
 
 All notable changes to this project will be documented in this file.
 
-## 1.8.1~4 - 2024-07-22
+## 1.8.1~5 - 2024-07-22
 
--   CI deployment issues
+-   Refactor CI deployment to support multiple registries. No actual code changes.
 
 ## 1.8.0 - 2024-07-22
 
