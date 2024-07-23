@@ -53,8 +53,7 @@ jobs:
             - name: create extension package
               run: >-
                   npm run package --
-                  --out "${{ env.EXTENSION_FILE }}"
-                  --target "${{ matrix.target }}"
+                  --out ${{ env.EXTENSION_FILE }}
 
             - name: create github release
               uses: ncipollo/release-action@v1
