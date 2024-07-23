@@ -13,11 +13,11 @@ jobs:
                 os: [ubuntu-latest, macos-latest, windows-latest]
                 include:
                     - os: ubuntu-latest
-                      targets: [linux-x64]
+                      target: linux-x64
                     - os: macos-latest
-                      targets: [darwin-x64, darwin-arm64]
+                      target: darwin-x64 darwin-arm64
                     - os: windows-latest
-                      targets: [win32-x64]
+                      target: win32-x64
 
         runs-on: '${{ matrix.os }}'
         steps:
@@ -46,7 +46,7 @@ jobs:
 
             - name: create extension package
               run: |
-                  for target in ${{ join(matrix.targets, ' ') }}; do
+                  for target in ${{ matrix.target }}; do
                     npm run package -- --target $target
                   done
 
@@ -66,13 +66,13 @@ jobs:
             - name: publish to open vsx registry
               uses: HaaLeo/publish-vscode-extension@v1
               with:
-                  target: ${{ join(matrix.targets, ' ') }}
+                  packagePath: '*.vsix'
                   registryUrl: https://open-vsx.org
                   pat: ${{ secrets.OVSX_TOKEN }}
 
             - name: publish to visual studio marketplace
               uses: HaaLeo/publish-vscode-extension@v1
               with:
-                  target: ${{ join(matrix.targets, ' ') }}
+                  packagePath: '*.vsix'
                   registryUrl: https://marketplace.visualstudio.com
                   pat: ${{ secrets.VSCE_PAT }}
