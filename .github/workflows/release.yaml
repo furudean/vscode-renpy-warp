@@ -13,13 +13,13 @@ jobs:
                 os: [ubuntu-latest, macos-latest, windows-latest]
                 include:
                     - os: ubuntu-latest
-                      target: linux-x64
+                      targets: [linux-x64]
                       platformName: linux
                     - os: macos-latest
-                      target: darwin-x64 darwin-arm64
+                      targets: [darwin-x64, darwin-arm64]
                       platformName: mac
                     - os: windows-latest
-                      target: win32-x64
+                      targets: [win32-x64]
                       platformName: win
 
         env:
@@ -54,6 +54,7 @@ jobs:
               run: >-
                   npm run package --
                   --out ${{ env.EXTENSION_FILE }}
+                  --target ${{ join(matrix.targets, ' --target ') }}
 
             - name: create github release
               uses: ncipollo/release-action@v1
@@ -71,13 +72,13 @@ jobs:
             - name: publish to open vsx registry
               uses: HaaLeo/publish-vscode-extension@v1
               with:
-                  target: ${{ matrix.target }}
+                  extensionFile: ${{ env.EXTENSION_FILE }}
                   registryUrl: https://open-vsx.org
                   pat: ${{ secrets.OVSX_TOKEN }}
 
             - name: publish to visual studio marketplace
               uses: HaaLeo/publish-vscode-extension@v1
               with:
-                  target: ${{ matrix.target }}
+                  extensionFile: ${{ env.EXTENSION_FILE }}
                   registryUrl: https://marketplace.visualstudio.com
                   pat: ${{ secrets.VSCE_PAT }}
