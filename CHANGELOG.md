@@ -2,7 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
-## Unreleased
+## 1.18.12 - 2024-07-22
+
+-   Reverts CI/CD pipeline changes
+
+## 1.18.1~11 - 2024-07-22
+
+-   Trying to fix the CI/CD pipeline but was unsuccessful
+
+## 1.18.0 - 2024-07-22
 
 -   Remove notifications for warping in open window
 -   Adds a 'Show' button when .rpe is installed manually
@@ -11,6 +19,7 @@ All notable changes to this project will be documented in this file.
 -   Fix some inaccuracies with settings documentation
 -   Enable auto reloading of the game when a game file first is saved with the
     setting `renpyWarp.setAutoReloadOnSave` enabled.
+-   ~~This extension is now also published on the Open VSX registry~~
 
 ## 1.7.2 - 2024-07-15
 
