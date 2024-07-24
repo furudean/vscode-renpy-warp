@@ -7,19 +7,19 @@ All notable changes to this project will be documented in this file.
 -   The RPE would be installed every time a process was launched, even if it was
     already installed because of an oversight in the expression that captures the version.
 
-## 1.19.13~14 - 2024-07-23
+## 1.8.13~14 - 2024-07-23
 
 -   Now also published on the Open VSX registry
 
-## 1.18.12 - 2024-07-22
+## 1.8.12 - 2024-07-22
 
 -   Reverts CI/CD pipeline changes
 
-## 1.18.1~11 - 2024-07-22
+## 1.8.1~11 - 2024-07-22
 
 -   Trying to fix the CI/CD pipeline but was unsuccessful
 
-## 1.18.0 - 2024-07-22
+## 1.8.0 - 2024-07-22
 
 -   Remove notifications for warping in open window
 -   Adds a 'Show' button when .rpe is installed manually
