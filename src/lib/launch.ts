@@ -231,8 +231,6 @@ export async function launch_renpy({
 					})
 
 					if (extensions_enabled === 'Enabled') {
-						logger.info('waiting for process to connect to socket')
-
 						try {
 							await rpp.wait_for_socket(10_000)
 						} catch (e) {
