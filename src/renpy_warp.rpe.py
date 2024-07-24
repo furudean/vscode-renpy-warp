@@ -6,16 +6,14 @@
 #
 
 from time import sleep
-import renpy  # type: ignore
-from websockets.sync.client import connect  # type: ignore
-import websockets  # type: ignore
-
 import textwrap
 import threading
 import json
 import functools
 import re
 import os
+
+import renpy  # type: ignore
 
 enabled = bool(os.getenv("WARP_ENABLED"))
 port = os.getenv("WARP_WS_PORT")
@@ -30,7 +28,7 @@ def py_exec(text: str):
     renpy.exports.invoke_in_main_thread(fn)
 
 
-def socket_listener(websocket: websockets.WebSocketClientProtocol):
+def socket_listener(websocket):
     """listens for messages from the socket server"""
     for message in websocket:
         payload = json.loads(message)
@@ -55,7 +53,7 @@ def socket_listener(websocket: websockets.WebSocketClientProtocol):
             print(f"unhandled message type '{payload['type']}'")
 
 
-def socket_producer(websocket: websockets.WebSocketClientProtocol):
+def socket_producer(websocket):
     """produces messages to the socket server"""
 
     first = True
@@ -94,6 +92,9 @@ def socket_producer(websocket: websockets.WebSocketClientProtocol):
 
 
 def renpy_warp_service():
+    from websockets.sync.client import connect  # type: ignore
+    from websockets.exceptions import ConnectionClosedOK, ConnectionClosedError  # type: ignore
+
     try:
         with connect(
             f"ws://localhost:{port}",
@@ -112,11 +113,11 @@ def renpy_warp_service():
             socket_producer(websocket)
             socket_listener(websocket)  # this blocks until socket is closed
 
-    except websockets.exceptions.ConnectionClosedOK:
+    except ConnectionClosedOK:
         print("connection closed by renpy warp socket server")
         pass
 
-    except websockets.exceptions.ConnectionClosedError as e:
+    except ConnectionClosedError as e:
         print("connection to renpy warp socket server closed unexpectedly", e)
         sleep(1)
         return renpy_warp_service()
