@@ -73,7 +73,7 @@ jobs:
 
             - name: release to open vsx registry
               run: >-
-                  npm run publish:open-vsx --
+                  npm run publish:ovsx --
                   --target ${{ matrix.target }}
                   --pat ${{ secrets.OVSX_TOKEN }}
-                  ${{ env.EXTENSION_FILE}}
+                  ${{ env.EXTENSION_FILE }}
