@@ -120,25 +120,7 @@ export async function launch_renpy({
 			}
 
 			if (extensions_enabled === 'Enabled') {
-				if (!(await has_any_rpe(sdk_path))) {
-					const installed_path = await install_rpe({
-						sdk_path,
-						game_root,
-						context,
-						executable,
-					})
-					vscode.window
-						.showInformationMessage(
-							`Ren'Py Extensions were installed at ${installed_path}`,
-							'OK',
-							'Show'
-						)
-						.then((selection) => {
-							if (selection === 'Show') {
-								show_file(installed_path)
-							}
-						})
-				} else if (
+				if (
 					!(await has_current_rpe({ executable, sdk_path, context }))
 				) {
 					const installed_path = await install_rpe({
@@ -149,7 +131,7 @@ export async function launch_renpy({
 					})
 					vscode.window
 						.showInformationMessage(
-							"Ren'Py extensions have been updated",
+							`Ren'Py Extensions were installed/updated`,
 							'OK',
 							'Show'
 						)

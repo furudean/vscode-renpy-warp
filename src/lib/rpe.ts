@@ -11,7 +11,7 @@ import { glob } from 'glob'
 import { createHash } from 'node:crypto'
 
 const RPE_FILE_PATTERN =
-	/renpy_warp_(?<version>\d\.\d\.\d)(?:_(?<checksum>[a-z0-9]+))?\.rpe(?:\.py)?/
+	/renpy_warp_(?<version>\d+\.\d+\.\d+)(?:_(?<checksum>[a-z0-9]+))?\.rpe(?:\.py)?/
 const logger = get_logger()
 
 function get_checksum(data: Buffer): string {
@@ -109,16 +109,21 @@ export async function has_current_rpe({
 	const checksum = get_checksum(rpe_source)
 
 	const renpy_version = get_version(executable)
+	logger.debug('renpy version (semver):', renpy_version.semver)
+
 	const supports_rpe_py = semver.gte(renpy_version.semver, '8.3.0')
+	logger.debug('supports rpe.py:', supports_rpe_py)
 
 	for (const file of files) {
 		const basename = path.basename(file)
+		logger.debug('basename:', basename)
 
 		// find mismatched feature support
 		if (!supports_rpe_py && basename.endsWith('.rpe.py')) return false
 		if (supports_rpe_py && basename.endsWith('.rpe')) return false
 
 		const match = basename.match(RPE_FILE_PATTERN)?.groups
+		logger.debug('match:', match)
 
 		if (match?.checksum === checksum) {
 			return true

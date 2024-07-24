@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## Unreleased
+
+-   The RPE would be installed every time a process was launched, even if it was
+    already installed because of an oversight in the expression that captures the version.
+
 ## 1.19.13~14 - 2024-07-23
 
 -   Now also published on the Open VSX registry
