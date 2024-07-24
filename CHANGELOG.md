@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## Unreleased
+## 1.10.0 - 2024-07-24
 
 -   The RPE now dynamically imports the `websockets` module to avoid errors in
     web (https://github.com/furudean/vscode-renpy-warp/issues/26)
