@@ -22,9 +22,6 @@ jobs:
                       target: win32-x64
                       platformName: win
 
-        env:
-            EXTENSION_FILE: renpy-warp-${{ github.ref_name }}-${{ matrix.platformName }}.vsix
-
         runs-on: '${{ matrix.os }}'
         steps:
             - name: Checkout
@@ -51,7 +48,7 @@ jobs:
             - run: npm install
 
             - name: create extension package
-              run: npm run package -- --out ${{ env.EXTENSION_FILE }}
+              run: npm run package
 
             - name: create github release
               uses: ncipollo/release-action@v1
@@ -76,4 +73,3 @@ jobs:
                   npm run publish:ovsx --
                   --target ${{ matrix.target }}
                   --pat ${{ secrets.OVSX_TOKEN }}
-                  ${{ env.EXTENSION_FILE }}
