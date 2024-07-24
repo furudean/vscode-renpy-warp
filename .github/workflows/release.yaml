@@ -48,7 +48,9 @@ jobs:
             - run: npm install
 
             - name: create extension package
-              run: npm run package
+              run: >-
+                  npm run package --
+                  --out renpy-warp-${{ github.ref_name }}-${{ matrix.platformName }}.vsix
 
             - name: create github release
               uses: ncipollo/release-action@v1
