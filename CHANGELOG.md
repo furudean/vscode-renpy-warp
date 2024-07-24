@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.19.13 - 2024-07-23
+
+-   Now also published on the Open VSX registry
+
 ## 1.18.12 - 2024-07-22
 
 -   Reverts CI/CD pipeline changes
