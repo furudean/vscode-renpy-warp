@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## 1.19.13 - 2024-07-23
+## 1.19.13~14 - 2024-07-23
 
 -   Now also published on the Open VSX registry
 
