@@ -261,7 +261,9 @@
 	],
 	"scripts": {
 		"vscode:prepublish": "npm run check-types && npm run lint && node esbuild.js --production",
-		"publish": "vsce publish",
+		"publish": "echo 'use `npm run publish:vsce` or `npm run publish:ovsx` instead'",
+		"publish:vsce": "vsce publish",
+		"publish:ovsx": "ovsx publish",
 		"compile": "npm run check-types && npm run lint && node esbuild.js",
 		"watch": "npm-run-all -p watch:*",
 		"watch:esbuild": "node esbuild.js --watch",
@@ -290,6 +292,7 @@
 		"esbuild-plugin-copy": "^2.1.1",
 		"eslint": "^8.57.0",
 		"npm-run-all": "^4.1.5",
+		"ovsx": "^0.9.1",
 		"typescript": "^5.5.3"
 	},
 	"dependencies": {
