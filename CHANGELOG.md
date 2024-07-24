@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## Unreleased
+## 1.9.0 - 2024-07-23
 
 -   The RPE would be installed every time a process was launched, even if it was
     already installed because of an oversight in the expression that captures the version.
