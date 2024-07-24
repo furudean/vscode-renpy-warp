@@ -130,9 +130,14 @@ def renpy_warp_service():
     print("renpy warp script exiting")
 
 
-if enabled:
-    renpy_warp_thread = threading.Thread(target=renpy_warp_service)
-    renpy_warp_thread.daemon = True
-    renpy_warp_thread.start()
+@functools.lru_cache(maxsize=1)  # only run once
+def start_renpy_warp_service():
+    if enabled and renpy.config.developer:
+        renpy_warp_thread = threading.Thread(target=renpy_warp_service)
+        renpy_warp_thread.daemon = True
+        renpy_warp_thread.start()
 
-    print("renpy warp script started")
+        print("renpy warp script started")
+
+
+renpy.config.after_default_callbacks.append(start_renpy_warp_service)

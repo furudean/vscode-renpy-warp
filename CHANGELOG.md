@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file.
 
 -   The RPE now dynamically imports the `websockets` module to avoid errors in
     web (https://github.com/furudean/vscode-renpy-warp/issues/26)
+-   The service will now only start if `config.developer` is set to `True`
 
 ## 1.9.0 - 2024-07-23
 
