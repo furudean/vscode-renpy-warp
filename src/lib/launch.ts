@@ -233,9 +233,9 @@ export async function launch_renpy({
 					if (extensions_enabled === 'Enabled') {
 						try {
 							await rpp.wait_for_socket(10_000)
-						} catch (e) {
+						} catch (e: any) {
+							logger.error('timed out waiting for socket', e)
 							if (rpp.dead === false) {
-								logger.error('timed out waiting for socket')
 								vscode.window.showErrorMessage(
 									"Timed out trying to connect to Ren'Py window. Is the socket client running?",
 									'OK'
