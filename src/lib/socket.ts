@@ -21,17 +21,20 @@ export async function start_websocket_server({
 }): Promise<void> {
 	return new Promise(async (resolve, reject) => {
 		let has_listened = false
-		const wss = new WebSocketServer({ port })
+		const server = new WebSocketServer({ port })
 
-		let close_timeout: NodeJS.Timeout | undefined = undefined
+		function process_exit_handler() {
+			logger.info(`closing socket server :${port} as process exited`)
+			server.close()
+		}
 
-		wss.on('listening', () => {
+		server.on('listening', () => {
 			has_listened = true
 			logger.info(`socket server listening on :${port}`)
 			resolve()
 		})
 
-		wss.on('error', (error) => {
+		server.on('error', (error) => {
 			logger.error('socket server error:', error)
 
 			if (!has_listened) {
@@ -46,18 +49,16 @@ export async function start_websocket_server({
 							logger.show()
 						}
 					})
-				wss.close()
+				server.close()
 				reject()
 			}
 		})
 
-		wss.on('close', () => {
+		server.on('close', () => {
 			reject()
 		})
 
-		wss.on('connection', async (ws, req) => {
-			clearTimeout(close_timeout)
-
+		server.on('connection', async (socket, req) => {
 			const pid = Number(req.headers['pid'])
 			const rpp = await pm.find_tracked(pid)
 
@@ -72,34 +73,25 @@ export async function start_websocket_server({
 				rpp.socket.close()
 			}
 
-			rpp.socket = ws
+			rpp.socket = socket
 
-			ws.on('message', async (data) => {
+			socket.on('message', async (data) => {
 				logger.debug('websocket <', data.toString())
 				const message = JSON.parse(data.toString())
 
 				await rpp.message_handler(rpp, message)
 			})
 
-			ws.on('close', () => {
+			socket.on('close', () => {
 				logger.info(
 					'websocket connection closed to pid',
 					rpp.process.pid
 				)
 				rpp.socket = undefined
-
-				close_timeout = setTimeout(() => {
-					logger.debug(
-						'closing socket server if no clients connected'
-					)
-					if (wss.clients.size === 0) {
-						logger.info(
-							`closing socket server :${port} as nobody was connected for 10 seconds`
-						)
-						wss.close()
-					}
-				}, 10 * 1000)
 			})
+
+			rpp.process.off('exit', process_exit_handler)
+			rpp.process.on('exit', process_exit_handler)
 		})
 	})
 }
