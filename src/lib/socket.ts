@@ -64,8 +64,11 @@ export async function start_websocket_server({
 
 			if (!rpp) throw new Error('no process found for pid ' + pid)
 
+			const ppid = rpp.process.pid
+
 			logger.info(
-				`found new connection from process ${pid} (child process ${rpp.process.pid})`
+				`found new socket connection from process ${pid}` +
+					(ppid !== pid ? ` (parent ${ppid})` : '')
 			)
 
 			if (rpp.socket) {
@@ -76,18 +79,19 @@ export async function start_websocket_server({
 			rpp.socket = socket
 
 			socket.on('message', async (data) => {
-				logger.debug('websocket <', data.toString())
+				logger.debug(`websocket (${ppid}) <`, data.toString())
 				const message = JSON.parse(data.toString())
 
 				await rpp.message_handler(rpp, message)
 			})
 
 			socket.on('close', () => {
-				logger.info(
-					'websocket connection closed to pid',
-					rpp.process.pid
-				)
+				logger.info(`websocket connection closed (pid ${ppid})`)
 				rpp.socket = undefined
+			})
+
+			socket.on('error', (error) => {
+				logger.error(`websocket error (pid ${ppid})`, error)
 			})
 
 			rpp.process.off('exit', process_exit_handler)
