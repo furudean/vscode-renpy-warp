@@ -94,6 +94,12 @@ export async function launch_renpy({
 
 		await rpp.warp_to_line(filename_relative, line + 1)
 
+		status_bar.update(() => ({
+			message: `$(debug-line-by-line) Warped to ${filename_relative}:${
+				line + 1
+			}`,
+		}))
+
 		if (get_config('focusWindowOnWarp') && rpp.process?.pid) {
 			logger.info('focusing window')
 			await focus_window(rpp.process.pid)

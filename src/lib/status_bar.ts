@@ -7,11 +7,15 @@ const logger = get_logger()
 export class StatusBar {
 	private instance_bar: vscode.StatusBarItem
 	private follow_cursor_bar: vscode.StatusBarItem
+	private notification_bar: vscode.StatusBarItem
+
+	private message_timeout: NodeJS.Timeout | undefined
 
 	private state = {
 		starting_processes: 0,
 		running_processes: 0,
 		is_follow_cursor: false,
+		message: undefined as string | undefined,
 	}
 
 	constructor() {
@@ -25,11 +29,17 @@ export class StatusBar {
 			0
 		)
 
+		this.notification_bar = vscode.window.createStatusBarItem(
+			vscode.StatusBarAlignment.Right,
+			10_000
+		)
+
 		this.update_status_bar()
 	}
 
 	update(fn: (state: typeof this.state) => Partial<typeof this.state>) {
-		this.state = { ...this.state, ...fn(this.state) }
+		const incoming_state = fn(this.state)
+		this.state = { ...this.state, ...incoming_state }
 
 		if (this.state.starting_processes < 0) {
 			logger.error('starting_processes underflow')
@@ -39,6 +49,20 @@ export class StatusBar {
 		if (this.state.running_processes < 0) {
 			logger.error('running_processes underflow')
 			this.state.running_processes = 0
+		}
+
+		if (incoming_state.message) {
+			this.notification_bar.text = incoming_state.message
+			this.notification_bar.show()
+
+			if (this.message_timeout) {
+				clearTimeout(this.message_timeout)
+			}
+
+			this.message_timeout = setTimeout(() => {
+				this.notification_bar.hide()
+				this.notification_bar.text = ''
+			}, 3000)
 		}
 
 		logger.debug('status bar state:', this.state)

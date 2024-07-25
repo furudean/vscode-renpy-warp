@@ -60,7 +60,10 @@ export async function sync_editor_with_renpy({
 	}
 }
 
-export async function warp_renpy_to_cursor(rp: RenpyProcess) {
+export async function warp_renpy_to_cursor(
+	rp: RenpyProcess,
+	status_bar: StatusBar
+): Promise<void> {
 	const editor = vscode.window.activeTextEditor
 
 	if (!editor) return
@@ -85,6 +88,11 @@ export async function warp_renpy_to_cursor(rp: RenpyProcess) {
 	}
 
 	await rp.warp_to_line(filename_relative, line + 1)
+	status_bar.update(() => ({
+		message: `$(debug-line-by-line) Warped to ${filename_relative}:${
+			line + 1
+		}`,
+	}))
 	logger.info('warped to', warp_spec)
 }
 
@@ -126,7 +134,10 @@ export class FollowCursor {
 					].includes(get_config('followCursorMode')) &&
 					event.kind !== vscode.TextEditorSelectionChangeKind.Command
 				) {
-					await warp_renpy_to_cursor_throttled(process)
+					await warp_renpy_to_cursor_throttled(
+						process,
+						this.status_bar
+					)
 				}
 			}
 		)
@@ -140,7 +151,7 @@ export class FollowCursor {
 				get_config('followCursorMode')
 			)
 		) {
-			await warp_renpy_to_cursor_throttled(process)
+			await warp_renpy_to_cursor_throttled(process, this.status_bar)
 		}
 	}
 

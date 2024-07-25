@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## Unreleased
+
+-   A less intrusive notification will now be shown when a warp occurs in an open window
+
 ## 1.10.0 - 2024-07-24
 
 -   The RPE now dynamically imports the `websockets` module to avoid errors in
