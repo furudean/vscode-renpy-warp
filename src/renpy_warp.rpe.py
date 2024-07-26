@@ -15,8 +15,9 @@ import os
 
 import renpy  # type: ignore
 
-enabled = bool(os.getenv("WARP_ENABLED"))
-port = os.getenv("WARP_WS_PORT")
+ENABLED = bool(os.getenv("WARP_ENABLED"))
+PORT = os.getenv("WARP_WS_PORT")
+NONCE = os.getenv("WARP_WS_NONCE")
 
 
 def py_exec(text: str):
@@ -97,8 +98,8 @@ def renpy_warp_service():
 
     try:
         with connect(
-            f"ws://localhost:{port}",
-            additional_headers={"pid": str(os.getpid())},
+            f"ws://localhost:{PORT}",
+            additional_headers={"nonce": NONCE},
             open_timeout=5,
             close_timeout=5,
         ) as websocket:
@@ -123,7 +124,7 @@ def renpy_warp_service():
         return renpy_warp_service()
 
     except ConnectionRefusedError:
-        print(f"no renpy warp socket server on {port}. retrying in 1s...")
+        print(f"no renpy warp socket server on {PORT}. retrying in 1s...")
         sleep(1)
         return renpy_warp_service()
 
@@ -132,7 +133,7 @@ def renpy_warp_service():
 
 @functools.lru_cache(maxsize=1)  # only run once
 def start_renpy_warp_service():
-    if enabled and renpy.config.developer:
+    if ENABLED and renpy.config.developer:
         renpy_warp_thread = threading.Thread(target=renpy_warp_service)
         renpy_warp_thread.daemon = True
         renpy_warp_thread.start()
