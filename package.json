@@ -300,7 +300,7 @@
 		"get-port": "^5.1.1",
 		"glob": "^10.4.5",
 		"node-window-manager": "^2.2.4",
-		"p-throttle": "^4.1.1",
+		"p-throttle": "^6.1.0",
 		"pidtree": "^0.6.0",
 		"puka": "^1.0.1",
 		"semver": "^7.6.2",
