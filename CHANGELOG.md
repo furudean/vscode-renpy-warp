@@ -5,6 +5,9 @@ All notable changes to this project will be documented in this file.
 ## Unreleased
 
 -   A less intrusive notification will now be shown when a warp occurs in an open window
+-   Now relies on a random number to identify the process calling back to the extension than using a pid.
+    This is necessary in case renpy was not opened through forking (E.g. editor in flatpak)
+    by brunoais
 
 ## 1.10.0 - 2024-07-24
 

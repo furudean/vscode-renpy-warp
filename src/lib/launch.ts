@@ -168,10 +168,13 @@ export async function launch_renpy({
 
 			if (strategy === 'Replace Window') pm.kill_all()
 
+			const running_nonce = Math.trunc(Math.random() * 2047483648)
+
 			const renpy_sh = await add_env(executable, {
 				WARP_ENABLED:
 					extensions_enabled === 'Enabled' ? '1' : undefined,
 				WARP_WS_PORT: socket_port?.toString(),
+				WARP_WS_NONCE: running_nonce.toString(),
 				// see: https://www.renpy.org/doc/html/editor.html
 				RENPY_EDIT_PY: await get_editor_path(sdk_path),
 			})
@@ -217,7 +220,7 @@ export async function launch_renpy({
 						},
 						context,
 					})
-					pm.add(rpp)
+					pm.add(running_nonce, rpp)
 
 					status_bar.update(({ running_processes }) => ({
 						running_processes: running_processes + 1,

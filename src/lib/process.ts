@@ -208,15 +208,15 @@ export class ProcessManager {
 	}
 
 	/** @param {RenpyProcess} process */
-	async add(process: RenpyProcess) {
+	async add(running_nonce:number, process: RenpyProcess) {
 		if (!process.process.pid) throw new Error('no pid in process')
 
-		this.processes.set(process.process.pid, process)
+		this.processes.set(running_nonce, process)
 
 		process.process.on('exit', (code) => {
 			if (!process.process.pid) throw new Error('no pid in process')
 
-			this.processes.delete(process.process.pid)
+			this.processes.delete(running_nonce)
 
 			if (code) {
 				vscode.window
@@ -234,27 +234,17 @@ export class ProcessManager {
 		})
 	}
 
-	get(pid: number): RenpyProcess | undefined {
-		return this.processes.get(pid)
+	get(running_nonce: number): RenpyProcess | undefined {
+		return this.processes.get(running_nonce)
 	}
 
 	at(index: number): RenpyProcess | undefined {
 		return Array.from(this.processes.values()).at(index)
 	}
 
-	async find_tracked(candidate: number): Promise<RenpyProcess | undefined> {
-		if (this.processes.has(candidate)) return this.processes.get(candidate)
-
-		for (const pid of this.pids) {
-			// the process might be a child of the process we created
-			const child_pids = await pidtree(pid)
-			logger.debug(`child pids for ${pid}: ${JSON.stringify(child_pids)}`)
-
-			if (child_pids.includes(candidate)) {
-				const rpp = this.get(pid)
-
-				if (rpp) return rpp
-			}
+	async find_tracked(running_nonce: number): Promise<RenpyProcess | undefined> {
+		if (this.processes.has(running_nonce)){
+			return this.processes.get(running_nonce)
 		}
 		return
 	}
