@@ -7,8 +7,6 @@ import { windowManager } from 'node-window-manager'
 
 const logger = get_logger()
 
-let output_channel: vscode.OutputChannel | undefined
-
 type MaybePromise<T> = T | Promise<T>
 
 export interface SocketMessage {
@@ -58,6 +56,7 @@ export class RenpyProcess {
 	process: child_process.ChildProcess
 	socket?: WebSocket = undefined
 	dead: boolean = false
+	output_channel: vscode.OutputChannel
 
 	constructor({
 		cmd,
@@ -80,29 +79,24 @@ export class RenpyProcess {
 		logger.info('executing subshell:', cmd)
 		this.process = child_process.exec(cmd)
 
-		if (!output_channel) {
-			output_channel = vscode.window.createOutputChannel(
-				`Ren'Py Launch and Sync - Process Output`
-			)
-			context.subscriptions.push(output_channel)
-		}
-
-		output_channel.appendLine(`process ${this.process.pid} started`)
+		this.output_channel = vscode.window.createOutputChannel(
+			`Ren'Py Launch and Sync - Process Output (${this.process.pid})`
+		)
+		context.subscriptions.push(this.output_channel)
 
 		this.process.stdout!.on('data', (data: string) =>
-			output_channel!.appendLine(
-				`[${this.process.pid} out] ${data.trim()}`
-			)
+			this.output_channel!.append(data)
 		)
-		this.process.stderr!.on('data', (data) =>
-			output_channel!.appendLine(
-				`[${this.process.pid} err] ${data.trim()}`
-			)
+		this.process.stderr!.on('data', (data: string) =>
+			this.output_channel!.append(data)
 		)
+
+		this.output_channel.appendLine(`process ${this.process.pid} started`)
+
 		this.process.on('exit', (code) => {
 			this.dead = true
 			logger.info(`process ${this.process.pid} exited with code ${code}`)
-			output_channel!.appendLine(
+			this.output_channel!.appendLine(
 				`process ${this.process.pid} exited with code ${code}`
 			)
 		})
@@ -207,16 +201,15 @@ export class ProcessManager {
 		return this.processes.values()
 	}
 
-	/** @param {RenpyProcess} process */
-	async add(running_nonce:number, process: RenpyProcess) {
+	async add(id: number, process: RenpyProcess) {
 		if (!process.process.pid) throw new Error('no pid in process')
 
-		this.processes.set(running_nonce, process)
+		this.processes.set(id, process)
 
 		process.process.on('exit', (code) => {
 			if (!process.process.pid) throw new Error('no pid in process')
 
-			this.processes.delete(running_nonce)
+			this.processes.delete(id)
 
 			if (code) {
 				vscode.window
@@ -226,7 +219,7 @@ export class ProcessManager {
 						'Logs'
 					)
 					.then((selected) => {
-						if (selected === 'Logs') output_channel!.show()
+						if (selected === 'Logs') process.output_channel.show()
 					})
 			}
 
@@ -234,19 +227,12 @@ export class ProcessManager {
 		})
 	}
 
-	get(running_nonce: number): RenpyProcess | undefined {
-		return this.processes.get(running_nonce)
+	get(id: number): RenpyProcess | undefined {
+		return this.processes.get(id)
 	}
 
 	at(index: number): RenpyProcess | undefined {
-		return Array.from(this.processes.values()).at(index)
-	}
-
-	async find_tracked(running_nonce: number): Promise<RenpyProcess | undefined> {
-		if (this.processes.has(running_nonce)){
-			return this.processes.get(running_nonce)
-		}
-		return
+		return Array.from(this).at(index)
 	}
 
 	kill_all() {
@@ -256,14 +242,12 @@ export class ProcessManager {
 	}
 
 	dispose() {
-		this.kill_all()
+		for (const { process } of this) {
+			process.unref()
+		}
 	}
 
 	get length() {
 		return this.processes.size
-	}
-
-	get pids(): number[] {
-		return [...this.processes.keys()]
 	}
 }

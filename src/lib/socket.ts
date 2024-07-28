@@ -60,20 +60,25 @@ export async function start_websocket_server({
 		})
 
 		server.on('connection', async (socket, req) => {
-			logger.trace(`renpy socket server ${port} received a connection request with nonce ${req.headers['nonce']}`)
+			logger.trace(
+				`renpy socket server ${port} received a connection request with nonce ${req.headers['nonce']}`
+			)
 			const nonce = Number(req.headers['nonce'])
 
-			const rpp = await pm.find_tracked(nonce)
+			const rpp = pm.get(nonce)
 
-			if (!rpp){
-				logger.warn(`Rejecting connection to socket because ${nonce} is not registered`)
+			if (!rpp) {
+				logger.warn(
+					`Rejecting connection to socket because ${nonce} is not registered`
+				)
 				return
 			}
 
 			const ppid = rpp.process.pid
 
-			logger.info(`found new socket connection from process ${ppid}, with nonce ${nonce}`)
-
+			logger.info(
+				`found new socket connection from process ${ppid}, with nonce ${nonce}`
+			)
 
 			if (rpp.socket) {
 				logger.warn('closing existing socket')

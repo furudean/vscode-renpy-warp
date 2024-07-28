@@ -8,6 +8,7 @@ All notable changes to this project will be documented in this file.
 -   Now relies on a random number to identify the process calling back to the extension than using a pid.
     This is necessary in case renpy was not opened through forking (E.g. editor in flatpak)
     by brunoais
+-   Split different process outputs into different output channels
 
 ## 1.10.0 - 2024-07-24
 

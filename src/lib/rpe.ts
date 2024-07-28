@@ -89,10 +89,6 @@ export async function uninstall_rpes(sdk_path: string): Promise<void> {
 	logger.info('uninstalled rpes:', rpes)
 }
 
-export async function has_any_rpe(sdk_path: string): Promise<boolean> {
-	return (await list_rpes(sdk_path)).length > 0
-}
-
 export async function has_current_rpe({
 	executable,
 	sdk_path,
