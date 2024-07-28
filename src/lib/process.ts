@@ -242,9 +242,7 @@ export class ProcessManager {
 	}
 
 	dispose() {
-		for (const { process } of this) {
-			process.unref()
-		}
+		this.kill_all()
 	}
 
 	get length() {
