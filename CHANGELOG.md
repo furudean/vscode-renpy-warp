@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## Unreleased
+
+-   The option `renpyWarp.followCursorExecInterval` has been removed. The operation is now instantaneous.
+
 ## 1.11.0 - 2024-07-28
 
 -   A less intrusive notification will now be shown when a warp occurs in an open window

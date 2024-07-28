@@ -92,13 +92,6 @@ export async function warp_renpy_to_cursor(
 	logger.info('warped to', warp_spec)
 }
 
-const throttle = p_throttle({
-	limit: 1,
-	interval: get_config('followCursorExecInterval'),
-})
-
-const warp_renpy_to_cursor_throttled = throttle(warp_renpy_to_cursor)
-
 export class FollowCursor {
 	private status_bar: StatusBar
 	private text_editor_handle: vscode.Disposable | undefined
@@ -130,10 +123,7 @@ export class FollowCursor {
 					].includes(get_config('followCursorMode')) &&
 					event.kind !== vscode.TextEditorSelectionChangeKind.Command
 				) {
-					await warp_renpy_to_cursor_throttled(
-						process,
-						this.status_bar
-					)
+					await warp_renpy_to_cursor(process, this.status_bar)
 				}
 			}
 		)
@@ -147,7 +137,7 @@ export class FollowCursor {
 				get_config('followCursorMode')
 			)
 		) {
-			await warp_renpy_to_cursor_throttled(process, this.status_bar)
+			await warp_renpy_to_cursor(process, this.status_bar)
 		}
 	}
 
