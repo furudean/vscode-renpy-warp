@@ -62,12 +62,16 @@ export class StatusBar {
 			this.message_timeout = setTimeout(() => {
 				this.notification_bar.hide()
 				this.notification_bar.text = ''
-			}, 3000)
+			}, 5000)
 		}
 
 		logger.debug('status bar state:', this.state)
 
 		this.update_status_bar()
+	}
+
+	notify(message: string) {
+		this.update(() => ({ message }))
 	}
 
 	private update_status_bar() {
@@ -80,6 +84,7 @@ export class StatusBar {
 			this.follow_cursor_bar.show()
 		} else {
 			this.follow_cursor_bar.hide()
+			this.notification_bar.hide()
 		}
 
 		if (this.state.is_follow_cursor) {

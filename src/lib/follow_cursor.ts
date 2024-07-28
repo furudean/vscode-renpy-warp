@@ -88,9 +88,7 @@ export async function warp_renpy_to_cursor(
 	}
 
 	await rp.warp_to_line(filename_relative, line + 1)
-	status_bar.update(() => ({
-		message: `$(debug-line-by-line) Warped to ${warp_spec}`,
-	}))
+	status_bar.notify(`$(debug-line-by-line) Warped to ${warp_spec}`)
 	logger.info('warped to', warp_spec)
 }
 

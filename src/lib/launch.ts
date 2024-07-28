@@ -94,11 +94,9 @@ export async function launch_renpy({
 
 		await rpp.warp_to_line(filename_relative, line + 1)
 
-		status_bar.update(() => ({
-			message: `$(debug-line-by-line) Warped to ${filename_relative}:${
-				line + 1
-			}`,
-		}))
+		status_bar.notify(
+			`$(debug-line-by-line) Warped to ${filename_relative}:${line + 1}`
+		)
 
 		if (get_config('focusWindowOnWarp') && rpp.process?.pid) {
 			logger.info('focusing window')
@@ -233,6 +231,9 @@ export async function launch_renpy({
 					) {
 						logger.info('enabling follow cursor for new process')
 						await follow_cursor.set(rpp)
+						status_bar.notify(
+							`$(debug-line-by-line) Now following pid ${rpp.process.pid}`
+						)
 					}
 
 					cancel.onCancellationRequested(() => {

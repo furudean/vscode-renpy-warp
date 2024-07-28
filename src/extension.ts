@@ -38,7 +38,12 @@ export function activate(context: vscode.ExtensionContext) {
 			) {
 				const most_recent = pm.at(-1)
 
-				if (most_recent) follow_cursor.set(most_recent)
+				if (most_recent) {
+					follow_cursor.set(most_recent)
+					status_bar.notify(
+						`$(debug-line-by-line) Now following pid ${most_recent.process.pid}`
+					)
+				}
 			}
 		},
 	})
