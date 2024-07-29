@@ -3,7 +3,6 @@ import { get_config } from './util'
 import { RenpyProcess } from './process'
 import { get_logger } from './logger'
 import path from 'upath'
-import p_throttle from 'p-throttle'
 import { find_game_root } from './sh'
 import { StatusBar } from './status_bar'
 
