@@ -231,9 +231,12 @@ export async function launch_renpy({
 					) {
 						logger.info('enabling follow cursor for new process')
 						await follow_cursor.set(rpp)
-						status_bar.notify(
-							`$(debug-line-by-line) Now following pid ${rpp.process.pid}`
-						)
+
+						if (pm.length > 1) {
+							status_bar.notify(
+								`$(debug-line-by-line) Now following pid ${rpp.process.pid}`
+							)
+						}
 					}
 
 					cancel.onCancellationRequested(() => {
