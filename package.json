@@ -276,7 +276,7 @@
 		"@types/node": "^20.14.13",
 		"@types/semver": "^7.5.8",
 		"@types/vscode": "^1.87.0",
-		"@types/ws": "^8.5.11",
+		"@types/ws": "^8.5.12",
 		"@typescript-eslint/eslint-plugin": "^7.17.0",
 		"@typescript-eslint/parser": "^7.17.0",
 		"@vscode/test-cli": "^0.0.10",
