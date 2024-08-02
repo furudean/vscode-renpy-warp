@@ -1,5 +1,5 @@
 import * as vscode from 'vscode'
-import child_process from 'node:child_process'
+import child_process, { ChildProcess } from 'node:child_process'
 import { WebSocket } from 'ws'
 import { get_logger } from './logger'
 import pidtree from 'pidtree'
@@ -45,63 +45,63 @@ export async function focus_window(pid: number) {
 	}
 }
 
-export class RenpyProcess {
-	cmd: string
+interface RenpyProcessOptions {
+	process?: ChildProcess
+	pid?: number
 	message_handler: (
 		process: RenpyProcess,
 		data: SocketMessage
 	) => MaybePromise<void>
 	game_root: string
-	socket_port: number | undefined
-	process: child_process.ChildProcess
+}
+
+export class RenpyProcess {
+	process?: child_process.ChildProcess
+	pid: number
+	game_root: string
+	message_handler: (
+		process: RenpyProcess,
+		data: SocketMessage
+	) => MaybePromise<void>
 	socket?: WebSocket = undefined
 	dead: boolean = false
-	output_channel: vscode.OutputChannel
+	output_channel?: vscode.OutputChannel
 
 	constructor({
-		cmd,
+		process,
+		pid,
 		message_handler,
 		game_root,
-		socket_port,
-		context,
-	}: {
-		cmd: string
-		message_handler: typeof RenpyProcess.prototype.message_handler
-		game_root: string
-		socket_port: number | undefined
-		context: vscode.ExtensionContext
-	}) {
-		this.cmd = cmd
+	}: RenpyProcessOptions) {
+		this.process = process
+		this.pid = (process?.pid ?? pid) as number
 		this.message_handler = message_handler
 		this.game_root = game_root
-		this.socket_port = socket_port
 
-		logger.info('executing subshell:', cmd)
-		this.process = child_process.exec(cmd)
-
-		this.output_channel = vscode.window.createOutputChannel(
-			`Ren'Py Launch and Sync - Process Output (${this.process.pid})`
-		)
-		context.subscriptions.push(this.output_channel)
-
-		this.process.stdout!.on('data', (data: string) =>
-			this.output_channel!.append(data)
-		)
-		this.process.stderr!.on('data', (data: string) =>
-			this.output_channel!.append(data)
-		)
-
-		this.output_channel.appendLine(`process ${this.process.pid} started`)
-
-		this.process.on('exit', (code) => {
-			this.dead = true
-			logger.info(`process ${this.process.pid} exited with code ${code}`)
-			this.output_channel!.appendLine(
-				`process ${this.process.pid} exited with code ${code}`
+		if (this.process) {
+			this.output_channel = vscode.window.createOutputChannel(
+				`Ren'Py Launch and Sync - Process Output (${this.process.pid})`
 			)
-		})
 
-		logger.info('created process', this.process.pid)
+			this.process.stdout!.on('data', (data: string) =>
+				this.output_channel!.append(data)
+			)
+			this.process.stderr!.on('data', (data: string) =>
+				this.output_channel!.append(data)
+			)
+
+			this.output_channel.appendLine(
+				`process ${this.process.pid} started`
+			)
+
+			this.process.on('exit', (code) => {
+				this.dead = true
+				logger.info(`process ${this.pid} exited with code ${code}`)
+				this.output_channel!.appendLine(
+					`process ${this.pid} exited with code ${code}`
+				)
+			})
+		}
 	}
 
 	async wait_for_socket(timeout_ms: number): Promise<void> {
@@ -133,7 +133,11 @@ export class RenpyProcess {
 	}
 
 	kill() {
-		this.process.kill()
+		process.kill(this.pid, 9) // SIGKILL, bypasses "are you sure" dialog
+	}
+
+	dispose() {
+		this.output_channel?.dispose()
 	}
 
 	async ipc(message: SocketMessage): Promise<void> {
@@ -202,12 +206,12 @@ export class ProcessManager {
 	}
 
 	async add(id: number, process: RenpyProcess) {
-		if (!process.process.pid) throw new Error('no pid in process')
+		if (!process.pid) throw new Error('no pid in process')
 
 		this.processes.set(id, process)
 
-		process.process.on('exit', (code) => {
-			if (!process.process.pid) throw new Error('no pid in process')
+		process.process!.on('exit', (code) => {
+			if (!process.pid) throw new Error('no pid in process')
 
 			this.processes.delete(id)
 
@@ -219,7 +223,7 @@ export class ProcessManager {
 						'Logs'
 					)
 					.then((selected) => {
-						if (selected === 'Logs') process.output_channel.show()
+						if (selected === 'Logs') process.output_channel?.show()
 					})
 			}
 
@@ -236,13 +240,17 @@ export class ProcessManager {
 	}
 
 	kill_all() {
-		for (const { process } of this) {
-			process.kill(9) // SIGKILL, bypasses "are you sure" dialog
+		for (const { kill } of this) {
+			kill()
 		}
 	}
 
 	dispose() {
 		this.kill_all()
+
+		for (const { dispose } of this) {
+			dispose()
+		}
 	}
 
 	get length() {

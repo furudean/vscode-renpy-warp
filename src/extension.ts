@@ -41,7 +41,7 @@ export function activate(context: vscode.ExtensionContext) {
 				if (most_recent) {
 					follow_cursor.set(most_recent)
 					status_bar.notify(
-						`$(debug-line-by-line) Now following pid ${most_recent.process.pid}`
+						`$(debug-line-by-line) Now following pid ${most_recent.pid}`
 					)
 				}
 			}
@@ -255,10 +255,7 @@ export function activate(context: vscode.ExtensionContext) {
 				for (const process of pm) {
 					if (!process.socket) return
 
-					logger.info(
-						'reloading process on save',
-						process.process.pid
-					)
+					logger.info('reloading process on save', process.pid)
 					await process.set_autoreload()
 				}
 			} catch (error: any) {

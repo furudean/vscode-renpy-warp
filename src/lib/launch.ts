@@ -1,6 +1,7 @@
 import * as vscode from 'vscode'
 import path from 'upath'
 import { sh } from 'puka'
+import child_process from 'child_process'
 
 import { focus_window, ProcessManager, RenpyProcess } from './process'
 import { FollowCursor, sync_editor_with_renpy } from './follow_cursor'
@@ -196,10 +197,13 @@ export async function launch_renpy({
 					cancellable: true,
 				},
 				async (_, cancel) => {
+					logger.info('executing subshell:', cmd)
+					const process = child_process.exec(cmd)
+					logger.info('created process', process.pid)
+
 					const rpp = new RenpyProcess({
-						cmd,
+						process,
 						game_root,
-						socket_port,
 						async message_handler(process, message) {
 							if (message.type === 'current_line') {
 								logger.debug(
@@ -216,7 +220,6 @@ export async function launch_renpy({
 								logger.warn('unhandled message:', message)
 							}
 						},
-						context,
 					})
 					pm.add(running_nonce, rpp)
 
@@ -234,7 +237,7 @@ export async function launch_renpy({
 
 						if (pm.length > 1) {
 							status_bar.notify(
-								`$(debug-line-by-line) Now following pid ${rpp.process.pid}`
+								`$(debug-line-by-line) Now following pid ${rpp.pid}`
 							)
 						}
 					}
