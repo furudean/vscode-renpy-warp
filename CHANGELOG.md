@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## Unreleased
+## 1.13.0 - 2024-08-06
 
 -   Renpy Launch and Sync RPE files in the game directory will now be excluded
     from the build using `build.classify` (Thanks to @brunoais for figuring
