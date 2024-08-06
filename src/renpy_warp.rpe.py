@@ -141,4 +141,12 @@ def start_renpy_warp_service():
         print("renpy warp script started")
 
 
+def declassify():
+    """removes `renpy_warp_*.rpe` from build"""
+    renpy.python.store_dicts["store.build"]['classify'](
+        'game/renpy_warp_*.rpe', None)
+    print("adding renpy_warp_*.rpe to classify blacklist")
+
+
 renpy.config.after_default_callbacks.append(start_renpy_warp_service)
+renpy.game.post_init.append(declassify)

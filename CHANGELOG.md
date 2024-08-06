@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## Unreleased
+
+-   Renpy Launch and Sync RPE files in the game directory will now be excluded
+    from the build using `build.classify` (Thanks to @brunoais for figuring
+    out how to do this)
+
 ## 1.12.0 - 2024-08-05
 
 -   The option `renpyWarp.followCursorExecInterval` has been removed. The operation is now instantaneous.
