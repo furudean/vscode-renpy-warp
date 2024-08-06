@@ -17,7 +17,7 @@ const logger = get_logger()
 function get_checksum(data: Buffer): string {
 	const hash = createHash('md5').update(data)
 
-	return hash.digest('hex').slice(0, 10) // yeah, i know
+	return hash.digest('hex').slice(0, 8) // yeah, i know
 }
 
 async function get_rpe_source(
