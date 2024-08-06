@@ -19,7 +19,7 @@
 		"url": "https://github.com/furudean/vscode-renpy-warp.git"
 	},
 	"activationEvents": [
-		"onLanguage:renpy"
+		"workspaceContains:**/*.rpy"
 	],
 	"type": "commonjs",
 	"main": "./dist/extension.js",
@@ -78,40 +78,39 @@
 			"commandPalette": [
 				{
 					"command": "renpyWarp.warpToLine",
-					"when": "editorLangId == renpy"
+					"when": "resourceExtname == '.rpy'"
 				},
 				{
 					"command": "renpyWarp.warpToFile",
-					"when": "editorLangId == renpy"
+					"when": "resourceExtname == '.rpy'"
 				},
 				{
 					"command": "renpyWarp.launch",
-					"when": "workbenchState == 'folder' || editorLangId == renpy"
+					"when": "workbenchState == 'folder' || resourceExtname == '.rpy'"
 				},
 				{
-					"command": "renpyWarp.killAll",
-					"when": "editorLangId == renpy"
+					"command": "renpyWarp.killAll"
 				}
 			],
 			"editor/title/run": [
 				{
 					"command": "renpyWarp.warpToLine",
 					"group": "renpywarp",
-					"when": "editorLangId == renpy"
+					"when": "resourceExtname == '.rpy'"
 				}
 			],
 			"editor/context": [
 				{
 					"command": "renpyWarp.warpToLine",
 					"group": "renpywarp",
-					"when": "editorLangId == renpy"
+					"when": "resourceExtname == '.rpy'"
 				}
 			],
 			"editor/lineNumber/context": [
 				{
 					"command": "renpyWarp.warpToLine",
 					"group": "renpywarp",
-					"when": "editorLangId == renpy"
+					"when": "resourceExtname == '.rpy'"
 				}
 			],
 			"explorer/context": [
@@ -127,31 +126,31 @@
 				"command": "renpyWarp.warpToLine",
 				"key": "alt+shift+e",
 				"mac": "cmd+shift+e",
-				"when": "editorTextFocus && editorLangId == renpy"
+				"when": "editorTextFocus && resourceExtname == '.rpy'"
 			},
 			{
 				"command": "renpyWarp.warpToFile",
 				"key": "alt+shift+f",
 				"mac": "cmd+shift+f",
-				"when": "editorLangId == renpy"
+				"when": "resourceExtname == '.rpy'"
 			},
 			{
 				"command": "renpyWarp.launch",
 				"key": "alt+shift+l",
 				"mac": "cmd+shift+l",
-				"when": "workbenchState == 'folder' || editorLangId == renpy"
+				"when": "workbenchState == 'folder' || resourceExtname == '.rpy'"
 			},
 			{
 				"command": "renpyWarp.killAll",
 				"key": "alt+shift+k",
 				"mac": "cmd+shift+k",
-				"when": "editorLangId == renpy"
+				"when": "resourceExtname == '.rpy'"
 			},
 			{
 				"command": "renpyWarp.toggleFollowCursor",
 				"key": "alt+shift+c",
 				"mac": "cmd+shift+c",
-				"when": "editorTextFocus && editorLangId == renpy"
+				"when": "editorTextFocus && resourceExtname == '.rpy'"
 			}
 		],
 		"configuration": {
@@ -250,9 +249,7 @@
 			}
 		}
 	},
-	"extensionDependencies": [
-		"renpy.language-renpy"
-	],
+	"extensionDependencies": [],
 	"scripts": {
 		"vscode:prepublish": "npm run check-types && npm run lint && node esbuild.js --production",
 		"publish": "echo 'use `npm run publish:vsce` or `npm run publish:ovsx` instead'",
