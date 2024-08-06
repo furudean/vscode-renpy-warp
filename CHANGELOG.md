@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## Unreleased
+## 1.12.0 - 2024-08-05
 
 -   The option `renpyWarp.followCursorExecInterval` has been removed. The operation is now instantaneous.
 -   Removes dependency on the deprecated `LuqueDaniel.languague-renpy` and refactor features that depended on it.
