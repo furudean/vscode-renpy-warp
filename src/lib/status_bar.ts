@@ -1,5 +1,5 @@
 import * as vscode from 'vscode'
-import { get_config } from './util'
+import { get_config } from './config'
 import { get_logger } from './logger'
 
 const logger = get_logger()

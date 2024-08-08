@@ -1,6 +1,6 @@
 import * as vscode from 'vscode'
 
-import { ProcessManager } from './lib/process'
+import { ProcessManager } from './lib/process/manager'
 import { FollowCursor } from './lib/follow_cursor'
 import { get_logger } from './lib/logger'
 import { find_game_root, get_executable } from './lib/sh'
@@ -11,7 +11,7 @@ import {
 	get_configuration_object,
 	set_config,
 	show_file,
-} from './lib/util'
+} from './lib/config'
 import {
 	resolve_path,
 	path_exists,

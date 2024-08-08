@@ -3,9 +3,9 @@ import path from 'upath'
 import { sh } from 'puka'
 import child_process from 'child_process'
 
-import { focus_window, ProcessManager, RenpyProcess } from './process'
+import { ProcessManager, ManagedProcess, AnyProcess } from './process'
 import { FollowCursor, sync_editor_with_renpy } from './follow_cursor'
-import { get_config, show_file } from './util'
+import { get_config, show_file } from './config'
 import { get_logger } from './logger'
 import { find_game_root, get_editor_path, get_executable, add_env } from './sh'
 import { has_current_rpe, install_rpe } from './rpe'
@@ -13,6 +13,7 @@ import { start_websocket_server, get_open_port } from './socket'
 import { StatusBar } from './status_bar'
 import { get_sdk_path } from './path'
 import { prompt_configure_extensions } from './onboard'
+import { focus_window } from './window'
 
 const logger = get_logger()
 
@@ -49,7 +50,7 @@ export async function launch_renpy({
 	pm,
 	status_bar,
 	follow_cursor,
-}: LaunchRenpyOptions): Promise<RenpyProcess | undefined> {
+}: LaunchRenpyOptions): Promise<ManagedProcess | undefined> {
 	const is_development_mode =
 		context.extensionMode === vscode.ExtensionMode.Development
 
@@ -91,7 +92,7 @@ export async function launch_renpy({
 	) {
 		logger.info('warping in existing window')
 
-		const rpp = pm.at(-1) as RenpyProcess
+		const rpp = pm.at(-1) as AnyProcess
 
 		await rpp.warp_to_line(filename_relative, line + 1)
 
@@ -99,9 +100,9 @@ export async function launch_renpy({
 			`$(debug-line-by-line) Warped to ${filename_relative}:${line + 1}`
 		)
 
-		if (get_config('focusWindowOnWarp') && rpp.process?.pid) {
+		if (get_config('focusWindowOnWarp') && rpp.pid) {
 			logger.info('focusing window')
-			await focus_window(rpp.process.pid)
+			await focus_window(rpp.pid)
 		}
 
 		return
@@ -201,7 +202,8 @@ export async function launch_renpy({
 					const process = child_process.exec(cmd)
 					logger.info('created process', process.pid)
 
-					const rpp = new RenpyProcess({
+					const rpp = new ManagedProcess({
+						pid: process.pid!,
 						process,
 						game_root,
 						async message_handler(process, message) {
@@ -250,7 +252,7 @@ export async function launch_renpy({
 						try {
 							await rpp.wait_for_socket(10_000)
 						} catch (e: any) {
-							logger.error('timed out waiting for socket', e)
+							logger.error('timed out waiting for socket:', e)
 							if (rpp.dead === false) {
 								vscode.window.showErrorMessage(
 									"Timed out trying to connect to Ren'Py window. Is the socket client running?",

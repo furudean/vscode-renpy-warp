@@ -4,7 +4,7 @@ import { get_logger } from './logger'
 import { WebSocketServer } from 'ws'
 import { ProcessManager } from './process'
 import get_port from 'get-port'
-import { get_config } from './util'
+import { get_config } from './config'
 
 const logger = get_logger()
 

@@ -3,7 +3,7 @@ import path from 'upath'
 import untildify from 'untildify'
 import fs from 'node:fs/promises'
 import { get_logger } from './logger'
-import { get_config } from './util'
+import { get_config } from './config'
 import { get_executable } from './sh'
 
 const logger = get_logger()

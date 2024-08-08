@@ -1,7 +1,7 @@
 import * as vscode from 'vscode'
 import path from 'node:path'
 import { get_logger } from './logger'
-import { get_config } from './util'
+import { get_config } from './config'
 import os from 'node:os'
 import child_process from 'node:child_process'
 import { path_exists, resolve_path } from './path'

@@ -1,7 +1,7 @@
 import * as vscode from 'vscode'
 import semver from 'semver'
 import { get_version } from './sh'
-import { set_config, set_config_exclusive } from './util'
+import { set_config, set_config_exclusive } from './config'
 
 /**
  * Prompts the user to configure RPE extensions preferences and sets it.
