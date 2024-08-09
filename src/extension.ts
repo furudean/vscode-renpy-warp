@@ -1,7 +1,7 @@
 import * as vscode from 'vscode'
 
 import { ProcessManager } from './lib/process/manager'
-import { FollowCursor } from './lib/follow_cursor'
+import { FollowCursor, sync_editor_with_renpy } from './lib/follow_cursor'
 import { get_logger } from './lib/logger'
 import { find_project_root, get_executable } from './lib/sh'
 import { install_rpe, uninstall_rpes } from './lib/rpe'
@@ -20,19 +20,48 @@ import {
 } from './lib/path'
 import { StatusBar } from './lib/status_bar'
 import { prompt_configure_extensions } from './lib/onboard'
+import { get_socket_port, start_websocket_server } from './lib/socket'
+import { AnyProcess } from './lib/process'
 
 const logger = get_logger()
+
+async function get_socket_server(
+	pm: ProcessManager,
+	status_bar: StatusBar,
+	follow_cursor: FollowCursor
+) {
+	const socket_port = await get_socket_port()
+	await start_websocket_server({
+		port: socket_port,
+		async message_handler(process, message) {
+			if (message.type === 'current_line') {
+				logger.debug(
+					`current line reported as ${message.relative_path}:${message.line}`
+				)
+				if (follow_cursor.active_process === process) {
+					await sync_editor_with_renpy({
+						path: message.path,
+						relative_path: message.relative_path,
+						line: message.line - 1,
+					})
+				}
+			} else {
+				logger.warn('unhandled message:', message)
+			}
+		},
+		pm,
+		status_bar,
+	})
+}
 
 export function activate(context: vscode.ExtensionContext) {
 	const status_bar = new StatusBar()
 	const follow_cursor = new FollowCursor({ status_bar })
-
 	const pm = new ProcessManager()
-	pm.on('exit', () => {
-		status_bar.update(({ running_processes }) => ({
-			running_processes: running_processes - 1,
-		}))
 
+	const extensions_enabled = get_config('renpyExtensionsEnabled')
+
+	pm.on('exit', () => {
 		if (
 			follow_cursor.active_process &&
 			get_config('renpyExtensionsEnabled') === 'Enabled'
@@ -47,6 +76,28 @@ export function activate(context: vscode.ExtensionContext) {
 			}
 		}
 	})
+
+	pm.on('attach', async (rpp: AnyProcess) => {
+		if (
+			extensions_enabled === 'Enabled' &&
+			(get_config('followCursorOnLaunch') || follow_cursor.active_process) // follow cursor is already active, replace it
+		) {
+			logger.info('enabling follow cursor for new process')
+			await follow_cursor.set(rpp)
+
+			if (pm.length > 1) {
+				status_bar.notify(
+					`$(debug-line-by-line) Now following pid ${rpp.pid}`
+				)
+			}
+		}
+	})
+
+	if (extensions_enabled === 'Enabled') {
+		get_socket_server(pm, status_bar, follow_cursor).catch((error) => {
+			logger.error(error)
+		})
+	}
 
 	context.subscriptions.push(pm, follow_cursor, status_bar)
 

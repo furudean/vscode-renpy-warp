@@ -44,10 +44,6 @@ export class UnmanagedProcess {
 	private check_alive_interval?: NodeJS.Timeout
 
 	constructor({ pid, project_root, socket }: UnmanagedProcessOptions) {
-		logger.info('created unmanaged process', {
-			pid,
-			project_root,
-		})
 		this.pid = pid
 		this.project_root = project_root
 		this.socket = socket
@@ -59,6 +55,10 @@ export class UnmanagedProcess {
 				clearInterval(this.check_alive_interval)
 			}
 		}, 400)
+
+		this.on('exit', () => {
+			logger.debug(`process ${this.pid} got exit event`)
+		})
 	}
 
 	dispose() {
@@ -73,6 +73,7 @@ export class UnmanagedProcess {
 				if (error) {
 					reject(error)
 				} else {
+					if (this.dead) return
 					this.dead = true
 					this.emit('exit')
 					clearInterval(this.check_alive_interval)

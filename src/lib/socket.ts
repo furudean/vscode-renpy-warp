@@ -9,6 +9,7 @@ import {
 	UnmanagedProcess,
 } from './process'
 import get_port from 'get-port'
+import { StatusBar } from './status_bar'
 
 const logger = get_logger()
 
@@ -16,7 +17,7 @@ const PORTS = Object.freeze([
 	40111, 40112, 40113, 40114, 40115, 40116, 40117, 40118, 40119, 40120,
 ])
 
-export async function get_open_port(): Promise<number> {
+export async function get_socket_port(): Promise<number> {
 	const port = await get_port({ port: PORTS })
 
 	if (!PORTS.includes(port)) {
@@ -65,7 +66,9 @@ function handle_managed_process({
 		return
 	}
 
-	logger.info(`found new managed process ${rpp.pid}, with nonce ${nonce}`)
+	logger.info(
+		`socket server discovered managed process ${rpp.pid}, with nonce ${nonce}`
+	)
 
 	if (rpp.socket) {
 		logger.warn('closing existing socket')
@@ -79,23 +82,34 @@ function handle_managed_process({
 
 function handle_unmanaged_process(
 	process: ConstructorParameters<typeof UnmanagedProcess>[0],
-	pm: ProcessManager
+	pm: ProcessManager,
+	status_bar: StatusBar
 ): UnmanagedProcess {
-	logger.info(`found new unmanaged process ${process.pid}`)
+	logger.info(`socket server discovered unmanaged process ${process.pid}`)
 	const rpp = new UnmanagedProcess(process)
 	pm.add(process.pid, rpp)
+
+	status_bar.set_process(process.pid, 'idle')
+
+	rpp.on('exit', () => {
+		status_bar.delete_process(process.pid)
+	})
+
+	status_bar.notify(`$(info) Discovered Ren'Py process ${process.pid}`)
 
 	return rpp
 }
 
 export async function start_websocket_server({
-	pm,
 	port,
 	message_handler,
+	pm,
+	status_bar,
 }: {
-	pm: ProcessManager
 	port: number
 	message_handler: MessageHandler
+	pm: ProcessManager
+	status_bar: StatusBar
 }): Promise<void> {
 	return new Promise(async (resolve, reject) => {
 		let has_listened = false
@@ -153,7 +167,8 @@ export async function start_websocket_server({
 
 				rpp = handle_unmanaged_process(
 					{ pid, project_root, socket },
-					pm
+					pm,
+					status_bar
 				) as UnmanagedProcess
 			}
 

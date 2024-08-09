@@ -12,8 +12,7 @@ export class StatusBar {
 	private message_timeout: NodeJS.Timeout | undefined
 
 	private state = {
-		starting_processes: 0,
-		running_processes: 0,
+		processes: new Map<any, 'starting' | 'idle'>(),
 		is_follow_cursor: false,
 		message: undefined as string | undefined,
 	}
@@ -37,19 +36,31 @@ export class StatusBar {
 		this.update_status_bar()
 	}
 
+	set_process(id: any, state: 'starting' | 'idle'): void {
+		this.state.processes.set(id, state)
+		this.update_status_bar()
+	}
+
+	delete_process(id: any): void {
+		this.state.processes.delete(id)
+		this.update_status_bar()
+	}
+
+	private get starting_processes(): number {
+		return Array.from(this.state.processes.values()).filter(
+			(v) => v === 'starting'
+		).length
+	}
+
+	private get idle_processes(): number {
+		return Array.from(this.state.processes.values()).filter(
+			(v) => v === 'idle'
+		).length
+	}
+
 	update(fn: (state: typeof this.state) => Partial<typeof this.state>) {
 		const incoming_state = fn(this.state)
 		this.state = { ...this.state, ...incoming_state }
-
-		if (this.state.starting_processes < 0) {
-			logger.error('starting_processes underflow')
-			this.state.starting_processes = 0
-		}
-
-		if (this.state.running_processes < 0) {
-			logger.error('running_processes underflow')
-			this.state.running_processes = 0
-		}
 
 		if (incoming_state.message) {
 			this.notification_bar.text = incoming_state.message
@@ -65,7 +76,12 @@ export class StatusBar {
 			}, 5000)
 		}
 
-		logger.debug('status bar state:', this.state)
+		logger.debug('status bar state:', {
+			is_follow_cursor: this.state.is_follow_cursor,
+			message: this.state.message,
+			starting_processes: this.starting_processes,
+			idle_processes: this.idle_processes,
+		})
 
 		this.update_status_bar()
 	}
@@ -78,7 +94,7 @@ export class StatusBar {
 		this.instance_bar.show()
 
 		if (
-			this.state.running_processes > 0 &&
+			this.idle_processes > 0 &&
 			get_config('renpyExtensionsEnabled') === 'Enabled'
 		) {
 			this.follow_cursor_bar.show()
@@ -104,7 +120,7 @@ export class StatusBar {
 			this.follow_cursor_bar.backgroundColor = undefined
 		}
 
-		if (this.state.running_processes > 0) {
+		if (this.idle_processes > 0) {
 			this.instance_bar.text = `$(debug-stop) Quit Ren'Py`
 			this.instance_bar.command = 'renpyWarp.killAll'
 			this.instance_bar.tooltip = "Kill all running Ren'Py instances"
@@ -114,7 +130,7 @@ export class StatusBar {
 			this.instance_bar.tooltip = "Launch new Ren'Py instance"
 		}
 
-		if (this.state.starting_processes > 0) {
+		if (this.starting_processes > 0) {
 			this.instance_bar.text = `$(loading~spin) Starting Ren'Py...`
 			this.instance_bar.command = undefined
 			this.instance_bar.tooltip = undefined

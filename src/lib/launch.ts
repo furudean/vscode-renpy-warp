@@ -14,7 +14,6 @@ import {
 	find_project_root,
 } from './sh'
 import { has_current_rpe, install_rpe } from './rpe'
-import { start_websocket_server, get_open_port, SocketMessage } from './socket'
 import { StatusBar } from './status_bar'
 import { get_sdk_path } from './path'
 import { prompt_configure_extensions } from './onboard'
@@ -117,9 +116,8 @@ export async function launch_renpy({
 	} else {
 		logger.info("opening new ren'py window")
 
-		status_bar.update(({ starting_processes }) => ({
-			starting_processes: starting_processes + 1,
-		}))
+		const run_id = Math.trunc(Math.random() * 2047483648)
+		status_bar.set_process(run_id, 'starting')
 
 		try {
 			const sdk_path = await get_sdk_path()
@@ -166,38 +164,14 @@ export async function launch_renpy({
 
 			let socket_port: number | undefined
 
-			if (extensions_enabled === 'Enabled') {
-				socket_port = await get_open_port()
-				await start_websocket_server({
-					pm,
-					port: socket_port,
-					async message_handler(process, message) {
-						if (message.type === 'current_line') {
-							logger.debug(
-								`current line reported as ${message.relative_path}:${message.line}`
-							)
-							if (follow_cursor.active_process === process) {
-								await sync_editor_with_renpy({
-									path: message.path,
-									relative_path: message.relative_path,
-									line: message.line - 1,
-								})
-							}
-						} else {
-							logger.warn('unhandled message:', message)
-						}
-					},
-				})
-			}
-
 			if (strategy === 'Replace Window') pm.kill_all()
 
-			const running_nonce = Math.trunc(Math.random() * 2047483648)
+			const nonce = Math.trunc(Math.random() * 2047483648)
 
 			const renpy_sh = await add_env(executable, {
 				WARP_IS_MANAGED: '1',
 				WARP_WS_PORT: socket_port?.toString(),
-				WARP_WS_NONCE: running_nonce.toString(),
+				WARP_WS_NONCE: nonce.toString(),
 				// see: https://www.renpy.org/doc/html/editor.html
 				RENPY_EDIT_PY: await get_editor_path(sdk_path),
 			})
@@ -229,26 +203,10 @@ export async function launch_renpy({
 						process,
 						project_root: project_root,
 					})
-					pm.add(running_nonce, rpp)
-
-					status_bar.update(({ running_processes }) => ({
-						running_processes: running_processes + 1,
-					}))
-
-					if (
-						extensions_enabled === 'Enabled' &&
-						(get_config('followCursorOnLaunch') ||
-							follow_cursor.active_process) // follow cursor is already active, replace it
-					) {
-						logger.info('enabling follow cursor for new process')
-						await follow_cursor.set(rpp)
-
-						if (pm.length > 1) {
-							status_bar.notify(
-								`$(debug-line-by-line) Now following pid ${rpp.pid}`
-							)
-						}
-					}
+					pm.add(nonce, rpp)
+					rpp.on('exit', () => {
+						status_bar.delete_process(run_id)
+					})
 
 					cancel.onCancellationRequested(() => {
 						rpp.kill()
@@ -268,18 +226,14 @@ export async function launch_renpy({
 						}
 					}
 
-					status_bar.update(({ starting_processes }) => ({
-						starting_processes: starting_processes - 1,
-					}))
+					status_bar.set_process(run_id, 'idle')
 
 					return rpp
 				}
 			)
-		} catch (e) {
-			status_bar.update(({ starting_processes }) => ({
-				starting_processes: starting_processes - 1,
-			}))
-			throw e
+		} catch (error) {
+			status_bar.delete_process(run_id)
+			throw error
 		}
 	}
 }

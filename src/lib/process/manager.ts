@@ -26,6 +26,8 @@ export class ProcessManager {
 	async add(id: number, process: AnyProcess) {
 		this.processes.set(id, process)
 
+		this.emit('attach', process)
+
 		process.on('exit', () => {
 			this.processes.delete(id)
 			this.emit('exit', process)
