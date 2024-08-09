@@ -28,7 +28,7 @@ export function activate(context: vscode.ExtensionContext) {
 	const follow_cursor = new FollowCursor({ status_bar })
 
 	const pm = new ProcessManager()
-	pm.on('exit', (process) => {
+	pm.on('exit', () => {
 		status_bar.update(({ running_processes }) => ({
 			running_processes: running_processes - 1,
 		}))

@@ -5,6 +5,7 @@ import { get_logger } from '../logger'
 import { ProcessManager } from './manager'
 import { EventEmitter } from 'node:events'
 import tree_kill from 'tree-kill'
+import { kill } from 'node:process'
 
 const logger = get_logger()
 
@@ -17,7 +18,7 @@ export interface SocketMessage {
 
 function process_is_running(pid: number): boolean {
 	try {
-		return process.kill(pid, 0)
+		return kill(pid, 0)
 	} catch (error: any) {
 		return error.code === 'EPERM'
 	}
@@ -54,12 +55,12 @@ export class UnmanagedProcess {
 		this.message_handler = message_handler
 
 		this.check_alive_interval = setInterval(async () => {
-			if (process_is_running(this.pid)) return
-
-			clearInterval(this.check_alive_interval)
-			this.dead = true
-			this.emit('exit')
-		}, 500)
+			if (!process_is_running(this.pid)) {
+				this.dead = true
+				this.emit('exit')
+				clearInterval(this.check_alive_interval)
+			}
+		}, 400)
 	}
 
 	dispose() {
@@ -67,14 +68,19 @@ export class UnmanagedProcess {
 		this.emitter.removeAllListeners()
 	}
 
-	kill() {
-		// SIGKILL bypasses "are you sure" dialog
-		tree_kill(this.pid, 'SIGKILL', (error) => {
-			if (error) {
-				logger.error('failed to kill process', error)
-			} else {
-				// TODO: emit exit event, but not duplicate
-			}
+	async kill(): Promise<void> {
+		return new Promise((resolve, reject) => {
+			// SIGKILL bypasses "are you sure" dialog
+			tree_kill(this.pid, 'SIGKILL', (error) => {
+				if (error) {
+					reject(error)
+				} else {
+					this.dead = true
+					this.emit('exit')
+					clearInterval(this.check_alive_interval)
+					resolve()
+				}
+			})
 		})
 	}
 

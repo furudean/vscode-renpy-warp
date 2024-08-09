@@ -4,12 +4,21 @@ import { get_logger } from './logger'
 import { WebSocketServer } from 'ws'
 import { ProcessManager } from './process'
 import get_port from 'get-port'
-import { get_config } from './config'
 
 const logger = get_logger()
 
-export async function get_open_port() {
-	return await get_port({ port: get_config('socketPorts') })
+const ports = [
+	40111, 40112, 40113, 40114, 40115, 40116, 40117, 40118, 40119, 40120,
+]
+
+export async function get_open_port(): Promise<number> {
+	const port = await get_port({ port: ports })
+
+	if (!ports.includes(port)) {
+		throw new Error('exhausted all available ports')
+	}
+
+	return port
 }
 
 export async function start_websocket_server({
