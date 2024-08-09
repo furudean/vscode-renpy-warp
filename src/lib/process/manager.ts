@@ -1,24 +1,19 @@
 import * as vscode from 'vscode'
 import { AnyProcess, ManagedProcess } from '.'
-import find_process from 'find-process'
-
-type MaybePromise<T> = T | Promise<T>
+import { EventEmitter } from 'node:events'
 
 export class ProcessManager {
 	private processes = new Map<number, AnyProcess>()
 
 	/** Runs on process exit, after process has been removed */
-	private exit_handler: (process: AnyProcess) => MaybePromise<void>
 
-	private intervals = new Set<NodeJS.Timeout>()
+	private emitter = new EventEmitter()
+	private emit = this.emitter.emit.bind(this.emitter)
+	on = this.emitter.on.bind(this.emitter)
+	off = this.emitter.off.bind(this.emitter)
+	once = this.emitter.once.bind(this.emitter)
 
-	constructor({
-		exit_handler,
-	}: {
-		exit_handler: typeof ProcessManager.prototype.exit_handler
-	}) {
-		this.exit_handler = exit_handler
-	}
+	constructor() {}
 
 	[Symbol.iterator]() {
 		return this.processes.values()
@@ -31,39 +26,22 @@ export class ProcessManager {
 	async add(id: number, process: AnyProcess) {
 		this.processes.set(id, process)
 
-		if (process instanceof ManagedProcess) {
-			process.process!.on('exit', (code) => {
-				if (!process.pid) throw new Error('no pid in process')
+		process.on('exit', () => {
+			this.processes.delete(id)
+			this.emit('exit', process)
 
-				this.processes.delete(id)
-
-				if (code) {
-					vscode.window
-						.showErrorMessage(
-							"Ren'Py process exited with errors",
-							'OK',
-							'Logs'
-						)
-						.then((selected) => {
-							if (selected === 'Logs')
-								process.output_channel?.show()
-						})
-				}
-
-				this.exit_handler(process)
-			})
-		} else {
-			const check_interval = setInterval(async () => {
-				const found = await find_process('pid', process.pid)
-
-				if (found.length === 0) {
-					this.processes.delete(id)
-					this.exit_handler(process)
-					clearInterval(check_interval)
-				}
-			}, 1000)
-			this.intervals.add(check_interval)
-		}
+			if (process instanceof ManagedProcess && process.exit_code) {
+				vscode.window
+					.showErrorMessage(
+						"Ren'Py process exited with errors",
+						'OK',
+						'Logs'
+					)
+					.then((selected) => {
+						if (selected === 'Logs') process.output_channel?.show()
+					})
+			}
+		})
 	}
 
 	get(id: number): AnyProcess | undefined {
@@ -75,17 +53,13 @@ export class ProcessManager {
 	}
 
 	kill_all() {
-		for (const { kill } of this) {
-			kill()
+		for (const process of this) {
+			process.kill()
 		}
 	}
 
 	dispose() {
-		// this.kill_all()
-
-		for (const interval of this.intervals) {
-			clearInterval(interval)
-		}
+		this.kill_all()
 
 		for (const { dispose } of this) {
 			dispose()

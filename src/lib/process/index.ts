@@ -3,6 +3,8 @@ import child_process, { ChildProcess } from 'node:child_process'
 import { WebSocket } from 'ws'
 import { get_logger } from '../logger'
 import { ProcessManager } from './manager'
+import { EventEmitter } from 'node:events'
+import tree_kill from 'tree-kill'
 
 const logger = get_logger()
 
@@ -13,11 +15,19 @@ export interface SocketMessage {
 	[key: string]: any
 }
 
+function process_is_running(pid: number): boolean {
+	try {
+		return process.kill(pid, 0)
+	} catch (error: any) {
+		return error.code === 'EPERM'
+	}
+}
+
 interface UnmanagedProcessOptions {
 	pid: number
 	game_root: string
 	message_handler: (
-		process: ManagedProcess,
+		process: AnyProcess,
 		data: SocketMessage
 	) => MaybePromise<void>
 }
@@ -29,16 +39,43 @@ export class UnmanagedProcess {
 	message_handler: UnmanagedProcessOptions['message_handler']
 	dead: boolean = false
 
+	private emitter = new EventEmitter()
+	private emit = this.emitter.emit.bind(this.emitter)
+	on = this.emitter.on.bind(this.emitter)
+	off = this.emitter.off.bind(this.emitter)
+	once = this.emitter.once.bind(this.emitter)
+
+	private check_alive_interval?: NodeJS.Timeout
+
 	constructor({ pid, game_root, message_handler }: UnmanagedProcessOptions) {
+		logger.info('created unmanaged process', { pid, game_root })
 		this.pid = pid
 		this.game_root = game_root
 		this.message_handler = message_handler
+
+		this.check_alive_interval = setInterval(async () => {
+			if (process_is_running(this.pid)) return
+
+			clearInterval(this.check_alive_interval)
+			this.dead = true
+			this.emit('exit')
+		}, 500)
 	}
 
-	dispose() {}
+	dispose() {
+		clearInterval(this.check_alive_interval)
+		this.emitter.removeAllListeners()
+	}
 
 	kill() {
-		process.kill(this.pid, 9) // SIGKILL, bypasses "are you sure" dialog
+		// SIGKILL bypasses "are you sure" dialog
+		tree_kill(this.pid, 'SIGKILL', (error) => {
+			if (error) {
+				logger.error('failed to kill process', error)
+			} else {
+				// TODO: emit exit event, but not duplicate
+			}
+		})
 	}
 
 	async wait_for_socket(timeout_ms: number): Promise<void> {
@@ -124,8 +161,9 @@ interface ManagedProcessOptions extends UnmanagedProcessOptions {
 }
 
 export class ManagedProcess extends UnmanagedProcess {
-	process: child_process.ChildProcess
+	private process: child_process.ChildProcess
 	output_channel?: vscode.OutputChannel
+	exit_code?: number | null
 
 	constructor({
 		process,
@@ -133,7 +171,7 @@ export class ManagedProcess extends UnmanagedProcess {
 		game_root,
 	}: ManagedProcessOptions) {
 		super({
-			pid: process!.pid!,
+			pid: process.pid!,
 			message_handler,
 			game_root,
 		})
@@ -156,7 +194,7 @@ export class ManagedProcess extends UnmanagedProcess {
 		this.output_channel.appendLine(`process ${this.process.pid} started`)
 
 		this.process.on('exit', (code) => {
-			this.dead = true
+			this.exit_code = code
 			logger.info(`process ${this.pid} exited with code ${code}`)
 			this.output_channel!.appendLine(
 				`process ${this.pid} exited with code ${code}`

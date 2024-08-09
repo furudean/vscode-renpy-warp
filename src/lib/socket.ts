@@ -101,8 +101,8 @@ export async function start_websocket_server({
 				logger.error(`websocket error (pid ${rpp.pid})`, error)
 			})
 
-			rpp.process.off('exit', process_exit_handler)
-			rpp.process.on('exit', process_exit_handler)
+			rpp.off('exit', process_exit_handler)
+			rpp.on('exit', process_exit_handler)
 		})
 	})
 }

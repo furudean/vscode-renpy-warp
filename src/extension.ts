@@ -26,26 +26,26 @@ const logger = get_logger()
 export function activate(context: vscode.ExtensionContext) {
 	const status_bar = new StatusBar()
 	const follow_cursor = new FollowCursor({ status_bar })
-	const pm = new ProcessManager({
-		exit_handler() {
-			status_bar.update(({ running_processes }) => ({
-				running_processes: running_processes - 1,
-			}))
 
-			if (
-				follow_cursor.active_process &&
-				get_config('renpyExtensionsEnabled') === 'Enabled'
-			) {
-				const most_recent = pm.at(-1)
+	const pm = new ProcessManager()
+	pm.on('exit', (process) => {
+		status_bar.update(({ running_processes }) => ({
+			running_processes: running_processes - 1,
+		}))
 
-				if (most_recent) {
-					follow_cursor.set(most_recent)
-					status_bar.notify(
-						`$(debug-line-by-line) Now following pid ${most_recent.pid}`
-					)
-				}
+		if (
+			follow_cursor.active_process &&
+			get_config('renpyExtensionsEnabled') === 'Enabled'
+		) {
+			const most_recent = pm.at(-1)
+
+			if (most_recent) {
+				follow_cursor.set(most_recent)
+				status_bar.notify(
+					`$(debug-line-by-line) Now following pid ${most_recent.pid}`
+				)
 			}
-		},
+		}
 	})
 
 	context.subscriptions.push(pm, follow_cursor, status_bar)
