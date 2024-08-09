@@ -48,12 +48,12 @@ export async function list_rpes(sdk_path: string): Promise<string[]> {
 export async function install_rpe({
 	sdk_path,
 	executable,
-	game_root,
+	project_root,
 	context,
 }: {
 	sdk_path: string
 	executable: string
-	game_root: string
+	project_root: string
 	context: vscode.ExtensionContext
 }): Promise<string> {
 	const version = get_version(executable)
@@ -71,7 +71,7 @@ export async function install_rpe({
 		file_path = path.join(sdk_path, `${file_base}.rpe.py`)
 		await fs.writeFile(file_path, rpe_source)
 	} else {
-		file_path = path.join(game_root, 'game/', `${file_base}.rpe`)
+		file_path = path.join(project_root, 'game/', `${file_base}.rpe`)
 		const zip = new AdmZip()
 		zip.addFile('autorun.py', rpe_source)
 		await fs.writeFile(file_path, zip.toBuffer())

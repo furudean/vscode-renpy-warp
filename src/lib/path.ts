@@ -25,39 +25,6 @@ export async function path_exists(path: string): Promise<boolean> {
 	}
 }
 
-export function find_game_root(
-	filename: string,
-	haystack: string | null = null,
-	depth: number = 1
-): string | null {
-	if (haystack) {
-		haystack = path.resolve(haystack, '..')
-	} else {
-		haystack = path.dirname(filename)
-	}
-
-	if (path.basename(haystack) === 'game') {
-		return path.resolve(haystack, '..') // return parent
-	}
-
-	const workspace_root =
-		vscode.workspace.workspaceFolders &&
-		vscode.workspace.workspaceFolders[0]
-			? vscode.workspace.workspaceFolders[0].uri.fsPath
-			: null
-
-	if (
-		haystack === workspace_root ||
-		haystack === path.resolve('/') ||
-		depth >= 10
-	) {
-		logger.info('exceeded recursion depth at', filename, haystack)
-		return null
-	}
-
-	return find_game_root(filename, haystack, depth + 1)
-}
-
 export async function path_is_sdk(absolute_path: string): Promise<boolean> {
 	const exists = await path_exists(absolute_path)
 	if (!exists) return false

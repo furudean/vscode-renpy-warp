@@ -3,7 +3,7 @@ import * as vscode from 'vscode'
 import { ProcessManager } from './lib/process/manager'
 import { FollowCursor } from './lib/follow_cursor'
 import { get_logger } from './lib/logger'
-import { find_game_root, get_executable } from './lib/sh'
+import { find_project_root, get_executable } from './lib/sh'
 import { install_rpe, uninstall_rpes } from './lib/rpe'
 import { launch_renpy } from './lib/launch'
 import {
@@ -136,9 +136,9 @@ export function activate(context: vscode.ExtensionContext) {
 				return
 			}
 
-			const game_root = find_game_root(file_path)
+			const project_root = find_project_root(file_path)
 
-			if (!game_root) {
+			if (!project_root) {
 				vscode.window.showErrorMessage(
 					'Unable to find "game" folder in parent directory. Not a Ren\'Py project?',
 					'OK'
@@ -154,7 +154,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 			const installed_path = await install_rpe({
 				sdk_path,
-				game_root,
+				project_root,
 				context,
 				executable,
 			})

@@ -7,9 +7,14 @@ import { ProcessManager, ManagedProcess, AnyProcess } from './process'
 import { FollowCursor, sync_editor_with_renpy } from './follow_cursor'
 import { get_config, show_file } from './config'
 import { get_logger } from './logger'
-import { find_game_root, get_editor_path, get_executable, add_env } from './sh'
+import {
+	get_editor_path,
+	get_executable,
+	add_env,
+	find_project_root,
+} from './sh'
 import { has_current_rpe, install_rpe } from './rpe'
-import { start_websocket_server, get_open_port } from './socket'
+import { start_websocket_server, get_open_port, SocketMessage } from './socket'
 import { StatusBar } from './status_bar'
 import { get_sdk_path } from './path'
 import { prompt_configure_extensions } from './onboard'
@@ -67,11 +72,14 @@ export async function launch_renpy({
 		return
 	}
 
-	const game_root = find_game_root(file)
-	const filename_relative = path.relative(path.join(game_root, 'game/'), file)
-	logger.debug('game root:', game_root)
+	const project_root = find_project_root(file)
+	const filename_relative = path.relative(
+		path.join(project_root, 'game/'),
+		file
+	)
+	logger.debug('game root:', project_root)
 
-	if (!game_root) {
+	if (!project_root) {
 		vscode.window.showErrorMessage(
 			'Unable to find "game" folder in parent directory. Not a Ren\'Py project?',
 			'OK'
@@ -131,7 +139,7 @@ export async function launch_renpy({
 				) {
 					const installed_path = await install_rpe({
 						sdk_path,
-						game_root,
+						project_root,
 						context,
 						executable,
 					})
@@ -149,7 +157,7 @@ export async function launch_renpy({
 				} else if (is_development_mode) {
 					await install_rpe({
 						sdk_path,
-						game_root,
+						project_root,
 						context,
 						executable,
 					})
@@ -163,6 +171,22 @@ export async function launch_renpy({
 				await start_websocket_server({
 					pm,
 					port: socket_port,
+					async message_handler(process, message) {
+						if (message.type === 'current_line') {
+							logger.debug(
+								`current line reported as ${message.relative_path}:${message.line}`
+							)
+							if (follow_cursor.active_process === process) {
+								await sync_editor_with_renpy({
+									path: message.path,
+									relative_path: message.relative_path,
+									line: message.line - 1,
+								})
+							}
+						} else {
+							logger.warn('unhandled message:', message)
+						}
+					},
 				})
 			}
 
@@ -171,8 +195,7 @@ export async function launch_renpy({
 			const running_nonce = Math.trunc(Math.random() * 2047483648)
 
 			const renpy_sh = await add_env(executable, {
-				WARP_ENABLED:
-					extensions_enabled === 'Enabled' ? '1' : undefined,
+				WARP_IS_MANAGED: '1',
 				WARP_WS_PORT: socket_port?.toString(),
 				WARP_WS_NONCE: running_nonce.toString(),
 				// see: https://www.renpy.org/doc/html/editor.html
@@ -183,12 +206,12 @@ export async function launch_renpy({
 			let cmd: string
 
 			if (line === undefined) {
-				cmd = renpy_sh + ' ' + sh`${game_root}`
+				cmd = renpy_sh + ' ' + sh`${project_root}`
 			} else {
 				cmd =
 					renpy_sh +
 					' ' +
-					sh`${game_root} --warp ${filename_relative}:${line + 1}`
+					sh`${project_root} --warp ${filename_relative}:${line + 1}`
 			}
 
 			return await vscode.window.withProgress(
@@ -203,25 +226,8 @@ export async function launch_renpy({
 					logger.info('created process', process.pid)
 
 					const rpp = new ManagedProcess({
-						pid: process.pid!,
 						process,
-						game_root,
-						async message_handler(process, message) {
-							if (message.type === 'current_line') {
-								logger.debug(
-									`current line reported as ${message.relative_path}:${message.line}`
-								)
-								if (follow_cursor.active_process === process) {
-									await sync_editor_with_renpy({
-										path: message.path,
-										relative_path: message.relative_path,
-										line: message.line - 1,
-									})
-								}
-							} else {
-								logger.warn('unhandled message:', message)
-							}
-						},
+						project_root: project_root,
 					})
 					pm.add(running_nonce, rpp)
 

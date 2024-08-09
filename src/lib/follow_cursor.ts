@@ -3,7 +3,7 @@ import { get_config } from './config'
 import { AnyProcess } from './process'
 import { get_logger } from './logger'
 import path from 'upath'
-import { find_game_root } from './sh'
+import { find_project_root } from './sh'
 import { StatusBar } from './status_bar'
 
 const logger = get_logger()
@@ -73,8 +73,11 @@ export async function warp_renpy_to_cursor(
 
 	if (language_id !== 'renpy') return
 
-	const game_root = find_game_root(file)
-	const filename_relative = path.relative(path.join(game_root, 'game/'), file)
+	const project_root = find_project_root(file)
+	const filename_relative = path.relative(
+		path.join(project_root, 'game/'),
+		file
+	)
 
 	const warp_spec = `${filename_relative}:${line + 1}`
 

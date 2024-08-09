@@ -68,7 +68,7 @@ export function env_string(
 		.join(IS_WINDOWS ? ' && ' : ' ')
 }
 
-export function find_game_root(
+export function find_project_root(
 	filename: string,
 	haystack: string | null = null,
 	depth: number = 1
@@ -95,7 +95,7 @@ export function find_game_root(
 		return null
 	}
 
-	return find_game_root(filename, haystack, depth + 1)
+	return find_project_root(filename, haystack, depth + 1)
 }
 
 export async function get_editor_path(

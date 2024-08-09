@@ -6,18 +6,17 @@ import { ProcessManager } from './manager'
 import { EventEmitter } from 'node:events'
 import tree_kill from 'tree-kill'
 import { kill } from 'node:process'
+import { SocketMessage } from '../socket'
 
 const logger = get_logger()
 
-type MaybePromise<T> = T | Promise<T>
-
-export interface SocketMessage {
-	type: string
-	[key: string]: any
-}
-
 function process_is_running(pid: number): boolean {
 	try {
+		// this is a great piece of api design
+		//
+		// > As a special case, a signal of 0 can be used to test for the
+		// > existence of a process.
+		// from: https://nodejs.org/api/process.html#processkillpid-signal
 		return kill(pid, 0)
 	} catch (error: any) {
 		return error.code === 'EPERM'
@@ -26,33 +25,32 @@ function process_is_running(pid: number): boolean {
 
 interface UnmanagedProcessOptions {
 	pid: number
-	game_root: string
-	message_handler: (
-		process: AnyProcess,
-		data: SocketMessage
-	) => MaybePromise<void>
+	project_root: string
+	socket?: WebSocket
 }
 
 export class UnmanagedProcess {
 	pid: number
-	game_root: string
+	project_root: string
 	socket?: WebSocket
-	message_handler: UnmanagedProcessOptions['message_handler']
 	dead: boolean = false
 
 	private emitter = new EventEmitter()
-	private emit = this.emitter.emit.bind(this.emitter)
+	emit = this.emitter.emit.bind(this.emitter)
 	on = this.emitter.on.bind(this.emitter)
 	off = this.emitter.off.bind(this.emitter)
 	once = this.emitter.once.bind(this.emitter)
 
 	private check_alive_interval?: NodeJS.Timeout
 
-	constructor({ pid, game_root, message_handler }: UnmanagedProcessOptions) {
-		logger.info('created unmanaged process', { pid, game_root })
+	constructor({ pid, project_root, socket }: UnmanagedProcessOptions) {
+		logger.info('created unmanaged process', {
+			pid,
+			project_root,
+		})
 		this.pid = pid
-		this.game_root = game_root
-		this.message_handler = message_handler
+		this.project_root = project_root
+		this.socket = socket
 
 		this.check_alive_interval = setInterval(async () => {
 			if (!process_is_running(this.pid)) {
@@ -162,7 +160,7 @@ export class UnmanagedProcess {
 	}
 }
 
-interface ManagedProcessOptions extends UnmanagedProcessOptions {
+interface ManagedProcessOptions extends Omit<UnmanagedProcessOptions, 'pid'> {
 	process: ChildProcess
 }
 
@@ -171,20 +169,14 @@ export class ManagedProcess extends UnmanagedProcess {
 	output_channel?: vscode.OutputChannel
 	exit_code?: number | null
 
-	constructor({
-		process,
-		message_handler,
-		game_root,
-	}: ManagedProcessOptions) {
+	constructor({ process, project_root }: ManagedProcessOptions) {
 		super({
 			pid: process.pid!,
-			message_handler,
-			game_root,
+			project_root,
 		})
 
 		this.process = process
-		this.message_handler = message_handler
-		this.game_root = game_root
+		this.project_root = project_root
 
 		this.output_channel = vscode.window.createOutputChannel(
 			`Ren'Py Launch and Sync - Process Output (${this.process.pid})`

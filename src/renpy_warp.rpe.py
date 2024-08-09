@@ -15,7 +15,6 @@ import re
 import os
 
 PORT = os.getenv("WARP_WS_PORT")
-NONCE = os.getenv("WARP_WS_NONCE")
 
 
 def py_exec(text: str):
@@ -97,9 +96,21 @@ def connect(port):
 
     try:
         print(f"attempting connection to renpy warp socket server on :{port}")
+
+        headers = {
+            "project-root": re.sub(r"/game$", "", renpy.config.gamedir),
+            "pid": str(os.getpid()),
+        }
+
+        if os.getenv("WARP_WS_NONCE"):
+            headers["nonce"] = os.getenv("WARP_WS_NONCE")
+
+        if os.getenv("WARP_IS_MANAGED"):
+            headers["is-managed"] = "1"
+
         with connect(
             f"ws://localhost:{port}",
-            additional_headers={"nonce": NONCE},
+            additional_headers=headers,
             open_timeout=5,
             close_timeout=5,
         ) as websocket:
