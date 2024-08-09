@@ -22,17 +22,36 @@ import { StatusBar } from './lib/status_bar'
 import { prompt_configure_extensions } from './lib/onboard'
 import { get_socket_port, start_websocket_server } from './lib/socket'
 import { AnyProcess } from './lib/process'
+import { WebSocketServer } from 'ws'
 
 const logger = get_logger()
 
-async function get_socket_server(
+async function ensure_socket_server(
 	pm: ProcessManager,
 	status_bar: StatusBar,
-	follow_cursor: FollowCursor
-) {
-	const socket_port = await get_socket_port()
-	await start_websocket_server({
-		port: socket_port,
+	follow_cursor: FollowCursor,
+	context: vscode.ExtensionContext
+): Promise<void> {
+	const file_path = await vscode.workspace
+		.findFiles('**/game/**/*.rpy', null, 1)
+		.then((files) => (files.length ? files[0].fsPath : null))
+
+	if (!file_path) {
+		throw new Error("No Ren'Py project in workspace")
+	}
+
+	const project_root = find_project_root(file_path)
+
+	if (!project_root) {
+		throw new Error("No Ren'Py project in workspace")
+	}
+
+	const port = await get_socket_port()
+	const server = await start_websocket_server({
+		port,
+		pm,
+		status_bar,
+		project_root,
 		async message_handler(process, message) {
 			if (message.type === 'current_line') {
 				logger.debug(
@@ -49,8 +68,12 @@ async function get_socket_server(
 				logger.warn('unhandled message:', message)
 			}
 		},
-		pm,
-		status_bar,
+	})
+
+	context.subscriptions.push({
+		dispose() {
+			server.close()
+		},
 	})
 }
 
@@ -58,6 +81,8 @@ export function activate(context: vscode.ExtensionContext) {
 	const status_bar = new StatusBar()
 	const follow_cursor = new FollowCursor({ status_bar })
 	const pm = new ProcessManager()
+
+	context.subscriptions.push(pm, follow_cursor, status_bar)
 
 	const extensions_enabled = get_config('renpyExtensionsEnabled')
 
@@ -94,12 +119,12 @@ export function activate(context: vscode.ExtensionContext) {
 	})
 
 	if (extensions_enabled === 'Enabled') {
-		get_socket_server(pm, status_bar, follow_cursor).catch((error) => {
-			logger.error(error)
-		})
+		ensure_socket_server(pm, status_bar, follow_cursor, context).catch(
+			(error) => {
+				logger.error(error)
+			}
+		)
 	}
-
-	context.subscriptions.push(pm, follow_cursor, status_bar)
 
 	context.subscriptions.push(
 		vscode.commands.registerCommand('renpyWarp.warpToLine', async () => {

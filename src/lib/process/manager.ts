@@ -5,8 +5,6 @@ import { EventEmitter } from 'node:events'
 export class ProcessManager {
 	private processes = new Map<number, AnyProcess>()
 
-	/** Runs on process exit, after process has been removed */
-
 	private emitter = new EventEmitter()
 	private emit = this.emitter.emit.bind(this.emitter)
 	on = this.emitter.on.bind(this.emitter)
@@ -61,8 +59,6 @@ export class ProcessManager {
 	}
 
 	dispose() {
-		this.kill_all()
-
 		for (const { dispose } of this) {
 			dispose()
 		}

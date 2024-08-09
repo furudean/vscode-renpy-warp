@@ -200,6 +200,17 @@ export class ManagedProcess extends UnmanagedProcess {
 			)
 		})
 	}
+
+	async kill(): Promise<void> {
+		this.process.kill()
+		this.emit('exit')
+	}
+
+	dispose(): void {
+		this.output_channel?.dispose()
+		this.process.kill()
+		super.dispose()
+	}
 }
 
 export type AnyProcess = ManagedProcess | UnmanagedProcess

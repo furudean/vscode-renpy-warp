@@ -92,11 +92,9 @@ def socket_producer(websocket):
 def connect(port):
     # websockets module is bundled with renpy
     from websockets.sync.client import connect  # type: ignore
-    from websockets.exceptions import WebSocketException  # type: ignore
+    from websockets.exceptions import WebSocketException, ConnectionClosedOK  # type: ignore
 
     try:
-        print(f"attempting connection to renpy warp socket server on :{port}")
-
         headers = {
             "project-root": re.sub(r"/game$", "", renpy.config.gamedir),
             "pid": str(os.getpid()),
@@ -114,8 +112,6 @@ def connect(port):
             open_timeout=5,
             close_timeout=5,
         ) as websocket:
-            print("connected to socket server")
-
             def quit():
                 print("closing websocket connection")
                 websocket.close()
@@ -125,10 +121,15 @@ def connect(port):
             socket_producer(websocket)
             socket_listener(websocket)  # this blocks until socket is closed
 
-    except WebSocketException as e:
-        print("websocket error", e)
+    except ConnectionClosedOK:
+        print("connection closed by renpy warp socket server")
+        pass
 
-    print("renpy warp script exiting")
+    except ConnectionRefusedError:
+        print(f"socket connection refused on :{port}")
+
+    except WebSocketException as e:
+        print("websocket error:", e)
 
 
 def try_ports():

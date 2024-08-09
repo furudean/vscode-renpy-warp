@@ -10,6 +10,7 @@ import {
 } from './process'
 import get_port from 'get-port'
 import { StatusBar } from './status_bar'
+import { realpath } from 'node:fs/promises'
 
 const logger = get_logger()
 
@@ -80,12 +81,30 @@ function handle_managed_process({
 	return rpp
 }
 
-function handle_unmanaged_process(
-	process: ConstructorParameters<typeof UnmanagedProcess>[0],
-	pm: ProcessManager,
+function handle_unmanaged_process({
+	process,
+	expected_project_root,
+	pm,
+	status_bar,
+}: {
+	process: ConstructorParameters<typeof UnmanagedProcess>[0]
+	expected_project_root: string
+	pm: ProcessManager
 	status_bar: StatusBar
-): UnmanagedProcess {
+}): UnmanagedProcess | undefined {
 	logger.info(`socket server discovered unmanaged process ${process.pid}`)
+
+	if (process.project_root !== expected_project_root) {
+		// TODO: this does not work well on >=8.3.0 as renpy.config.gamedir is the launcher
+		// directory instead of the project root
+		logger.warn(
+			`rejecting connection to socket because project root ${process.project_root} does not match expected ${expected_project_root}`
+		)
+		process.socket?.close()
+
+		return
+	}
+
 	const rpp = new UnmanagedProcess(process)
 	pm.add(process.pid, rpp)
 
@@ -102,15 +121,17 @@ function handle_unmanaged_process(
 
 export async function start_websocket_server({
 	port,
+	project_root,
 	message_handler,
 	pm,
 	status_bar,
 }: {
 	port: number
+	project_root: string
 	message_handler: MessageHandler
 	pm: ProcessManager
 	status_bar: StatusBar
-}): Promise<void> {
+}): Promise<WebSocketServer> {
 	return new Promise(async (resolve, reject) => {
 		let has_listened = false
 		const server = new WebSocketServer({ port })
@@ -118,7 +139,7 @@ export async function start_websocket_server({
 		server.on('listening', () => {
 			has_listened = true
 			logger.info(`socket server listening on :${port}`)
-			resolve()
+			resolve(server)
 		})
 
 		server.on('error', (error) => {
@@ -153,7 +174,7 @@ export async function start_websocket_server({
 				)}`
 			)
 
-			let rpp: ManagedProcess | UnmanagedProcess
+			let rpp: ManagedProcess | UnmanagedProcess | undefined
 
 			if (req.headers['is-managed'] === '1') {
 				rpp = handle_managed_process({
@@ -163,13 +184,18 @@ export async function start_websocket_server({
 				}) as ManagedProcess
 			} else {
 				const pid = Number(req.headers['pid'])
-				const project_root = req.headers['project-root'] as string
+				const socket_project_root = await realpath(
+					req.headers['project-root'] as string
+				)
 
-				rpp = handle_unmanaged_process(
-					{ pid, project_root, socket },
+				rpp = handle_unmanaged_process({
+					process: { pid, project_root: socket_project_root, socket },
+					expected_project_root: project_root,
 					pm,
-					status_bar
-				) as UnmanagedProcess
+					status_bar,
+				})
+
+				if (!rpp) return
 			}
 
 			socket.on('message', async (data) => {
