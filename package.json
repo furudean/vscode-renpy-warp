@@ -173,7 +173,7 @@
 						"Replace Window"
 					],
 					"markdownEnumDescriptions": [
-						"Execute `renpy.warp_to_line()` in the open instance. This installs a .rpe file in your project.\n\n**Note**: This setting is is ignored if `#renpyWarp.renpyExtensionsEnabled#` is enabled.",
+						"Execute `renpy.warp_to_line()` in the open instance.\n\n**Note**: This setting is is ignored if `#renpyWarp.renpyExtensionsEnabled#` is enabled.",
 						"Launch a new instance when a command is executed.",
 						"Kill the existing instance and launch a new one."
 					]

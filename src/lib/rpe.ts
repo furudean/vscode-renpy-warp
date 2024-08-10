@@ -32,17 +32,18 @@ async function get_rpe_source(
 }
 
 export async function list_rpes(sdk_path: string): Promise<string[]> {
-	const [rpe, rpe_in_sdk] = await Promise.all([
+	return await Promise.all([
 		vscode.workspace
-			.findFiles(`**/game/**/renpy_warp_*.rpe`)
+			.findFiles(`**/game/renpy_warp_*.rpe`)
+			.then((files) => files.map((f) => f.fsPath)),
+		vscode.workspace
+			.findFiles(`**/game/renpy_warp_*.rpe.py`)
 			.then((files) => files.map((f) => f.fsPath)),
 		glob('renpy_warp_*.rpe.py', {
 			cwd: sdk_path,
 			absolute: true,
 		}),
-	])
-
-	return [...rpe, ...rpe_in_sdk]
+	]).then((result) => result.flat())
 }
 
 export async function install_rpe({
@@ -58,7 +59,6 @@ export async function install_rpe({
 }): Promise<string> {
 	const version = get_version(executable)
 	const supports_rpe_py = semver.gte(version.semver, '8.3.0')
-	if (!sdk_path) throw new Error('bad sdk path')
 
 	await uninstall_rpes(sdk_path)
 
@@ -68,7 +68,7 @@ export async function install_rpe({
 	let file_path: string
 
 	if (supports_rpe_py) {
-		file_path = path.join(sdk_path, `${file_base}.rpe.py`)
+		file_path = path.join(project_root, 'game/', `${file_base}.rpe.py`)
 		await fs.writeFile(file_path, rpe_source)
 	} else {
 		file_path = path.join(project_root, 'game/', `${file_base}.rpe`)

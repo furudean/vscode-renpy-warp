@@ -114,7 +114,7 @@ function handle_unmanaged_process({
 		status_bar.delete_process(process.pid)
 	})
 
-	status_bar.notify(`$(info) Discovered Ren'Py process ${process.pid}`)
+	status_bar.notify(`$(info) Connected to new Ren'Py process ${process.pid}`)
 
 	return rpp
 }
