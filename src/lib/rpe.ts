@@ -34,10 +34,7 @@ async function get_rpe_source(
 export async function list_rpes(sdk_path: string): Promise<string[]> {
 	return await Promise.all([
 		vscode.workspace
-			.findFiles(`**/game/renpy_warp_*.rpe`)
-			.then((files) => files.map((f) => f.fsPath)),
-		vscode.workspace
-			.findFiles(`**/game/renpy_warp_*.rpe.py`)
+			.findFiles(`**/game/renpy_warp_*.{rpe,rpe.py}`)
 			.then((files) => files.map((f) => f.fsPath)),
 		glob('renpy_warp_*.rpe.py', {
 			cwd: sdk_path,
