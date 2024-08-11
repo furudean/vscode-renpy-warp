@@ -176,7 +176,7 @@ export async function start_websocket_server({
 				logger.info(`socket server discovered unmanaged process ${pid}`)
 
 				if ((await realpath(project_root)) !== socket_project_root) {
-					logger.warn(
+					logger.info(
 						`rejecting connection to socket because socket root '${socket_project_root}' does not match expected '${project_root}'`
 					)
 					socket?.close()
