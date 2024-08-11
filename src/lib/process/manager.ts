@@ -59,8 +59,8 @@ export class ProcessManager {
 	}
 
 	dispose() {
-		for (const { dispose } of this) {
-			dispose()
+		for (const process of this) {
+			process.dispose()
 		}
 	}
 }

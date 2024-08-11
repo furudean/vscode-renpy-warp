@@ -59,6 +59,7 @@ export class UnmanagedProcess {
 	}
 
 	dispose() {
+		this.socket?.close()
 		clearInterval(this.check_alive_interval)
 		this.emitter.removeAllListeners()
 	}
@@ -208,8 +209,7 @@ export class ManagedProcess extends UnmanagedProcess {
 	}
 
 	dispose(): void {
-		// this.process.kill()
-		this.process.unref()
+		this.kill()
 		this.output_channel?.dispose()
 		super.dispose()
 	}
