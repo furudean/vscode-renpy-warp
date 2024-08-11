@@ -71,8 +71,7 @@ export class StatusBar {
 			}
 
 			this.message_timeout = setTimeout(() => {
-				this.notification_bar.hide()
-				this.notification_bar.text = ''
+				this.update(() => ({ message: undefined }))
 			}, 5000)
 		}
 
@@ -93,6 +92,12 @@ export class StatusBar {
 	private update_status_bar() {
 		this.instance_bar.show()
 
+		if (this.state.message === undefined) {
+			this.notification_bar.hide()
+		} else {
+			this.notification_bar.show()
+		}
+
 		if (
 			this.idle_processes > 0 &&
 			get_config('renpyExtensionsEnabled') === 'Enabled'
@@ -100,7 +105,6 @@ export class StatusBar {
 			this.follow_cursor_bar.show()
 		} else {
 			this.follow_cursor_bar.hide()
-			this.notification_bar.hide()
 		}
 
 		if (this.state.is_follow_cursor) {
@@ -140,5 +144,6 @@ export class StatusBar {
 	dispose() {
 		this.instance_bar.dispose()
 		this.follow_cursor_bar.dispose()
+		this.notification_bar.dispose()
 	}
 }

@@ -1,7 +1,7 @@
 import * as vscode from 'vscode'
 
 import { get_logger } from './logger'
-import WebSocket, { WebSocketServer } from 'ws'
+import { WebSocketServer } from 'ws'
 import {
 	AnyProcess,
 	ManagedProcess,
@@ -11,6 +11,7 @@ import {
 import get_port from 'get-port'
 import { StatusBar } from './status_bar'
 import { realpath } from 'node:fs/promises'
+import { update_rpe, get_rpe_source, get_checksum } from './rpe'
 
 const logger = get_logger()
 
@@ -40,109 +41,32 @@ export type MessageHandler = (
 	data: SocketMessage
 ) => MaybePromise<void>
 
-function handle_managed_process({
-	nonce,
-	socket,
-	pm,
-}: {
-	nonce: number
-	socket: WebSocket
-	pm: ProcessManager
-}): ManagedProcess | undefined {
-	const rpp = pm.get(nonce)
-
-	if (!rpp) {
-		logger.warn(
-			`rejecting connection to socket because ${nonce} is not registered`
-		)
-		socket.close()
-		return
-	}
-
-	if (rpp instanceof ManagedProcess === false) {
-		logger.warn(
-			`rejecting connection to socket because ${rpp.pid} does not match nonce ${nonce}`
-		)
-		socket.close()
-		return
-	}
-
-	logger.info(
-		`socket server discovered managed process ${rpp.pid}, with nonce ${nonce}`
-	)
-
-	if (rpp.socket) {
-		logger.warn('closing existing socket')
-		rpp.socket.close()
-	}
-
-	rpp.socket = socket
-
-	return rpp
-}
-
-async function handle_unmanaged_process({
-	pid,
-	project_root,
-	socket,
-	expected_project_root,
-	pm,
-	status_bar,
-}: {
-	pid: number
-	project_root: string
-	socket: WebSocket
-	expected_project_root: string
-	pm: ProcessManager
-	status_bar: StatusBar
-}): Promise<UnmanagedProcess | undefined> {
-	logger.info(`socket server discovered unmanaged process ${pid}`)
-
-	if (project_root !== expected_project_root) {
-		logger.warn(
-			`rejecting connection to socket because project root ${project_root} does not match expected ${expected_project_root}`
-		)
-		socket?.close()
-
-		return
-	}
-
-	const rpp = new UnmanagedProcess({ pid, project_root, socket })
-
-	status_bar.set_process(pid, 'idle')
-
-	rpp.on('exit', () => {
-		status_bar.delete_process(pid)
-		status_bar.notify(`$(info) External process ${pid} exited`)
-	})
-
-	pm.add(pid, rpp)
-
-	status_bar.notify(`$(info) Connected to existing Ren'Py process ${pid}`)
-
-	return rpp
-}
-
 export async function start_websocket_server({
 	port,
 	project_root,
 	message_handler,
 	pm,
 	status_bar,
+	context,
 }: {
 	port: number
 	project_root: string
 	message_handler: MessageHandler
 	pm: ProcessManager
 	status_bar: StatusBar
+	context: vscode.ExtensionContext
 }): Promise<WebSocketServer> {
 	return new Promise(async (resolve, reject) => {
 		let has_listened = false
 		const server = new WebSocketServer({ port })
+		const rpe_checksum = await get_rpe_source(context).then(get_checksum)
 
 		server.on('listening', () => {
 			has_listened = true
 			logger.info(`socket server listening on :${port}`)
+			status_bar.notify(
+				`$(server-process) Socket server listening on :${port}`
+			)
 			resolve(server)
 		})
 
@@ -168,8 +92,13 @@ export async function start_websocket_server({
 
 		server.on('close', () => {
 			logger.debug('renpy socket server closed')
+			status_bar.notify(
+				`$(server-process) Socket server closed on :${port}`
+			)
 			reject()
 		})
+
+		const ack_bad_process = new Set<number>()
 
 		server.on('connection', async (socket, req) => {
 			logger.debug(
@@ -178,30 +107,104 @@ export async function start_websocket_server({
 				)}`
 			)
 
-			let rpp: ManagedProcess | UnmanagedProcess | undefined
+			const socket_version = req.headers['warp-version']
+			const socket_checksum = req.headers['warp-checksum']
+			const socket_pid = Number(req.headers['pid'])
+			const socket_nonce = req.headers['warp-nonce']
+				? Number(req.headers['warp-nonce'])
+				: undefined
 
-			if (req.headers['is-managed'] === '1') {
-				rpp = handle_managed_process({
-					nonce: Number(req.headers['nonce']),
-					socket,
-					pm,
-				}) as ManagedProcess
+			if (socket_checksum !== rpe_checksum) {
+				logger.debug(
+					`rpe checksum ${socket_version} does not match expected ${rpe_checksum}`
+				)
+
+				if (ack_bad_process.has(socket_pid)) return
+
+				const picked = await vscode.window.showErrorMessage(
+					`Ren'Py extension checksum mismatch: ${socket_checksum} != ${rpe_checksum}. This may be due to outdated extensions. Would you like to update them?`,
+					'Update',
+					'OK'
+				)
+
+				if (picked === 'Update') {
+					await update_rpe(context)
+					vscode.window.showInformationMessage(
+						"Ren'Py extensions were updated. Please restart the game to connect.",
+						'OK'
+					)
+				}
+
+				ack_bad_process.add(socket_pid)
+				socket.close()
+				return
+			}
+
+			let rpp: ManagedProcess | UnmanagedProcess
+
+			if (socket_nonce !== undefined && pm.get(socket_nonce)) {
+				rpp = pm.get(socket_nonce) as ManagedProcess
+
+				if (!rpp) {
+					logger.warn(
+						`rejecting connection to socket because ${socket_nonce} is not registered`
+					)
+					socket.close()
+					return
+				}
+
+				if (rpp instanceof ManagedProcess === false) {
+					throw new Error('expected ManagedProcess')
+				}
+
+				logger.info(
+					`socket server discovered managed process ${rpp.pid} with nonce ${socket_nonce}`
+				)
+
+				if (rpp.socket) {
+					logger.warn('closing existing socket')
+					rpp.socket.close()
+				}
+
+				rpp.socket = socket
 			} else {
 				const pid = Number(req.headers['pid'])
 				const socket_project_root = await realpath(
-					req.headers['project-root'] as string
+					req.headers['warp-project-root'] as string
 				)
 
-				rpp = await handle_unmanaged_process({
-					pid,
-					project_root: socket_project_root,
-					socket,
-					expected_project_root: project_root,
-					pm,
-					status_bar,
-				})
+				logger.info(`socket server discovered unmanaged process ${pid}`)
 
-				if (!rpp) return
+				if (project_root !== socket_project_root) {
+					logger.warn(
+						`rejecting connection to socket because socket root '${socket_project_root}' does not match expected '${project_root}'`
+					)
+					socket?.close()
+
+					return
+				}
+
+				if (pm.get(pid)) {
+					logger.info('has existing process, reusing it')
+					rpp = pm.get(pid) as UnmanagedProcess
+				} else {
+					logger.info('creating new unmanaged process')
+					rpp = new UnmanagedProcess({ pid, project_root, socket })
+
+					rpp.on('exit', () => {
+						logger.info(`external process ${pid} exited`)
+						status_bar.delete_process(pid)
+						status_bar.notify(
+							`$(info) External process ${pid} exited`
+						)
+					})
+
+					pm.add(pid, rpp)
+					status_bar.set_process(pid, 'idle')
+					status_bar.notify(
+						`$(info) Connected to external Ren'Py process ${pid}`
+					)
+				}
 			}
 
 			socket.on('message', async (data) => {

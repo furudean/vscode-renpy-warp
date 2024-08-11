@@ -109,7 +109,7 @@ export class UnmanagedProcess {
 		})
 	}
 
-	async ipc(message: SocketMessage): Promise<void> {
+	private async ipc(message: SocketMessage): Promise<void> {
 		if (
 			this.socket === undefined ||
 			this.socket?.readyState !== WebSocket.OPEN
@@ -153,7 +153,7 @@ export class UnmanagedProcess {
 	 * receive IPC
 	 */
 	async set_autoreload() {
-		await this.ipc({
+		return this.ipc({
 			type: 'set_autoreload',
 		})
 	}

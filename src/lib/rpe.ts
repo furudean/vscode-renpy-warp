@@ -1,7 +1,7 @@
 import * as vscode from 'vscode'
 
 import path from 'upath'
-import { get_version } from './sh'
+import { find_project_root, get_executable, get_version } from './sh'
 import { version as pkg_version } from '../../package.json'
 import semver from 'semver'
 import { get_logger } from './logger'
@@ -9,18 +9,19 @@ import fs from 'node:fs/promises'
 import AdmZip from 'adm-zip'
 import { glob } from 'glob'
 import { createHash } from 'node:crypto'
+import { get_sdk_path } from './path'
 
 const RPE_FILE_PATTERN =
 	/renpy_warp_(?<version>\d+\.\d+\.\d+)(?:_(?<checksum>[a-z0-9]+))?\.rpe(?:\.py)?/
 const logger = get_logger()
 
-function get_checksum(data: Buffer): string {
+export function get_checksum(data: Buffer): string {
 	const hash = createHash('md5').update(data)
 
 	return hash.digest('hex').slice(0, 8) // yeah, i know
 }
 
-async function get_rpe_source(
+export async function get_rpe_source(
 	context: vscode.ExtensionContext
 ): Promise<Buffer> {
 	const rpe_source_path = path.join(
@@ -119,9 +120,48 @@ export async function has_current_rpe({
 		logger.debug('match:', match)
 
 		if (match?.checksum === checksum) {
+			logger.debug('has current rpe')
 			return true
 		}
 	}
 
 	return false
+}
+
+export async function update_rpe(
+	context: vscode.ExtensionContext
+): Promise<string | undefined> {
+	const file_path = await vscode.workspace
+		.findFiles('**/game/**/*.rpy', null, 1)
+		.then((files) => (files.length ? files[0].fsPath : null))
+
+	if (!file_path) {
+		vscode.window.showErrorMessage("No Ren'Py project in workspace", 'OK')
+		return
+	}
+
+	const project_root = find_project_root(file_path)
+
+	if (!project_root) {
+		vscode.window.showErrorMessage(
+			'Unable to find "game" folder in parent directory. Not a Ren\'Py project?',
+			'OK'
+		)
+		return
+	}
+
+	const sdk_path = await get_sdk_path()
+	if (!sdk_path) return
+
+	const executable = await get_executable(sdk_path, true)
+	if (!executable) return
+
+	const installed_path = await install_rpe({
+		sdk_path,
+		project_root,
+		context,
+		executable: executable.join(' '),
+	})
+
+	return installed_path
 }

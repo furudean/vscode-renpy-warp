@@ -46,9 +46,6 @@ export async function launch_renpy({
 	pm,
 	status_bar,
 }: LaunchRenpyOptions): Promise<ManagedProcess | undefined> {
-	const is_development_mode =
-		context.extensionMode === vscode.ExtensionMode.Development
-
 	logger.info('launch_renpy:', { file, line })
 
 	if (!file) {
@@ -107,8 +104,8 @@ export async function launch_renpy({
 	} else {
 		logger.info("opening new ren'py window")
 
-		const run_id = Math.trunc(Math.random() * 2047483648)
-		status_bar.set_process(run_id, 'starting')
+		const nonce = Math.trunc(Math.random() * Number.MAX_SAFE_INTEGER)
+		status_bar.set_process(nonce, 'starting')
 
 		try {
 			const sdk_path = await get_sdk_path()
@@ -148,21 +145,10 @@ export async function launch_renpy({
 								show_file(installed_path)
 							}
 						})
-				} else if (is_development_mode) {
-					await install_rpe({
-						sdk_path,
-						project_root,
-						context,
-						executable: executable_flat,
-					})
 				}
 			}
 
-			let socket_port: number | undefined
-
 			if (strategy === 'Replace Window') pm.kill_all()
-
-			const nonce = Math.trunc(Math.random() * 2047483648)
 
 			let cmds = [...executable, project_root]
 
@@ -171,8 +157,6 @@ export async function launch_renpy({
 			}
 
 			const process_env = {
-				WARP_IS_MANAGED: '1',
-				WARP_WS_PORT: socket_port?.toString(),
 				WARP_WS_NONCE: nonce.toString(),
 				// see: https://www.renpy.org/doc/html/editor.html
 				RENPY_EDIT_PY: await get_editor_path(sdk_path),
@@ -214,14 +198,14 @@ export async function launch_renpy({
 						process,
 						project_root: project_root,
 					})
-					pm.add(nonce, rpp)
 					rpp.on('exit', () => {
-						status_bar.delete_process(run_id)
+						status_bar.delete_process(nonce)
 					})
 
 					cancel.onCancellationRequested(() => {
 						rpp.kill()
 					})
+					pm.add(nonce, rpp)
 
 					if (extensions_enabled === 'Enabled') {
 						try {
@@ -238,13 +222,13 @@ export async function launch_renpy({
 						}
 					}
 
-					status_bar.set_process(run_id, 'idle')
+					status_bar.set_process(nonce, 'idle')
 
 					return rpp
 				}
 			)
 		} catch (error) {
-			status_bar.delete_process(run_id)
+			status_bar.delete_process(nonce)
 			throw error
 		}
 	}

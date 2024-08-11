@@ -4,7 +4,7 @@ import { ProcessManager } from './lib/process/manager'
 import { FollowCursor, sync_editor_with_renpy } from './lib/follow_cursor'
 import { get_logger } from './lib/logger'
 import { find_project_root, get_executable } from './lib/sh'
-import { install_rpe, uninstall_rpes } from './lib/rpe'
+import { uninstall_rpes, update_rpe } from './lib/rpe'
 import { launch_renpy } from './lib/launch'
 import {
 	get_config,
@@ -22,8 +22,10 @@ import { StatusBar } from './lib/status_bar'
 import { prompt_configure_extensions } from './lib/onboard'
 import { get_socket_port, start_websocket_server } from './lib/socket'
 import { AnyProcess } from './lib/process'
+import { WebSocketServer } from 'ws'
 
 const logger = get_logger()
+let socket_server: WebSocketServer | undefined
 
 async function ensure_socket_server(
 	pm: ProcessManager,
@@ -31,6 +33,8 @@ async function ensure_socket_server(
 	follow_cursor: FollowCursor,
 	context: vscode.ExtensionContext
 ): Promise<void> {
+	if (socket_server) return
+
 	const file_path = await vscode.workspace
 		.findFiles('**/game/**/*.rpy', null, 1)
 		.then((files) => (files.length ? files[0].fsPath : null))
@@ -46,11 +50,12 @@ async function ensure_socket_server(
 	}
 
 	const port = await get_socket_port()
-	const server = await start_websocket_server({
+	socket_server = await start_websocket_server({
 		port,
 		pm,
 		status_bar,
 		project_root,
+		context,
 		async message_handler(process, message) {
 			if (message.type === 'current_line') {
 				logger.debug(
@@ -69,9 +74,13 @@ async function ensure_socket_server(
 		},
 	})
 
+	socket_server.on('close', () => {
+		socket_server = undefined
+	})
+
 	context.subscriptions.push({
 		dispose() {
-			server.close()
+			socket_server?.close()
 		},
 	})
 }
@@ -197,50 +206,20 @@ export function activate(context: vscode.ExtensionContext) {
 		),
 
 		vscode.commands.registerCommand('renpyWarp.installRpe', async () => {
-			const file_path = await vscode.workspace
-				.findFiles('**/game/**/*.rpy', null, 1)
-				.then((files) => (files.length ? files[0].fsPath : null))
+			const installed_path = await update_rpe(context)
+			if (!installed_path) return
 
-			if (!file_path) {
-				vscode.window.showErrorMessage(
-					"No Ren'Py project in workspace",
-					'OK'
+			vscode.window
+				.showInformationMessage(
+					`Ren'Py extensions were successfully installed at ${installed_path}`,
+					'OK',
+					'Show'
 				)
-				return
-			}
-
-			const project_root = find_project_root(file_path)
-
-			if (!project_root) {
-				vscode.window.showErrorMessage(
-					'Unable to find "game" folder in parent directory. Not a Ren\'Py project?',
-					'OK'
-				)
-				return
-			}
-
-			const sdk_path = await get_sdk_path()
-			if (!sdk_path) return
-
-			const executable = await get_executable(sdk_path, true)
-			if (!executable) return
-
-			const installed_path = await install_rpe({
-				sdk_path,
-				project_root,
-				context,
-				executable: executable.join(' '),
-			})
-
-			const selection = await vscode.window.showInformationMessage(
-				`Ren'Py extensions were successfully installed at ${installed_path}`,
-				'OK',
-				'Show'
-			)
-
-			if (selection === 'Show') {
-				await show_file(installed_path)
-			}
+				.then(async (selection) => {
+					if (selection === 'Show') {
+						await show_file(installed_path)
+					}
+				})
 		}),
 
 		vscode.commands.registerCommand('renpyWarp.uninstallRpe', async () => {

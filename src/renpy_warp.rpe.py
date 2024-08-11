@@ -13,11 +13,23 @@ import json
 import functools
 import re
 import os
-import sys
 
-PORT = os.getenv("WARP_WS_PORT")
 
-print(sys.argv)
+def get_meta():
+    RPE_FILE_PATTERN = re.compile(
+        r"renpy_warp_(?P<version>\d+\.\d+\.\d+)(?:_(?P<checksum>[a-z0-9]+))?\.rpe(?:\.py)?")
+
+    filename = os.path.basename(__file__)
+    match = RPE_FILE_PATTERN.match(filename)
+
+    if not match:
+        raise Exception(
+            f"could not parse filename '{filename}'"
+            f" with pattern '{RPE_FILE_PATTERN.pattern}'")
+
+    d = match.groupdict()
+
+    return d["version"], d["checksum"]
 
 
 def py_exec(text: str):
@@ -49,6 +61,10 @@ def socket_listener(websocket):
                     renpy.reload_script()
             """)
             py_exec(script)
+
+        elif payload["type"] == "reload":
+            py_exec("renpy.reload_script()")
+            break
 
         else:
             print(f"unhandled message type '{payload['type']}'")
@@ -98,16 +114,16 @@ def connect(port):
     from websockets.exceptions import WebSocketException, ConnectionClosedOK  # type: ignore
 
     try:
+        version, checksum = get_meta()
         headers = {
-            "project-root": re.sub(r"/game$", "", renpy.config.gamedir),
             "pid": str(os.getpid()),
+            "warp-project-root": re.sub(r"/game$", "", renpy.config.gamedir),
+            "warp-version": version,
+            "warp-checksum": checksum,
         }
 
         if os.getenv("WARP_WS_NONCE"):
-            headers["nonce"] = os.getenv("WARP_WS_NONCE")
-
-        if os.getenv("WARP_IS_MANAGED"):
-            headers["is-managed"] = "1"
+            headers["warp-nonce"] = os.getenv("WARP_WS_NONCE")
 
         with connect(
             f"ws://localhost:{port}",
@@ -128,18 +144,16 @@ def connect(port):
         print("connection closed by renpy warp socket server")
         pass
 
-    except ConnectionRefusedError:
-        print(f"socket connection refused on :{port}")
-
     except WebSocketException as e:
         print("websocket error:", e)
+
+    except ConnectionRefusedError:
+        print(f"socket connection refused on :{port}")
 
 
 def try_ports():
     while True:
-        ports = [int(PORT)] if PORT else range(40111, 40121)
-
-        for port in ports:
+        for port in range(40111, 40121):
             connect(port)
 
         print("exhausted all ports, waiting 5 seconds before retrying")
