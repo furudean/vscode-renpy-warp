@@ -5,28 +5,16 @@ import { get_logger } from '../logger'
 import { ProcessManager } from './manager'
 import { EventEmitter } from 'node:events'
 import tree_kill from 'tree-kill'
-import { kill } from 'node:process'
 import { SocketMessage } from '../socket'
+import { process_finished } from '../sh'
 
 const logger = get_logger()
-
-function process_is_running(pid: number): boolean {
-	try {
-		// this is a great piece of api design
-		//
-		// > As a special case, a signal of 0 can be used to test for the
-		// > existence of a process.
-		// from: https://nodejs.org/api/process.html#processkillpid-signal
-		return kill(pid, 0)
-	} catch (error: any) {
-		return error.code === 'EPERM'
-	}
-}
 
 interface UnmanagedProcessOptions {
 	pid: number
 	project_root: string
 	socket?: WebSocket
+	monitor?: boolean
 }
 
 export class UnmanagedProcess {
@@ -43,18 +31,27 @@ export class UnmanagedProcess {
 
 	private check_alive_interval?: NodeJS.Timeout
 
-	constructor({ pid, project_root, socket }: UnmanagedProcessOptions) {
+	constructor({
+		pid,
+		project_root,
+		socket,
+		monitor,
+	}: UnmanagedProcessOptions) {
+		monitor = monitor ?? true
+
 		this.pid = pid
 		this.project_root = project_root
 		this.socket = socket
 
-		this.check_alive_interval = setInterval(async () => {
-			if (!process_is_running(this.pid)) {
-				this.dead = true
-				this.emit('exit')
-				clearInterval(this.check_alive_interval)
-			}
-		}, 400)
+		if (monitor) {
+			this.check_alive_interval = setInterval(async () => {
+				if (await process_finished(this.pid)) {
+					this.dead = true
+					this.emit('exit')
+					clearInterval(this.check_alive_interval)
+				}
+			}, 400)
+		}
 
 		this.on('exit', () => {
 			logger.debug(`process ${this.pid} got exit event`)
@@ -174,6 +171,7 @@ export class ManagedProcess extends UnmanagedProcess {
 		super({
 			pid: process.pid!,
 			project_root,
+			monitor: false,
 		})
 
 		this.process = process
@@ -183,16 +181,19 @@ export class ManagedProcess extends UnmanagedProcess {
 			`Ren'Py Launch and Sync - Process Output (${this.process.pid})`
 		)
 
-		this.process.stdout!.on('data', (data: string) =>
-			this.output_channel!.append(data)
+		this.process.stdout!.on('data', (data: Buffer) =>
+			this.output_channel!.append(data.toString('utf-8'))
 		)
-		this.process.stderr!.on('data', (data: string) =>
-			this.output_channel!.append(data)
+		this.process.stderr!.on('data', (data: Buffer) =>
+			this.output_channel!.append(data.toString('utf-8'))
 		)
 
 		this.output_channel.appendLine(`process ${this.process.pid} started`)
 
-		this.process.on('exit', (code) => {
+		this.process.on('close', (code) => {
+			this.dead = true
+			this.emit('exit')
+
 			this.exit_code = code
 			logger.info(`process ${this.pid} exited with code ${code}`)
 			this.output_channel!.appendLine(
@@ -207,8 +208,9 @@ export class ManagedProcess extends UnmanagedProcess {
 	}
 
 	dispose(): void {
+		// this.process.kill()
+		this.process.unref()
 		this.output_channel?.dispose()
-		this.process.kill()
 		super.dispose()
 	}
 }

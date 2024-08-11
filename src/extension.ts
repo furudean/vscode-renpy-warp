@@ -22,7 +22,6 @@ import { StatusBar } from './lib/status_bar'
 import { prompt_configure_extensions } from './lib/onboard'
 import { get_socket_port, start_websocket_server } from './lib/socket'
 import { AnyProcess } from './lib/process'
-import { WebSocketServer } from 'ws'
 
 const logger = get_logger()
 
@@ -138,7 +137,6 @@ export function activate(context: vscode.ExtensionContext) {
 					line: editor?.selection.active.line,
 					context,
 					pm,
-					follow_cursor,
 					status_bar,
 				})
 			} catch (error: any) {
@@ -160,7 +158,6 @@ export function activate(context: vscode.ExtensionContext) {
 						line: 0,
 						context,
 						pm,
-						follow_cursor,
 						status_bar,
 					})
 				} catch (error: any) {
@@ -171,7 +168,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 		vscode.commands.registerCommand('renpyWarp.launch', async () => {
 			try {
-				await launch_renpy({ context, pm, follow_cursor, status_bar })
+				await launch_renpy({ context, pm, status_bar })
 			} catch (error: any) {
 				logger.error(error)
 			}
@@ -232,7 +229,7 @@ export function activate(context: vscode.ExtensionContext) {
 				sdk_path,
 				project_root,
 				context,
-				executable,
+				executable: executable.join(' '),
 			})
 
 			const selection = await vscode.window.showInformationMessage(
@@ -292,7 +289,7 @@ export function activate(context: vscode.ExtensionContext) {
 				if (!executable) return
 
 				try {
-					await prompt_configure_extensions(executable)
+					await prompt_configure_extensions(executable.join(' '))
 				} catch (error: any) {
 					logger.error(error)
 				}

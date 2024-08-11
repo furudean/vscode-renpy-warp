@@ -81,40 +81,44 @@ function handle_managed_process({
 	return rpp
 }
 
-function handle_unmanaged_process({
-	process,
+async function handle_unmanaged_process({
+	pid,
+	project_root,
+	socket,
 	expected_project_root,
 	pm,
 	status_bar,
 }: {
-	process: ConstructorParameters<typeof UnmanagedProcess>[0]
+	pid: number
+	project_root: string
+	socket: WebSocket
 	expected_project_root: string
 	pm: ProcessManager
 	status_bar: StatusBar
-}): UnmanagedProcess | undefined {
-	logger.info(`socket server discovered unmanaged process ${process.pid}`)
+}): Promise<UnmanagedProcess | undefined> {
+	logger.info(`socket server discovered unmanaged process ${pid}`)
 
-	if (process.project_root !== expected_project_root) {
-		// TODO: this does not work well on >=8.3.0 as renpy.config.gamedir is the launcher
-		// directory instead of the project root
+	if (project_root !== expected_project_root) {
 		logger.warn(
-			`rejecting connection to socket because project root ${process.project_root} does not match expected ${expected_project_root}`
+			`rejecting connection to socket because project root ${project_root} does not match expected ${expected_project_root}`
 		)
-		process.socket?.close()
+		socket?.close()
 
 		return
 	}
 
-	const rpp = new UnmanagedProcess(process)
-	pm.add(process.pid, rpp)
+	const rpp = new UnmanagedProcess({ pid, project_root, socket })
 
-	status_bar.set_process(process.pid, 'idle')
+	status_bar.set_process(pid, 'idle')
 
 	rpp.on('exit', () => {
-		status_bar.delete_process(process.pid)
+		status_bar.delete_process(pid)
+		status_bar.notify(`$(info) External process ${pid} exited`)
 	})
 
-	status_bar.notify(`$(info) Connected to new Ren'Py process ${process.pid}`)
+	pm.add(pid, rpp)
+
+	status_bar.notify(`$(info) Connected to existing Ren'Py process ${pid}`)
 
 	return rpp
 }
@@ -188,8 +192,10 @@ export async function start_websocket_server({
 					req.headers['project-root'] as string
 				)
 
-				rpp = handle_unmanaged_process({
-					process: { pid, project_root: socket_project_root, socket },
+				rpp = await handle_unmanaged_process({
+					pid,
+					project_root: socket_project_root,
+					socket,
 					expected_project_root: project_root,
 					pm,
 					status_bar,

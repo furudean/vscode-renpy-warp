@@ -13,8 +13,11 @@ import json
 import functools
 import re
 import os
+import sys
 
 PORT = os.getenv("WARP_WS_PORT")
+
+print(sys.argv)
 
 
 def py_exec(text: str):

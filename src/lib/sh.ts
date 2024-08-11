@@ -5,7 +5,8 @@ import { get_config } from './config'
 import os from 'node:os'
 import child_process from 'node:child_process'
 import { path_exists, resolve_path } from './path'
-import { sh } from 'puka'
+import { realpath } from 'node:fs/promises'
+import find_process from 'find-process'
 
 const logger = get_logger()
 const IS_WINDOWS = os.platform() === 'win32'
@@ -44,28 +45,6 @@ export function get_version(executable_str: string): {
 		patch: Number(patch),
 		rest,
 	}
-}
-
-/**
- * @example
- * // on unix
- * env_string({ FOO: 'bar', BAZ: 'qux' })
- * // "FOO='bar' BAZ='qux'"
- *
- * // on windows
- * env_string({ FOO: 'bar', BAZ: 'qux' })
- * // 'set "FOO=bar" && set "BAZ=qux"'
- */
-export function env_string(
-	/** undefined values are not included */
-	entries: Record<string, string | undefined>
-): string {
-	return Object.entries(entries)
-		.filter(([key, value]) => value !== undefined)
-		.map(([key, value]) =>
-			IS_WINDOWS ? `set "${key}=${value}"` : `${key}='${value}'`
-		)
-		.join(IS_WINDOWS ? ' && ' : ' ')
 }
 
 export function find_project_root(
@@ -132,12 +111,13 @@ export async function get_editor_path(
 }
 
 /**
- * Returns the path to the Ren'Py SDK directory, if not set, prompts the user with an error message.
+ * Returns the path to the Ren'Py SDK directory, if not set, prompts the user
+ * with an error message.
  */
 export async function get_executable(
 	sdk_path: string,
 	prompt = false
-): Promise<string | undefined> {
+): Promise<string[] | undefined> {
 	// on windows, we call python.exe and pass renpy.py as an argument
 	// on all other systems, we call renpy.sh directly
 	// https://www.renpy.org/doc/html/cli.html#command-line-interface
@@ -148,9 +128,9 @@ export async function get_executable(
 	const executable = path.join(sdk_path, executable_name)
 
 	if (await path_exists(executable)) {
-		const renpy_path = path.join(sdk_path, 'renpy.py')
+		const renpy_path = await realpath(path.join(sdk_path, 'renpy.py'))
 
-		return IS_WINDOWS ? sh`${executable} ${renpy_path}` : sh`${executable}`
+		return IS_WINDOWS ? [executable, renpy_path] : [executable]
 	} else {
 		if (prompt) {
 			vscode.window
@@ -172,15 +152,13 @@ export async function get_executable(
 	}
 }
 
-export async function add_env(
-	executable: string,
-	environment: Record<string, string | undefined> = {}
-): Promise<string | undefined> {
-	if (IS_WINDOWS) {
-		// set RENPY_EDIT_PY=editor.edit.py && /path/to/python.exe /path/to/renpy.py
-		return env_string(environment) + ' && ' + executable
-	} else {
-		// RENPY_EDIT_PY=editor.edit.py /path/to/renpy.sh
-		return env_string(environment) + ' ' + executable
-	}
+export async function process_finished(pid: number): Promise<boolean> {
+	const [process] = await find_process('pid', pid)
+
+	logger.trace(`process ${pid} status:`, process)
+
+	// defunct processes are zombies - they're dead, but still in the process
+	// table. the renpy launcher will leave a defunct process behind until it's
+	// closed, so we need to check for this specifically.
+	return process === undefined || process.name === '<defunct>'
 }

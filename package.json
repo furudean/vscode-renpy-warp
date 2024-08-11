@@ -275,7 +275,6 @@
 		"glob": "^11.0.0",
 		"node-window-manager": "^2.2.4",
 		"pidtree": "^0.6.0",
-		"puka": "^1.0.1",
 		"semver": "^7.6.3",
 		"tree-kill": "^1.2.2",
 		"untildify": "^5.0.0",

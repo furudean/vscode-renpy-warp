@@ -1,18 +1,11 @@
 import * as vscode from 'vscode'
 import path from 'upath'
-import { sh } from 'puka'
 import child_process from 'child_process'
 
 import { ProcessManager, ManagedProcess, AnyProcess } from './process'
-import { FollowCursor, sync_editor_with_renpy } from './follow_cursor'
 import { get_config, show_file } from './config'
 import { get_logger } from './logger'
-import {
-	get_editor_path,
-	get_executable,
-	add_env,
-	find_project_root,
-} from './sh'
+import { get_editor_path, get_executable, find_project_root } from './sh'
 import { has_current_rpe, install_rpe } from './rpe'
 import { StatusBar } from './status_bar'
 import { get_sdk_path } from './path'
@@ -32,7 +25,6 @@ interface LaunchRenpyOptions {
 	line?: number
 	context: vscode.ExtensionContext
 	pm: ProcessManager
-	follow_cursor: FollowCursor
 	status_bar: StatusBar
 }
 
@@ -53,7 +45,6 @@ export async function launch_renpy({
 	context,
 	pm,
 	status_bar,
-	follow_cursor,
 }: LaunchRenpyOptions): Promise<ManagedProcess | undefined> {
 	const is_development_mode =
 		context.extensionMode === vscode.ExtensionMode.Development
@@ -125,21 +116,26 @@ export async function launch_renpy({
 
 			const executable = await get_executable(sdk_path, true)
 			if (!executable) return
+			const executable_flat = executable.join(' ')
 
 			if (extensions_enabled === 'Not set') {
-				await prompt_configure_extensions(executable)
+				await prompt_configure_extensions(executable.join(' '))
 				extensions_enabled = get_config('renpyExtensionsEnabled')
 			}
 
 			if (extensions_enabled === 'Enabled') {
 				if (
-					!(await has_current_rpe({ executable, sdk_path, context }))
+					!(await has_current_rpe({
+						executable: executable_flat,
+						sdk_path,
+						context,
+					}))
 				) {
 					const installed_path = await install_rpe({
 						sdk_path,
 						project_root,
 						context,
-						executable,
+						executable: executable_flat,
 					})
 					vscode.window
 						.showInformationMessage(
@@ -157,7 +153,7 @@ export async function launch_renpy({
 						sdk_path,
 						project_root,
 						context,
-						executable,
+						executable: executable_flat,
 					})
 				}
 			}
@@ -168,24 +164,18 @@ export async function launch_renpy({
 
 			const nonce = Math.trunc(Math.random() * 2047483648)
 
-			const renpy_sh = await add_env(executable, {
+			let cmds = [...executable, project_root]
+
+			if (line !== undefined) {
+				cmds = [...cmds, '--warp', `${filename_relative}:${line + 1}`]
+			}
+
+			const process_env = {
 				WARP_IS_MANAGED: '1',
 				WARP_WS_PORT: socket_port?.toString(),
 				WARP_WS_NONCE: nonce.toString(),
 				// see: https://www.renpy.org/doc/html/editor.html
 				RENPY_EDIT_PY: await get_editor_path(sdk_path),
-			})
-			if (!renpy_sh) throw new Error('no renpy.sh found')
-
-			let cmd: string
-
-			if (line === undefined) {
-				cmd = renpy_sh + ' ' + sh`${project_root}`
-			} else {
-				cmd =
-					renpy_sh +
-					' ' +
-					sh`${project_root} --warp ${filename_relative}:${line + 1}`
 			}
 
 			return await vscode.window.withProgress(
@@ -195,9 +185,30 @@ export async function launch_renpy({
 					cancellable: true,
 				},
 				async (_, cancel) => {
-					logger.info('executing subshell:', cmd)
-					const process = child_process.exec(cmd)
-					logger.info('created process', process.pid)
+					logger.info(
+						'spawning process',
+						cmds.join(' '),
+						'\n',
+						'with env',
+						process_env
+					)
+					const process = child_process.spawn(
+						cmds[0],
+						cmds.slice(1),
+						{
+							env: process_env,
+							stdio: ['ignore', 'pipe', 'pipe', 'ipc'],
+						}
+					)
+					process.on('error', (e) => {
+						logger.error('process error:', e)
+					})
+
+					if (!process.pid) {
+						throw new Error('failed to start process')
+					}
+
+					logger.info('sucessfully spawned process', process.pid)
 
 					const rpp = new ManagedProcess({
 						process,
@@ -215,14 +226,15 @@ export async function launch_renpy({
 					if (extensions_enabled === 'Enabled') {
 						try {
 							await rpp.wait_for_socket(10_000)
-						} catch (e: any) {
-							logger.error('timed out waiting for socket:', e)
+						} catch (error: unknown) {
+							logger.error('timed out waiting for socket:', error)
 							if (rpp.dead === false) {
 								vscode.window.showErrorMessage(
 									"Timed out trying to connect to Ren'Py window. Is the socket client running?",
 									'OK'
 								)
 							}
+							throw error
 						}
 					}
 
