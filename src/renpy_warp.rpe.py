@@ -108,7 +108,7 @@ def socket_producer(websocket):
     renpy.config.all_character_callbacks.append(fn)
 
 
-def connect(port):
+def socket_service(port):
     # websockets module is bundled with renpy
     from websockets.sync.client import connect  # type: ignore
     from websockets.exceptions import WebSocketException, ConnectionClosedOK  # type: ignore
@@ -151,19 +151,20 @@ def connect(port):
         print(f"socket connection refused on :{port}")
 
 
-def try_ports():
+def try_socket_ports_forever():
     while True:
         for port in range(40111, 40121):
-            connect(port)
+            socket_service(port)
 
         print("exhausted all ports, waiting 5 seconds before retrying")
         sleep(5)
 
 
-@ functools.lru_cache(maxsize=1)  # only run once
+@functools.lru_cache(maxsize=1)  # only run once
 def start_renpy_warp_service():
     if renpy.config.developer:
-        renpy_warp_thread = threading.Thread(target=try_ports, daemon=True)
+        renpy_warp_thread = threading.Thread(
+            target=try_socket_ports_forever, daemon=True)
         renpy_warp_thread.start()
 
         print("renpy warp thread started")
@@ -171,11 +172,10 @@ def start_renpy_warp_service():
 
 def declassify():
     """removes `renpy_warp_*.rpe` from build"""
-    print("adding renpy_warp_*.rpe to classify blacklist")
 
     classify = renpy.python.store_dicts["store.build"]["classify"]
     classify("game/renpy_warp_*.rpe", None)
 
 
-renpy.game.post_init.append(start_renpy_warp_service)
 renpy.game.post_init.append(declassify)
+renpy.game.post_init.append(start_renpy_warp_service)
