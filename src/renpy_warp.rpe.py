@@ -5,6 +5,7 @@
 # This file should not be checked into source control.
 #
 
+import renpy  # type: ignore
 from time import sleep
 import textwrap
 import threading
@@ -12,12 +13,24 @@ import json
 import functools
 import re
 import os
+from pathlib import Path
 
-import renpy  # type: ignore
 
-ENABLED = bool(os.getenv("WARP_ENABLED"))
-PORT = os.getenv("WARP_WS_PORT")
-NONCE = os.getenv("WARP_WS_NONCE")
+def get_meta():
+    RPE_FILE_PATTERN = re.compile(
+        r"renpy_warp_(?P<version>\d+\.\d+\.\d+)(?:_(?P<checksum>[a-z0-9]+))?\.rpe(?:\.py)?")
+
+    filename = os.path.basename(__file__)
+    match = RPE_FILE_PATTERN.match(filename)
+
+    if not match:
+        raise Exception(
+            f"could not parse filename '{filename}'"
+            f" with pattern '{RPE_FILE_PATTERN.pattern}'")
+
+    d = match.groupdict()
+
+    return d["version"], d["checksum"]
 
 
 def py_exec(text: str):
@@ -50,6 +63,10 @@ def socket_listener(websocket):
             """)
             py_exec(script)
 
+        elif payload["type"] == "reload":
+            py_exec("renpy.reload_script()")
+            break
+
         else:
             print(f"unhandled message type '{payload['type']}'")
 
@@ -73,16 +90,15 @@ def socket_producer(websocket):
                 return
 
             filename, line = renpy.exports.get_filename_line()
-            relative_filename = re.sub(r"^game/", "", filename)
-            filename_abs = os.path.join(
-                renpy.config.gamedir, relative_filename)
+            relative_filename = Path(filename).relative_to('game')
+            filename_abs = Path(renpy.config.gamedir, relative_filename)
 
             message = json.dumps(
                 {
                     "type": "current_line",
                     "line": line,
-                    "path": filename_abs,
-                    "relative_path": relative_filename,
+                    "path": filename_abs.as_posix(),
+                    "relative_path": relative_filename.as_posix(),
                 }
             )
 
@@ -92,19 +108,29 @@ def socket_producer(websocket):
     renpy.config.all_character_callbacks.append(fn)
 
 
-def renpy_warp_service():
+def socket_service(port):
+    # websockets module is bundled with renpy
     from websockets.sync.client import connect  # type: ignore
-    from websockets.exceptions import ConnectionClosedOK, ConnectionClosedError  # type: ignore
+    from websockets.exceptions import WebSocketException, ConnectionClosedOK  # type: ignore
 
     try:
+        version, checksum = get_meta()
+        headers = {
+            "pid": str(os.getpid()),
+            "warp-project-root": Path(renpy.config.gamedir).parent.as_posix(),
+            "warp-version": version,
+            "warp-checksum": checksum,
+        }
+
+        if os.getenv("WARP_WS_NONCE"):
+            headers["warp-nonce"] = os.getenv("WARP_WS_NONCE")
+
         with connect(
-            f"ws://localhost:{PORT}",
-            additional_headers={"nonce": NONCE},
+            f"ws://localhost:{port}",
+            additional_headers=headers,
             open_timeout=5,
             close_timeout=5,
         ) as websocket:
-            print("connected to renpy warp socket server")
-
             def quit():
                 print("closing websocket connection")
                 websocket.close()
@@ -118,35 +144,38 @@ def renpy_warp_service():
         print("connection closed by renpy warp socket server")
         pass
 
-    except ConnectionClosedError as e:
-        print("connection to renpy warp socket server closed unexpectedly", e)
-        sleep(1)
-        return renpy_warp_service()
+    except WebSocketException as e:
+        print("websocket error:", e)
 
     except ConnectionRefusedError:
-        print(f"no renpy warp socket server on {PORT}. retrying in 1s...")
-        sleep(1)
-        return renpy_warp_service()
+        print(f"socket connection refused on :{port}")
 
-    print("renpy warp script exiting")
+
+def try_socket_ports_forever():
+    while True:
+        for port in range(40111, 40121):
+            socket_service(port)
+
+        print("exhausted all ports, waiting 5 seconds before retrying")
+        sleep(5)
 
 
 @functools.lru_cache(maxsize=1)  # only run once
 def start_renpy_warp_service():
-    if ENABLED and renpy.config.developer:
-        renpy_warp_thread = threading.Thread(target=renpy_warp_service)
-        renpy_warp_thread.daemon = True
+    if renpy.config.developer:
+        renpy_warp_thread = threading.Thread(
+            target=try_socket_ports_forever, daemon=True)
         renpy_warp_thread.start()
 
-        print("renpy warp script started")
+        print("renpy warp thread started")
 
 
 def declassify():
     """removes `renpy_warp_*.rpe` from build"""
-    print("adding renpy_warp_*.rpe to classify blacklist")
-    renpy.python.store_dicts["store.build"]['classify'](
-        'game/renpy_warp_*.rpe', None)
+
+    classify = renpy.python.store_dicts["store.build"]["classify"]
+    classify("game/renpy_warp_*.rpe", None)
 
 
-renpy.config.after_default_callbacks.append(start_renpy_warp_service)
 renpy.game.post_init.append(declassify)
+renpy.game.post_init.append(start_renpy_warp_service)

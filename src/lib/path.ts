@@ -3,7 +3,7 @@ import path from 'upath'
 import untildify from 'untildify'
 import fs from 'node:fs/promises'
 import { get_logger } from './logger'
-import { get_config } from './util'
+import { get_config } from './config'
 import { get_executable } from './sh'
 
 const logger = get_logger()
@@ -23,39 +23,6 @@ export async function path_exists(path: string): Promise<boolean> {
 	} catch {
 		return false
 	}
-}
-
-export function find_game_root(
-	filename: string,
-	haystack: string | null = null,
-	depth: number = 1
-): string | null {
-	if (haystack) {
-		haystack = path.resolve(haystack, '..')
-	} else {
-		haystack = path.dirname(filename)
-	}
-
-	if (path.basename(haystack) === 'game') {
-		return path.resolve(haystack, '..') // return parent
-	}
-
-	const workspace_root =
-		vscode.workspace.workspaceFolders &&
-		vscode.workspace.workspaceFolders[0]
-			? vscode.workspace.workspaceFolders[0].uri.fsPath
-			: null
-
-	if (
-		haystack === workspace_root ||
-		haystack === path.resolve('/') ||
-		depth >= 10
-	) {
-		logger.info('exceeded recursion depth at', filename, haystack)
-		return null
-	}
-
-	return find_game_root(filename, haystack, depth + 1)
 }
 
 export async function path_is_sdk(absolute_path: string): Promise<boolean> {

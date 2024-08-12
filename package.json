@@ -19,6 +19,7 @@
 		"url": "https://github.com/furudean/vscode-renpy-warp.git"
 	},
 	"activationEvents": [
+		"onLanguage:renpy",
 		"workspaceContains:**/*.rpy"
 	],
 	"type": "commonjs",
@@ -72,6 +73,16 @@
 				"command": "renpyWarp.setExtensionsPreference",
 				"title": "Set Ren'Py extensions preference",
 				"category": "Ren'Py Launch"
+			},
+			{
+				"command": "renpyWarp.startSocketServer",
+				"title": "Start socket server",
+				"category": "Ren'Py Launch"
+			},
+			{
+				"command": "renpyWarp.stopSocketServer",
+				"title": "Stop socket server",
+				"category": "Ren'Py Launch"
 			}
 		],
 		"menus": {
@@ -83,13 +94,6 @@
 				{
 					"command": "renpyWarp.warpToFile",
 					"when": "resourceExtname == '.rpy'"
-				},
-				{
-					"command": "renpyWarp.launch",
-					"when": "workbenchState == 'folder' || resourceExtname == '.rpy'"
-				},
-				{
-					"command": "renpyWarp.killAll"
 				}
 			],
 			"editor/title/run": [
@@ -132,19 +136,19 @@
 				"command": "renpyWarp.warpToFile",
 				"key": "alt+shift+f",
 				"mac": "cmd+shift+f",
-				"when": "resourceExtname == '.rpy'"
+				"when": "editorTextFocus && resourceExtname == '.rpy'"
 			},
 			{
 				"command": "renpyWarp.launch",
 				"key": "alt+shift+l",
 				"mac": "cmd+shift+l",
-				"when": "workbenchState == 'folder' || resourceExtname == '.rpy'"
+				"when": "workbenchState == 'folder'"
 			},
 			{
 				"command": "renpyWarp.killAll",
 				"key": "alt+shift+k",
 				"mac": "cmd+shift+k",
-				"when": "resourceExtname == '.rpy'"
+				"when": "workbenchState == 'folder'"
 			},
 			{
 				"command": "renpyWarp.toggleFollowCursor",
@@ -173,7 +177,7 @@
 						"Replace Window"
 					],
 					"markdownEnumDescriptions": [
-						"Execute `renpy.warp_to_line()` in the open instance. This installs a .rpe file in your project.\n\n**Note**: This setting is is ignored if `#renpyWarp.renpyExtensionsEnabled#` is enabled.",
+						"Execute `renpy.warp_to_line()` in the open instance.\n\n**Note**: This setting is is ignored if `#renpyWarp.renpyExtensionsEnabled#` is enabled.",
 						"Launch a new instance when a command is executed.",
 						"Kill the existing instance and launch a new one."
 					]
@@ -211,24 +215,6 @@
 					"default": "launcher/Visual Studio Code (System).edit.py",
 					"markdownDescription": "The `Editor` class to supply to `renpy.sh`. Should be a relative or absolute path to an `.edit.py` file.\n\nThis setting is equivalent to the environment variable [`RENPY_EDIT_PY`](https://www.renpy.org/doc/html/editor.html).\n\nRelative paths are resolved from `#renpyWarp.sdkPath#`. For example, a valid value would be [`launcher/System Editor.edit.py`](https://github.com/renpy/renpy/blob/master/launcher/System%20Editor.edit.py).\n\n"
 				},
-				"renpyWarp.socketPorts": {
-					"type": "array",
-					"default": [
-						40111,
-						40112,
-						40113,
-						40114,
-						40115,
-						40116,
-						40117,
-						40118,
-						40119,
-						40120
-					],
-					"minItems": 1,
-					"markdownDescription": "Ports to attempt to use to for the WebSocket server.",
-					"scope": "machine-overridable"
-				},
 				"renpyWarp.renpyExtensionsEnabled": {
 					"type": "string",
 					"enum": [
@@ -237,14 +223,20 @@
 						"Disabled"
 					],
 					"default": "Not set",
-					"markdownDescription": "Enable Ren'Py Extension (.rpe) support.",
+					"markdownDescription": "Enable Ren'Py Extension (.rpe) support",
 					"scope": "machine-overridable"
 				},
 				"renpyWarp.setAutoReloadOnSave": {
 					"type": "boolean",
 					"default": false,
 					"order": 2,
-					"markdownDescription": "Enable autoreload in the Ren'Py process when a file is saved."
+					"markdownDescription": "Enable autoreload in the Ren'Py process when a file is saved"
+				},
+				"renpyWarp.autoStartSocketServer": {
+					"type": "boolean",
+					"default": true,
+					"order": 2,
+					"markdownDescription": "Automatically start the socket server when in a Ren'Py project"
 				}
 			}
 		}
@@ -288,12 +280,13 @@
 	},
 	"dependencies": {
 		"adm-zip": "^0.5.14",
+		"find-process": "^1.4.7",
 		"get-port": "^7.1.0",
 		"glob": "^11.0.0",
 		"node-window-manager": "^2.2.4",
 		"pidtree": "^0.6.0",
-		"puka": "^1.0.1",
 		"semver": "^7.6.3",
+		"tree-kill": "^1.2.2",
 		"untildify": "^5.0.0",
 		"upath": "^2.0.1",
 		"ws": "^8.18.0"

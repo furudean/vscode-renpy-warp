@@ -1,9 +1,9 @@
 import * as vscode from 'vscode'
-import { get_config } from './util'
-import { RenpyProcess } from './process'
+import { get_config } from './config'
+import { AnyProcess } from './process'
 import { get_logger } from './logger'
 import path from 'upath'
-import { find_game_root } from './sh'
+import { find_project_root } from './sh'
 import { StatusBar } from './status_bar'
 
 const logger = get_logger()
@@ -60,7 +60,7 @@ export async function sync_editor_with_renpy({
 }
 
 export async function warp_renpy_to_cursor(
-	rp: RenpyProcess,
+	rp: AnyProcess,
 	status_bar: StatusBar
 ): Promise<void> {
 	const editor = vscode.window.activeTextEditor
@@ -73,8 +73,11 @@ export async function warp_renpy_to_cursor(
 
 	if (language_id !== 'renpy') return
 
-	const game_root = find_game_root(file)
-	const filename_relative = path.relative(path.join(game_root, 'game/'), file)
+	const project_root = find_project_root(file)
+	const filename_relative = path.relative(
+		path.join(project_root, 'game/'),
+		file
+	)
 
 	const warp_spec = `${filename_relative}:${line + 1}`
 
@@ -95,16 +98,16 @@ export class FollowCursor {
 	private status_bar: StatusBar
 	private text_editor_handle: vscode.Disposable | undefined
 
-	active_process: RenpyProcess | undefined
+	active_process: AnyProcess | undefined
 
 	constructor({ status_bar }: { status_bar: StatusBar }) {
 		this.status_bar = status_bar
 	}
 
-	async set(process: RenpyProcess) {
+	async set(process: AnyProcess) {
 		if (get_config('renpyExtensionsEnabled') !== 'Enabled') {
 			vscode.window.showErrorMessage(
-				"Follow cursor only works with Ren'Py extensions enabled.",
+				"Follow cursor only works with Ren'Py extensions enabled",
 				'OK'
 			)
 			return

@@ -1,7 +1,7 @@
 import * as vscode from 'vscode'
 
 import path from 'upath'
-import { get_version } from './sh'
+import { find_project_root, get_executable, get_version } from './sh'
 import { version as pkg_version } from '../../package.json'
 import semver from 'semver'
 import { get_logger } from './logger'
@@ -9,18 +9,20 @@ import fs from 'node:fs/promises'
 import AdmZip from 'adm-zip'
 import { glob } from 'glob'
 import { createHash } from 'node:crypto'
+import { get_sdk_path } from './path'
+import { get_config, show_file } from './config'
 
 const RPE_FILE_PATTERN =
 	/renpy_warp_(?<version>\d+\.\d+\.\d+)(?:_(?<checksum>[a-z0-9]+))?\.rpe(?:\.py)?/
 const logger = get_logger()
 
-function get_checksum(data: Buffer): string {
+export function get_checksum(data: Buffer): string {
 	const hash = createHash('md5').update(data)
 
 	return hash.digest('hex').slice(0, 8) // yeah, i know
 }
 
-async function get_rpe_source(
+export async function get_rpe_source(
 	context: vscode.ExtensionContext
 ): Promise<Buffer> {
 	const rpe_source_path = path.join(
@@ -32,33 +34,30 @@ async function get_rpe_source(
 }
 
 export async function list_rpes(sdk_path: string): Promise<string[]> {
-	const [rpe, rpe_in_sdk] = await Promise.all([
+	return await Promise.all([
 		vscode.workspace
-			.findFiles(`**/game/**/renpy_warp_*.rpe`)
+			.findFiles(`**/game/renpy_warp_*.{rpe,rpe.py}`)
 			.then((files) => files.map((f) => f.fsPath)),
 		glob('renpy_warp_*.rpe.py', {
 			cwd: sdk_path,
 			absolute: true,
 		}),
-	])
-
-	return [...rpe, ...rpe_in_sdk]
+	]).then((result) => result.flat())
 }
 
 export async function install_rpe({
 	sdk_path,
 	executable,
-	game_root,
+	project_root,
 	context,
 }: {
 	sdk_path: string
 	executable: string
-	game_root: string
+	project_root: string
 	context: vscode.ExtensionContext
 }): Promise<string> {
 	const version = get_version(executable)
 	const supports_rpe_py = semver.gte(version.semver, '8.3.0')
-	if (!sdk_path) throw new Error('bad sdk path')
 
 	await uninstall_rpes(sdk_path)
 
@@ -68,10 +67,10 @@ export async function install_rpe({
 	let file_path: string
 
 	if (supports_rpe_py) {
-		file_path = path.join(sdk_path, `${file_base}.rpe.py`)
+		file_path = path.join(project_root, 'game/', `${file_base}.rpe.py`)
 		await fs.writeFile(file_path, rpe_source)
 	} else {
-		file_path = path.join(game_root, 'game/', `${file_base}.rpe`)
+		file_path = path.join(project_root, 'game/', `${file_base}.rpe`)
 		const zip = new AdmZip()
 		zip.addFile('autorun.py', rpe_source)
 		await fs.writeFile(file_path, zip.toBuffer())
@@ -122,9 +121,86 @@ export async function has_current_rpe({
 		logger.debug('match:', match)
 
 		if (match?.checksum === checksum) {
+			logger.debug('has current rpe')
 			return true
 		}
 	}
 
 	return false
+}
+
+export async function prompt_install_rpe(
+	context: vscode.ExtensionContext,
+	message = "Ren'Py extensions were {installed/updated} at {installed_path}"
+): Promise<string | undefined> {
+	const file_path = await vscode.workspace
+		.findFiles('**/game/**/*.rpy', null, 1)
+		.then((files) => (files.length ? files[0].fsPath : null))
+
+	if (!file_path) {
+		vscode.window.showErrorMessage("No Ren'Py project in workspace", 'OK')
+		return
+	}
+
+	const project_root = find_project_root(file_path)
+
+	if (!project_root) {
+		vscode.window.showErrorMessage(
+			'Unable to find "game" folder in parent directory. Not a Ren\'Py project?',
+			'OK'
+		)
+		return
+	}
+
+	const sdk_path = await get_sdk_path()
+	if (!sdk_path) return
+
+	const executable = await get_executable(sdk_path, true)
+	if (!executable) return
+
+	const has_current = await has_current_rpe({
+		executable: executable.join(' '),
+		sdk_path,
+		context,
+	})
+
+	const any_rpe = (await list_rpes(sdk_path)).length === 0
+
+	if (has_current) {
+		logger.info('rpe already up to date')
+		return
+	}
+
+	const installed_path = await install_rpe({
+		sdk_path,
+		project_root,
+		context,
+		executable: executable.join(' '),
+	})
+
+	vscode.window
+		.showInformationMessage(
+			message
+				.replaceAll(
+					'{installed/updated}',
+					any_rpe ? 'installed' : 'updated'
+				)
+				.replaceAll(
+					'{installed_path}',
+					path.relative(
+						vscode.workspace.workspaceFolders?.[0].uri.fsPath ??
+							project_root,
+						installed_path
+					)
+				),
+			'OK',
+			'Show'
+		)
+		.then(async (selection) => {
+			if (selection === 'Show') {
+				await show_file(installed_path)
+			}
+		})
+
+	return installed_path
 }
