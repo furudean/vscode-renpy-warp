@@ -5,13 +5,15 @@ All notable changes to this project will be documented in this file.
 ## Unreleased
 
 -   External Ren'Py processes can now be picked up by the extension, allowing
-    for the extension to work with Ren'Py projects that are not opened through
-    Visual Studio Code.
--   Renpy Extensions will not be updated on extension activation instead of only
-    on launch. This is to facilitate the above use case.
+    you to work with Ren'Py projects that are not opened through Visual Studio
+    Code.
+-   Renpy Extensions will not be updated on extension activation (if enabled)
+    instead of only on launch. This is to facilitate the above use case.
 -   The socket server now starts when the extension is activated, rather than
     when a game is launched. This is configurable via the new setting
     `renpyWarp.autoStartSocketServer`
+-   The commands `renpyWarp.startSocketServer` and `renpyWarp.stopSocketServer`
+    have been added to manually start and stop the socket server respectively
 -   `renpyWarp.socketPorts` has been removed, now using a static list of ports
 -   Fix auto save feature not working if `renpy` was not a registered language.
     Now simply checks if the filename ends with `.rpy`
