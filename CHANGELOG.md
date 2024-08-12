@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## Unreleased
+## 1.14.0 - 2024-08-12
 
 -   External Ren'Py processes can now be picked up by the extension, allowing
     you to work with Ren'Py projects that are not opened through Visual Studio

@@ -2,7 +2,7 @@
 	"name": "renpyWarp",
 	"displayName": "Ren'Py Launch and Sync",
 	"description": "Keep Ren'Py in sync with your code",
-	"version": "1.13.0",
+	"version": "1.14.0",
 	"publisher": "PaisleySoftworks",
 	"icon": "images/eileen.png",
 	"engines": {
