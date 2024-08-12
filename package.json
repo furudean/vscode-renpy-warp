@@ -25,6 +25,57 @@
 	],
 	"type": "commonjs",
 	"main": "./dist/extension.js",
+
+	"extensionDependencies": [],
+	"scripts": {
+		"vscode:prepublish": "npm run check-types && npm run lint && node esbuild.js --production",
+		"publish": "echo 'use `npm run publish:vsce` or `npm run publish:ovsx` instead'",
+		"publish:vsce": "vsce publish",
+		"publish:ovsx": "ovsx publish",
+		"compile": "npm run check-types && npm run lint && node esbuild.js",
+		"watch": "npm-run-all -p watch:*",
+		"watch:esbuild": "node esbuild.js --watch",
+		"watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
+		"package": "vsce package",
+		"compile-tests": "tsc -p . --outDir out",
+		"watch-tests": "tsc -p . -w --outDir out",
+		"pretest": "npm run compile-tests && npm run compile && npm run lint",
+		"check-types": "tsc --noEmit",
+		"lint": "eslint",
+		"test": "vscode-test"
+	},
+	"devDependencies": {
+		"@types/adm-zip": "^0.5.5",
+		"@types/mocha": "^10.0.7",
+		"@types/node": "^20.14.13",
+		"@types/semver": "^7.5.8",
+		"@types/vscode": "^1.87.0",
+		"@types/ws": "^8.5.12",
+		"@typescript-eslint/eslint-plugin": "^7.17.0",
+		"@typescript-eslint/parser": "^7.18.0",
+		"@vscode/test-cli": "^0.0.10",
+		"@vscode/test-electron": "^2.4.1",
+		"@vscode/vsce": "^2.31.1",
+		"esbuild": "^0.23.0",
+		"esbuild-plugin-copy": "^2.1.1",
+		"eslint": "^8.57.0",
+		"npm-run-all": "^4.1.5",
+		"ovsx": "^0.9.2",
+		"typescript": "^5.5.4"
+	},
+	"dependencies": {
+		"adm-zip": "^0.5.14",
+		"find-process": "^1.4.7",
+		"get-port": "^7.1.0",
+		"glob": "^11.0.0",
+		"node-window-manager": "^2.2.4",
+		"pidtree": "^0.6.0",
+		"semver": "^7.6.3",
+		"tree-kill": "^1.2.2",
+		"untildify": "^5.0.0",
+		"upath": "^2.0.1",
+		"ws": "^8.18.0"
+	},
 	"contributes": {
 		"commands": [
 			{
@@ -241,55 +292,5 @@
 				}
 			}
 		}
-	},
-	"extensionDependencies": [],
-	"scripts": {
-		"vscode:prepublish": "npm run check-types && npm run lint && node esbuild.js --production",
-		"publish": "echo 'use `npm run publish:vsce` or `npm run publish:ovsx` instead'",
-		"publish:vsce": "vsce publish",
-		"publish:ovsx": "ovsx publish",
-		"compile": "npm run check-types && npm run lint && node esbuild.js",
-		"watch": "npm-run-all -p watch:*",
-		"watch:esbuild": "node esbuild.js --watch",
-		"watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
-		"package": "vsce package",
-		"compile-tests": "tsc -p . --outDir out",
-		"watch-tests": "tsc -p . -w --outDir out",
-		"pretest": "npm run compile-tests && npm run compile && npm run lint",
-		"check-types": "tsc --noEmit",
-		"lint": "eslint",
-		"test": "vscode-test"
-	},
-	"devDependencies": {
-		"@types/adm-zip": "^0.5.5",
-		"@types/mocha": "^10.0.7",
-		"@types/node": "^20.14.13",
-		"@types/semver": "^7.5.8",
-		"@types/vscode": "^1.87.0",
-		"@types/ws": "^8.5.12",
-		"@typescript-eslint/eslint-plugin": "^7.17.0",
-		"@typescript-eslint/parser": "^7.18.0",
-		"@vscode/test-cli": "^0.0.10",
-		"@vscode/test-electron": "^2.4.1",
-		"@vscode/vsce": "^2.31.1",
-		"esbuild": "^0.23.0",
-		"esbuild-plugin-copy": "^2.1.1",
-		"eslint": "^8.57.0",
-		"npm-run-all": "^4.1.5",
-		"ovsx": "^0.9.2",
-		"typescript": "^5.5.4"
-	},
-	"dependencies": {
-		"adm-zip": "^0.5.14",
-		"find-process": "^1.4.7",
-		"get-port": "^7.1.0",
-		"glob": "^11.0.0",
-		"node-window-manager": "^2.2.4",
-		"pidtree": "^0.6.0",
-		"semver": "^7.6.3",
-		"tree-kill": "^1.2.2",
-		"untildify": "^5.0.0",
-		"upath": "^2.0.1",
-		"ws": "^8.18.0"
 	}
 }
