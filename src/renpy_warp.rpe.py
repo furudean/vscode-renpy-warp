@@ -20,7 +20,10 @@ def get_meta():
     RPE_FILE_PATTERN = re.compile(
         r"renpy_warp_(?P<version>\d+\.\d+\.\d+)(?:_(?P<checksum>[a-z0-9]+))?\.rpe(?:\.py)?")
 
-    filename = os.path.basename(__file__)
+    file = Path(__file__) if __file__.endswith(
+        '.rpe.py') else Path(__file__).parent
+
+    filename = os.path.basename(file)
     match = RPE_FILE_PATTERN.match(filename)
 
     if not match:
