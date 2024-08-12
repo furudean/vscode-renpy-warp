@@ -147,8 +147,7 @@
 			{
 				"command": "renpyWarp.killAll",
 				"key": "alt+shift+k",
-				"mac": "cmd+shift+k",
-				"when": "workspaceContains:**/*.rpy"
+				"mac": "cmd+shift+k"
 			},
 			{
 				"command": "renpyWarp.toggleFollowCursor",
@@ -223,20 +222,20 @@
 						"Disabled"
 					],
 					"default": "Not set",
-					"markdownDescription": "Enable Ren'Py Extension (.rpe) support.",
+					"markdownDescription": "Enable Ren'Py Extension (.rpe) support",
 					"scope": "machine-overridable"
 				},
 				"renpyWarp.setAutoReloadOnSave": {
 					"type": "boolean",
 					"default": false,
 					"order": 2,
-					"markdownDescription": "Enable autoreload in the Ren'Py process when a file is saved."
+					"markdownDescription": "Enable autoreload in the Ren'Py process when a file is saved"
 				},
 				"renpyWarp.autoStartSocketServer": {
 					"type": "boolean",
 					"default": true,
 					"order": 2,
-					"markdownDescription": "Automatically start the socket server when the extension is activated"
+					"markdownDescription": "Automatically start the socket server when in a Ren'Py project"
 				}
 			}
 		}
