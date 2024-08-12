@@ -20,70 +20,10 @@ import {
 } from './lib/path'
 import { StatusBar } from './lib/status_bar'
 import { prompt_configure_extensions } from './lib/onboard'
-import { get_socket_port, start_websocket_server } from './lib/socket'
+import { ensure_socket_server, stop_socket_server } from './lib/socket'
 import { AnyProcess } from './lib/process'
-import { WebSocketServer } from 'ws'
 
 const logger = get_logger()
-let socket_server: WebSocketServer | undefined
-
-async function ensure_socket_server(
-	pm: ProcessManager,
-	status_bar: StatusBar,
-	follow_cursor: FollowCursor,
-	context: vscode.ExtensionContext
-): Promise<void> {
-	if (socket_server) return
-
-	const file_path = await vscode.workspace
-		.findFiles('**/game/**/*.rpy', null, 1)
-		.then((files) => (files.length ? files[0].fsPath : null))
-
-	if (!file_path) {
-		throw new Error("No Ren'Py project in workspace")
-	}
-
-	const project_root = find_project_root(file_path)
-
-	if (!project_root) {
-		throw new Error("No Ren'Py project in workspace")
-	}
-
-	const port = await get_socket_port()
-	socket_server = await start_websocket_server({
-		port,
-		pm,
-		status_bar,
-		project_root,
-		context,
-		async message_handler(process, message) {
-			if (message.type === 'current_line') {
-				logger.debug(
-					`current line reported as ${message.relative_path}:${message.line}`
-				)
-				if (follow_cursor.active_process === process) {
-					await sync_editor_with_renpy({
-						path: message.path,
-						relative_path: message.relative_path,
-						line: message.line - 1,
-					})
-				}
-			} else {
-				logger.warn('unhandled message:', message)
-			}
-		},
-	})
-
-	socket_server.on('close', () => {
-		socket_server = undefined
-	})
-
-	context.subscriptions.push({
-		dispose() {
-			socket_server?.close()
-		},
-	})
-}
 
 export function activate(context: vscode.ExtensionContext) {
 	const status_bar = new StatusBar()
@@ -95,10 +35,7 @@ export function activate(context: vscode.ExtensionContext) {
 	const extensions_enabled = get_config('renpyExtensionsEnabled')
 
 	pm.on('exit', () => {
-		if (
-			follow_cursor.active_process &&
-			get_config('renpyExtensionsEnabled') === 'Enabled'
-		) {
+		if (follow_cursor.active_process && extensions_enabled === 'Enabled') {
 			const most_recent = pm.at(-1)
 
 			if (most_recent) {
@@ -126,14 +63,6 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 	})
 
-	if (extensions_enabled === 'Enabled') {
-		ensure_socket_server(pm, status_bar, follow_cursor, context).catch(
-			(error) => {
-				logger.error(error)
-			}
-		)
-	}
-
 	context.subscriptions.push(
 		vscode.commands.registerCommand('renpyWarp.warpToLine', async () => {
 			const editor = vscode.window.activeTextEditor
@@ -147,6 +76,7 @@ export function activate(context: vscode.ExtensionContext) {
 					context,
 					pm,
 					status_bar,
+					follow_cursor,
 				})
 			} catch (error: any) {
 				logger.error(error)
@@ -168,6 +98,7 @@ export function activate(context: vscode.ExtensionContext) {
 						context,
 						pm,
 						status_bar,
+						follow_cursor,
 					})
 				} catch (error: any) {
 					logger.error(error)
@@ -177,7 +108,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 		vscode.commands.registerCommand('renpyWarp.launch', async () => {
 			try {
-				await launch_renpy({ context, pm, status_bar })
+				await launch_renpy({ context, pm, status_bar, follow_cursor })
 			} catch (error: any) {
 				logger.error(error)
 			}
@@ -273,28 +204,37 @@ export function activate(context: vscode.ExtensionContext) {
 					logger.error(error)
 				}
 			}
-		)
+		),
+
+		vscode.commands.registerCommand(
+			'renpyWarp.startSocketServer',
+			async () => {
+				if (get_config('renpyExtensionsEnabled') === 'Enabled') {
+					await ensure_socket_server({
+						pm,
+						status_bar,
+						follow_cursor,
+						context,
+					})
+				} else {
+					vscode.window.showErrorMessage(
+						"Ren'Py extensions must be enabled to use the socket server",
+						'OK'
+					)
+				}
+			}
+		),
+
+		vscode.commands.registerCommand('renpyWarp.stopSocketServer', () => {
+			stop_socket_server(pm, status_bar)
+		})
 	)
-
-	const conf = get_configuration_object()
-
-	// migrate settings from version<=1.5.0 where renpyExtensionsEnabled was a boolean
-	if (
-		typeof conf.inspect('renpyExtensionsEnabled')?.globalValue === 'boolean'
-	) {
-		set_config('renpyExtensionsEnabled', undefined, false)
-	}
-	if (
-		typeof conf.inspect('renpyExtensionsEnabled')?.workspaceValue ===
-		'boolean'
-	) {
-		set_config('renpyExtensionsEnabled', undefined, true)
-	}
 
 	const save_text_handler = vscode.workspace.onWillSaveTextDocument(
 		async ({ document }) => {
 			try {
-				if (document.languageId !== 'renpy') return
+				logger.info(document.fileName)
+				if (!document.fileName.endsWith('.rpy')) return
 				if (document.isDirty === false) return
 				if (get_config('warpOnSave') !== true) return
 
@@ -317,6 +257,31 @@ export function activate(context: vscode.ExtensionContext) {
 	)
 
 	context.subscriptions.push(save_text_handler)
+
+	const conf = get_configuration_object()
+	// migrate settings from version<=1.5.0 where renpyExtensionsEnabled was a boolean
+	if (
+		typeof conf.inspect('renpyExtensionsEnabled')?.globalValue === 'boolean'
+	) {
+		set_config('renpyExtensionsEnabled', undefined, false)
+	}
+	if (
+		typeof conf.inspect('renpyExtensionsEnabled')?.workspaceValue ===
+		'boolean'
+	) {
+		set_config('renpyExtensionsEnabled', undefined, true)
+	}
+
+	if (
+		extensions_enabled === 'Enabled' &&
+		get_config('autoStartSocketServer')
+	) {
+		ensure_socket_server({ pm, status_bar, follow_cursor, context }).catch(
+			(error) => {
+				logger.error(error)
+			}
+		)
+	}
 }
 
 export function deactivate() {

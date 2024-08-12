@@ -12,6 +12,8 @@ import get_port from 'get-port'
 import { StatusBar } from './status_bar'
 import { realpath } from 'node:fs/promises'
 import { update_rpe, get_rpe_source, get_checksum } from './rpe'
+import { FollowCursor, sync_editor_with_renpy } from './follow_cursor'
+import { find_project_root } from './sh'
 
 const logger = get_logger()
 
@@ -58,8 +60,13 @@ export async function start_websocket_server({
 }): Promise<WebSocketServer> {
 	return new Promise(async (resolve, reject) => {
 		let has_listened = false
-		const server = new WebSocketServer({ port })
+
+		status_bar.update(() => ({
+			socket_server_status: 'starting',
+		}))
+
 		const rpe_checksum = await get_rpe_source(context).then(get_checksum)
+		const server = new WebSocketServer({ port })
 
 		server.on('listening', () => {
 			has_listened = true
@@ -70,13 +77,13 @@ export async function start_websocket_server({
 			resolve(server)
 		})
 
-		server.on('error', (error) => {
+		const handle_error = (error: any) => {
 			logger.error('socket server error:', error)
 
 			if (!has_listened) {
 				vscode.window
 					.showErrorMessage(
-						`Failed to start websockets server. Is the port ${port} already in use?`,
+						'Failed to start websockets server.',
 						'Logs',
 						'OK'
 					)
@@ -88,7 +95,10 @@ export async function start_websocket_server({
 				server.close()
 				reject()
 			}
-		})
+		}
+
+		server.on('error', handle_error)
+		server.on('wsClientError', handle_error)
 
 		server.on('close', () => {
 			logger.debug('renpy socket server closed')
@@ -224,4 +234,95 @@ export async function start_websocket_server({
 			})
 		})
 	})
+}
+
+let socket_server: WebSocketServer | undefined
+
+export async function ensure_socket_server({
+	pm,
+	status_bar,
+	follow_cursor,
+	context,
+}: {
+	pm: ProcessManager
+	status_bar: StatusBar
+	follow_cursor: FollowCursor
+	context: vscode.ExtensionContext
+}): Promise<void> {
+	if (socket_server !== undefined) {
+		logger.info('socket server already running')
+		return
+	}
+
+	stop_socket_server(pm, status_bar)
+
+	const file_path = await vscode.workspace
+		.findFiles('**/game/**/*.rpy', null, 1)
+		.then((files) => (files.length ? files[0].fsPath : null))
+
+	if (!file_path) {
+		throw new Error("No Ren'Py project in workspace")
+	}
+
+	const project_root = find_project_root(file_path)
+
+	if (!project_root) {
+		throw new Error("No Ren'Py project in workspace")
+	}
+
+	const port = await get_socket_port()
+
+	status_bar.update(() => ({
+		socket_server_status: 'starting',
+	}))
+
+	socket_server = await start_websocket_server({
+		port,
+		pm,
+		status_bar,
+		project_root,
+		context,
+		async message_handler(process, message) {
+			if (message.type === 'current_line') {
+				logger.debug(
+					`current line reported as ${message.relative_path}:${message.line}`
+				)
+				if (follow_cursor.active_process === process) {
+					await sync_editor_with_renpy({
+						path: message.path,
+						relative_path: message.relative_path,
+						line: message.line - 1,
+					})
+				}
+			} else {
+				logger.warn('unhandled message:', message)
+			}
+		},
+	})
+
+	status_bar.update(() => ({
+		socket_server_status: 'running',
+	}))
+
+	socket_server.on('close', () => {
+		socket_server = undefined
+		status_bar.update(() => ({
+			socket_server_status: 'stopped',
+		}))
+	})
+
+	context.subscriptions.push({
+		dispose() {
+			socket_server?.close()
+		},
+	})
+}
+
+export function stop_socket_server(
+	pm: ProcessManager,
+	status_bar: StatusBar
+): void {
+	pm.clear()
+	status_bar.update(() => ({ processes: new Map() }))
+	socket_server?.close()
 }

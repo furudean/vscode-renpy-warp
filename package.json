@@ -72,6 +72,16 @@
 				"command": "renpyWarp.setExtensionsPreference",
 				"title": "Set Ren'Py extensions preference",
 				"category": "Ren'Py Launch"
+			},
+			{
+				"command": "renpyWarp.startSocketServer",
+				"title": "Start socket server",
+				"category": "Ren'Py Launch"
+			},
+			{
+				"command": "renpyWarp.stopSocketServer",
+				"title": "Stop socket server",
+				"category": "Ren'Py Launch"
 			}
 		],
 		"menus": {
@@ -89,7 +99,8 @@
 					"when": "workbenchState == 'folder' || resourceExtname == '.rpy'"
 				},
 				{
-					"command": "renpyWarp.killAll"
+					"command": "renpyWarp.killAll",
+					"when": "workspaceContains:**/*.rpy"
 				}
 			],
 			"editor/title/run": [
@@ -144,7 +155,7 @@
 				"command": "renpyWarp.killAll",
 				"key": "alt+shift+k",
 				"mac": "cmd+shift+k",
-				"when": "resourceExtname == '.rpy'"
+				"when": "workspaceContains:**/*.rpy"
 			},
 			{
 				"command": "renpyWarp.toggleFollowCursor",
@@ -227,6 +238,12 @@
 					"default": false,
 					"order": 2,
 					"markdownDescription": "Enable autoreload in the Ren'Py process when a file is saved."
+				},
+				"renpyWarp.autoStartSocketServer": {
+					"type": "boolean",
+					"default": true,
+					"order": 2,
+					"markdownDescription": "Automatically start the socket server when the extension is activated"
 				}
 			}
 		}

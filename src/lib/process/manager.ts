@@ -58,6 +58,13 @@ export class ProcessManager {
 		}
 	}
 
+	clear() {
+		for (const process of this) {
+			process.dispose()
+		}
+		this.processes.clear()
+	}
+
 	dispose() {
 		for (const process of this) {
 			process.dispose()

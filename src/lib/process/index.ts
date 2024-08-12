@@ -209,9 +209,9 @@ export class ManagedProcess extends UnmanagedProcess {
 	}
 
 	dispose(): void {
-		this.kill()
-		this.output_channel?.dispose()
 		super.dispose()
+		this.output_channel?.dispose()
+		this.kill()
 	}
 }
 

@@ -8,10 +8,12 @@ export class StatusBar {
 	private instance_bar: vscode.StatusBarItem
 	private follow_cursor_bar: vscode.StatusBarItem
 	private notification_bar: vscode.StatusBarItem
+	private subscriptions: vscode.Disposable[] = []
 
 	private message_timeout: NodeJS.Timeout | undefined
 
 	private state = {
+		socket_server_status: 'stopped' as 'starting' | 'running' | 'stopped',
 		processes: new Map<any, 'starting' | 'idle'>(),
 		is_follow_cursor: false,
 		message: undefined as string | undefined,
@@ -31,6 +33,18 @@ export class StatusBar {
 		this.notification_bar = vscode.window.createStatusBarItem(
 			vscode.StatusBarAlignment.Right,
 			10_000
+		)
+
+		const update_status_bar_on_config_update =
+			vscode.workspace.onDidChangeConfiguration(() => {
+				this.update_status_bar()
+			})
+
+		this.subscriptions.push(
+			this.instance_bar,
+			this.follow_cursor_bar,
+			this.notification_bar,
+			update_status_bar_on_config_update
 		)
 
 		this.update_status_bar()
@@ -63,12 +77,7 @@ export class StatusBar {
 		this.state = { ...this.state, ...incoming_state }
 
 		if (incoming_state.message) {
-			this.notification_bar.text = incoming_state.message
-			this.notification_bar.show()
-
-			if (this.message_timeout) {
-				clearTimeout(this.message_timeout)
-			}
+			clearTimeout(this.message_timeout)
 
 			this.message_timeout = setTimeout(() => {
 				this.update(() => ({ message: undefined }))
@@ -76,8 +85,8 @@ export class StatusBar {
 		}
 
 		logger.debug('status bar state:', {
-			is_follow_cursor: this.state.is_follow_cursor,
-			message: this.state.message,
+			...this.state,
+			processes: undefined,
 			starting_processes: this.starting_processes,
 			idle_processes: this.idle_processes,
 		})
@@ -90,18 +99,17 @@ export class StatusBar {
 	}
 
 	private update_status_bar() {
-		this.instance_bar.show()
-
-		if (this.state.message === undefined) {
-			this.notification_bar.hide()
-		} else {
+		if (this.state.message) {
+			this.notification_bar.text = this.state.message
 			this.notification_bar.show()
+		} else {
+			this.notification_bar.hide()
 		}
 
-		if (
-			this.idle_processes > 0 &&
+		const extensions_enabled =
 			get_config('renpyExtensionsEnabled') === 'Enabled'
-		) {
+
+		if (this.idle_processes > 0 && extensions_enabled) {
 			this.follow_cursor_bar.show()
 		} else {
 			this.follow_cursor_bar.hide()
@@ -124,7 +132,27 @@ export class StatusBar {
 			this.follow_cursor_bar.backgroundColor = undefined
 		}
 
-		if (this.idle_processes > 0) {
+		this.instance_bar.show()
+
+		if (
+			this.state.socket_server_status === 'stopped' &&
+			extensions_enabled
+		) {
+			this.instance_bar.text = "$(plug) Start Ren'Py socket server"
+			this.instance_bar.command = 'renpyWarp.startSocketServer'
+			this.instance_bar.tooltip = "Start Ren'Py WebSocket server"
+		} else if (
+			this.state.socket_server_status === 'starting' &&
+			extensions_enabled
+		) {
+			this.instance_bar.text = `$(loading~spin) Starting socket server...`
+			this.instance_bar.command = undefined
+			this.instance_bar.tooltip = undefined
+		} else if (this.starting_processes > 0) {
+			this.instance_bar.text = `$(loading~spin) Starting Ren'Py...`
+			this.instance_bar.command = undefined
+			this.instance_bar.tooltip = undefined
+		} else if (this.idle_processes > 0) {
 			this.instance_bar.text = `$(debug-stop) Quit Ren'Py`
 			this.instance_bar.command = 'renpyWarp.killAll'
 			this.instance_bar.tooltip = "Kill all running Ren'Py instances"
@@ -133,17 +161,11 @@ export class StatusBar {
 			this.instance_bar.command = 'renpyWarp.launch'
 			this.instance_bar.tooltip = "Launch new Ren'Py instance"
 		}
-
-		if (this.starting_processes > 0) {
-			this.instance_bar.text = `$(loading~spin) Starting Ren'Py...`
-			this.instance_bar.command = undefined
-			this.instance_bar.tooltip = undefined
-		}
 	}
 
 	dispose() {
-		this.instance_bar.dispose()
-		this.follow_cursor_bar.dispose()
-		this.notification_bar.dispose()
+		for (const subscription of this.subscriptions) {
+			subscription.dispose()
+		}
 	}
 }

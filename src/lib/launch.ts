@@ -11,6 +11,8 @@ import { StatusBar } from './status_bar'
 import { get_sdk_path } from './path'
 import { prompt_configure_extensions } from './onboard'
 import { focus_window } from './window'
+import { ensure_socket_server } from './socket'
+import { FollowCursor } from './follow_cursor'
 
 const logger = get_logger()
 
@@ -26,6 +28,7 @@ interface LaunchRenpyOptions {
 	context: vscode.ExtensionContext
 	pm: ProcessManager
 	status_bar: StatusBar
+	follow_cursor: FollowCursor
 }
 
 /**
@@ -45,6 +48,7 @@ export async function launch_renpy({
 	context,
 	pm,
 	status_bar,
+	follow_cursor,
 }: LaunchRenpyOptions): Promise<ManagedProcess | undefined> {
 	logger.info('launch_renpy:', { file, line })
 
@@ -146,6 +150,13 @@ export async function launch_renpy({
 							}
 						})
 				}
+
+				await ensure_socket_server({
+					pm,
+					status_bar,
+					follow_cursor,
+					context,
+				})
 			}
 
 			if (strategy === 'Replace Window') pm.kill_all()
