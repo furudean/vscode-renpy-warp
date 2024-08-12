@@ -147,7 +147,8 @@
 			{
 				"command": "renpyWarp.killAll",
 				"key": "alt+shift+k",
-				"mac": "cmd+shift+k"
+				"mac": "cmd+shift+k",
+				"when": "workbenchState == 'folder'"
 			},
 			{
 				"command": "renpyWarp.toggleFollowCursor",
