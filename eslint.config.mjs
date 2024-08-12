@@ -4,7 +4,7 @@ import tseslint from 'typescript-eslint'
 
 export default [
 	{ files: ['**/*.{js,mjs,cjs,ts}'] },
-	{ ignores: ['out', 'dist'] },
+	{ ignores: ['out', 'dist', '.vscode-test'] },
 	{ languageOptions: { globals: { ...globals.browser, ...globals.node } } },
 	eslint.configs.recommended,
 	...tseslint.configs.recommended,
