@@ -10,8 +10,7 @@ import {
 } from './process'
 import get_port from 'get-port'
 import { StatusBar } from './status_bar'
-import { realpath } from 'node:fs/promises'
-import { update_rpe, get_rpe_source, get_checksum } from './rpe'
+import { prompt_install_rpe, get_rpe_source, get_checksum } from './rpe'
 import { FollowCursor, sync_editor_with_renpy } from './follow_cursor'
 import { find_project_root } from './sh'
 
@@ -134,14 +133,13 @@ export async function start_websocket_server({
 				const picked = await vscode.window.showErrorMessage(
 					`Ren'Py extension checksum mismatch: ${socket_checksum} != ${rpe_checksum}. This may be due to outdated extensions. Would you like to update them?`,
 					'Update',
-					'OK'
+					"Don't Update"
 				)
 
 				if (picked === 'Update') {
-					await update_rpe(context)
-					vscode.window.showInformationMessage(
-						"Ren'Py extensions were updated. Please restart the game to connect.",
-						'OK'
+					await prompt_install_rpe(
+						context,
+						"Ren'Py extensions were updated. Please restart the game to connect."
 					)
 				}
 
@@ -179,13 +177,13 @@ export async function start_websocket_server({
 				rpp.socket = socket
 			} else {
 				const pid = Number(req.headers['pid'])
-				const socket_project_root = await realpath(
-					req.headers['warp-project-root'] as string
-				)
+				const socket_project_root = req.headers[
+					'warp-project-root'
+				] as string
 
 				logger.info(`socket server discovered unmanaged process ${pid}`)
 
-				if ((await realpath(project_root)) !== socket_project_root) {
+				if (project_root !== socket_project_root) {
 					logger.info(
 						`rejecting connection to socket because socket root '${socket_project_root}' does not match expected '${project_root}'`
 					)
@@ -211,8 +209,8 @@ export async function start_websocket_server({
 
 					pm.add(pid, rpp)
 					status_bar.set_process(pid, 'idle')
-					status_bar.notify(
-						`$(info) Connected to external Ren'Py process ${pid}`
+					vscode.window.showInformationMessage(
+						"Connected to external Ren'Py process"
 					)
 				}
 			}
@@ -248,7 +246,7 @@ export async function ensure_socket_server({
 	status_bar: StatusBar
 	follow_cursor: FollowCursor
 	context: vscode.ExtensionContext
-}): Promise<void> {
+}): Promise<true | undefined> {
 	if (socket_server !== undefined) {
 		logger.info('socket server already running')
 		return
@@ -259,17 +257,16 @@ export async function ensure_socket_server({
 	const file_path = await vscode.workspace
 		.findFiles('**/game/**/*.rpy', null, 1)
 		.then((files) => (files.length ? files[0].fsPath : null))
-
 	if (!file_path) {
-		throw new Error("No Ren'Py project in workspace")
+		logger.error('no renpy file in workspace')
+		return
 	}
 
 	const project_root = find_project_root(file_path)
-
 	if (!project_root) {
-		throw new Error("No Ren'Py project in workspace")
+		logger.error('no renpy project in workspace')
+		return
 	}
-
 	const port = await get_socket_port()
 
 	status_bar.update(() => ({
@@ -316,12 +313,15 @@ export async function ensure_socket_server({
 			socket_server?.close()
 		},
 	})
+
+	return true
 }
 
 export function stop_socket_server(
 	pm: ProcessManager,
 	status_bar: StatusBar
 ): void {
+	logger.info('stopping socket server')
 	pm.clear()
 	status_bar.update(() => ({ processes: new Map() }))
 	socket_server?.close()

@@ -10,6 +10,7 @@ import AdmZip from 'adm-zip'
 import { glob } from 'glob'
 import { createHash } from 'node:crypto'
 import { get_sdk_path } from './path'
+import { get_config, show_file } from './config'
 
 const RPE_FILE_PATTERN =
 	/renpy_warp_(?<version>\d+\.\d+\.\d+)(?:_(?<checksum>[a-z0-9]+))?\.rpe(?:\.py)?/
@@ -128,8 +129,9 @@ export async function has_current_rpe({
 	return false
 }
 
-export async function update_rpe(
-	context: vscode.ExtensionContext
+export async function prompt_install_rpe(
+	context: vscode.ExtensionContext,
+	message = "Ren'Py extensions were {installed/updated} at {installed_path}"
 ): Promise<string | undefined> {
 	const file_path = await vscode.workspace
 		.findFiles('**/game/**/*.rpy', null, 1)
@@ -156,12 +158,49 @@ export async function update_rpe(
 	const executable = await get_executable(sdk_path, true)
 	if (!executable) return
 
+	const has_current = await has_current_rpe({
+		executable: executable.join(' '),
+		sdk_path,
+		context,
+	})
+
+	const any_rpe = (await list_rpes(sdk_path)).length === 0
+
+	if (has_current) {
+		logger.info('rpe already up to date')
+		return
+	}
+
 	const installed_path = await install_rpe({
 		sdk_path,
 		project_root,
 		context,
 		executable: executable.join(' '),
 	})
+
+	vscode.window
+		.showInformationMessage(
+			message
+				.replaceAll(
+					'{installed/updated}',
+					any_rpe ? 'installed' : 'updated'
+				)
+				.replaceAll(
+					'{installed_path}',
+					path.relative(
+						vscode.workspace.workspaceFolders?.[0].uri.fsPath ??
+							project_root,
+						installed_path
+					)
+				),
+			'OK',
+			'Show'
+		)
+		.then(async (selection) => {
+			if (selection === 'Show') {
+				await show_file(installed_path)
+			}
+		})
 
 	return installed_path
 }

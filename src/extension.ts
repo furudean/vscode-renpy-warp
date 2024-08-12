@@ -4,7 +4,7 @@ import { ProcessManager } from './lib/process/manager'
 import { FollowCursor, sync_editor_with_renpy } from './lib/follow_cursor'
 import { get_logger } from './lib/logger'
 import { find_project_root, get_executable } from './lib/sh'
-import { uninstall_rpes, update_rpe } from './lib/rpe'
+import { uninstall_rpes, prompt_install_rpe, has_current_rpe } from './lib/rpe'
 import { launch_renpy } from './lib/launch'
 import {
 	get_config,
@@ -137,7 +137,7 @@ export function activate(context: vscode.ExtensionContext) {
 		),
 
 		vscode.commands.registerCommand('renpyWarp.installRpe', async () => {
-			const installed_path = await update_rpe(context)
+			const installed_path = await prompt_install_rpe(context)
 			if (!installed_path) return
 
 			vscode.window
@@ -159,8 +159,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 			await uninstall_rpes(sdk_path)
 			vscode.window.showInformationMessage(
-				"Ren'Py extensions were successfully uninstalled from the project and SDK",
-				'OK'
+				"Ren'Py extensions were successfully uninstalled from the project and SDK"
 			)
 		}),
 
@@ -210,12 +209,25 @@ export function activate(context: vscode.ExtensionContext) {
 			'renpyWarp.startSocketServer',
 			async () => {
 				if (get_config('renpyExtensionsEnabled') === 'Enabled') {
-					await ensure_socket_server({
+					const started = await ensure_socket_server({
 						pm,
 						status_bar,
 						follow_cursor,
 						context,
 					})
+					if (!started) {
+						vscode.window
+							.showErrorMessage(
+								'Failed to start socket server',
+								'OK',
+								'Logs'
+							)
+							.then((selection) => {
+								if (selection === 'Logs') {
+									logger.show()
+								}
+							})
+					}
 				} else {
 					vscode.window.showErrorMessage(
 						"Ren'Py extensions must be enabled to use the socket server",
@@ -233,7 +245,6 @@ export function activate(context: vscode.ExtensionContext) {
 	const save_text_handler = vscode.workspace.onWillSaveTextDocument(
 		async ({ document }) => {
 			try {
-				logger.info(document.fileName)
 				if (!document.fileName.endsWith('.rpy')) return
 				if (document.isDirty === false) return
 				if (get_config('warpOnSave') !== true) return
@@ -278,10 +289,41 @@ export function activate(context: vscode.ExtensionContext) {
 	) {
 		ensure_socket_server({ pm, status_bar, follow_cursor, context }).catch(
 			(error) => {
-				logger.error(error)
+				logger.error('failed to start socket server:', error)
 			}
 		)
 	}
+
+	if (extensions_enabled === 'Enabled') {
+		prompt_install_rpe(context).catch((error) => {
+			logger.error(error)
+			vscode.window
+				.showErrorMessage('Failed to install RPE', 'Logs', 'OK')
+				.then((selection) => {
+					if (selection === 'Logs') {
+						logger.show()
+					}
+				})
+		})
+	}
+
+	const server_on_change = vscode.workspace.onDidChangeConfiguration((e) => {
+		if (
+			e.affectsConfiguration('renpyWarp.autoStartSocketServer') ||
+			e.affectsConfiguration('renpyWarp.renpyExtensionsEnabled')
+		) {
+			logger.info('server settings changed')
+			if (
+				get_config('autoStartSocketServer') &&
+				get_config('renpyExtensionsEnabled') === 'Enabled'
+			) {
+				ensure_socket_server({ pm, status_bar, follow_cursor, context })
+			} else {
+				stop_socket_server(pm, status_bar)
+			}
+		}
+	})
+	context.subscriptions.push(server_on_change)
 }
 
 export function deactivate() {

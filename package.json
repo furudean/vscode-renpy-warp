@@ -19,6 +19,7 @@
 		"url": "https://github.com/furudean/vscode-renpy-warp.git"
 	},
 	"activationEvents": [
+		"onLanguage:renpy",
 		"workspaceContains:**/*.rpy"
 	],
 	"type": "commonjs",
@@ -93,14 +94,6 @@
 				{
 					"command": "renpyWarp.warpToFile",
 					"when": "resourceExtname == '.rpy'"
-				},
-				{
-					"command": "renpyWarp.launch",
-					"when": "workbenchState == 'folder' || resourceExtname == '.rpy'"
-				},
-				{
-					"command": "renpyWarp.killAll",
-					"when": "workspaceContains:**/*.rpy"
 				}
 			],
 			"editor/title/run": [
@@ -143,13 +136,13 @@
 				"command": "renpyWarp.warpToFile",
 				"key": "alt+shift+f",
 				"mac": "cmd+shift+f",
-				"when": "resourceExtname == '.rpy'"
+				"when": "editorTextFocus && resourceExtname == '.rpy'"
 			},
 			{
 				"command": "renpyWarp.launch",
 				"key": "alt+shift+l",
 				"mac": "cmd+shift+l",
-				"when": "workbenchState == 'folder' || resourceExtname == '.rpy'"
+				"when": "workbenchState == 'folder'"
 			},
 			{
 				"command": "renpyWarp.killAll",

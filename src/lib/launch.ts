@@ -6,7 +6,7 @@ import { ProcessManager, ManagedProcess, AnyProcess } from './process'
 import { get_config, show_file } from './config'
 import { get_logger } from './logger'
 import { get_editor_path, get_executable, find_project_root } from './sh'
-import { has_current_rpe, install_rpe } from './rpe'
+import { has_current_rpe, install_rpe, prompt_install_rpe } from './rpe'
 import { StatusBar } from './status_bar'
 import { get_sdk_path } from './path'
 import { prompt_configure_extensions } from './onboard'
@@ -132,23 +132,7 @@ export async function launch_renpy({
 						context,
 					}))
 				) {
-					const installed_path = await install_rpe({
-						sdk_path,
-						project_root,
-						context,
-						executable: executable_flat,
-					})
-					vscode.window
-						.showInformationMessage(
-							`Ren'Py Extensions were installed/updated`,
-							'OK',
-							'Show'
-						)
-						.then((selection) => {
-							if (selection === 'Show') {
-								show_file(installed_path)
-							}
-						})
+					await prompt_install_rpe(context)
 				}
 
 				await ensure_socket_server({

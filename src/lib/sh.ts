@@ -5,7 +5,6 @@ import { get_config } from './config'
 import os from 'node:os'
 import child_process from 'node:child_process'
 import { path_exists, resolve_path } from './path'
-import { realpath } from 'node:fs/promises'
 import find_process from 'find-process'
 
 const logger = get_logger()
@@ -128,7 +127,7 @@ export async function get_executable(
 	const executable = path.join(sdk_path, executable_name)
 
 	if (await path_exists(executable)) {
-		const renpy_path = await realpath(path.join(sdk_path, 'renpy.py'))
+		const renpy_path = path.join(sdk_path, 'renpy.py')
 
 		return IS_WINDOWS ? [executable, renpy_path] : [executable]
 	} else {
