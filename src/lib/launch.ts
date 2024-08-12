@@ -176,6 +176,8 @@ export async function launch_renpy({
 						cmds.slice(1),
 						{
 							env: process_env,
+							// TODO: in order to properly detatch the process, we need use something
+							// other than pipe for stdout and stderr
 							stdio: ['ignore', 'pipe', 'pipe', 'ipc'],
 						}
 					)
