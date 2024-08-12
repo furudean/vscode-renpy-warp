@@ -208,6 +208,8 @@ export async function start_websocket_server({
 				if (pm.get(pid)) {
 					logger.info('has existing process, reusing it')
 					rpp = pm.get(pid) as UnmanagedProcess
+					rpp.socket?.close() // close existing socket
+					rpp.socket = socket
 				} else {
 					logger.info('creating new unmanaged process')
 					rpp = new UnmanagedProcess({ pid, project_root, socket })
