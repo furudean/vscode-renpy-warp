@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## Unreleased
+## 1.14.1 - 2024-08-12
 
 -   Fix handling of RPE metadata in 8.2, which made the socket server not
     connect
