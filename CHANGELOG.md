@@ -5,7 +5,8 @@ All notable changes to this project will be documented in this file.
 ## Unreleased
 
 -   Fix handling of RPE metadata in 8.2, which made the socket server not
-    connect.
+    connect
+-   Resolve symlinked paths when discovering an external Ren'Py process
 
 ## 1.14.0 - 2024-08-12
 

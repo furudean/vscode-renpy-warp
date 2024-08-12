@@ -14,6 +14,7 @@ import { prompt_install_rpe, get_rpe_source, get_checksum } from './rpe'
 import { FollowCursor, sync_editor_with_renpy } from './follow_cursor'
 import { find_project_root } from './sh'
 import path from 'upath'
+import { realpath } from 'node:fs/promises'
 
 const logger = get_logger()
 
@@ -184,8 +185,18 @@ export async function start_websocket_server({
 
 				logger.info(`socket server discovered unmanaged process ${pid}`)
 
+				const project_root_realpath = await realpath(project_root)
+				const socket_project_root_realpath = await realpath(
+					socket_project_root
+				)
+
 				// check if they're the same
-				if (path.relative(project_root, socket_project_root) !== '') {
+				if (
+					path.relative(
+						project_root_realpath,
+						socket_project_root_realpath
+					) !== ''
+				) {
 					logger.info(
 						`rejecting connection to socket because socket root '${socket_project_root}' does not match expected '${project_root}'`
 					)
