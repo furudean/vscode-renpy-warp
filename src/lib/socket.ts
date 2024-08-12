@@ -36,7 +36,7 @@ type MaybePromise<T> = T | Promise<T>
 
 export interface SocketMessage {
 	type: string
-	[key: string]: any
+	[key: string]: unknown
 }
 
 export type MessageHandler = (
@@ -59,18 +59,18 @@ export async function start_websocket_server({
 	status_bar: StatusBar
 	context: vscode.ExtensionContext
 }): Promise<WebSocketServer> {
-	return new Promise(async (resolve, reject) => {
-		let has_listened = false
+	const rpe_checksum = await get_rpe_source(context).then(get_checksum)
 
+	return new Promise((resolve, reject) => {
 		status_bar.update(() => ({
 			socket_server_status: 'starting',
 		}))
 
-		const rpe_checksum = await get_rpe_source(context).then(get_checksum)
 		const server = new WebSocketServer({ port })
+		let server_has_listened = false
 
 		server.on('listening', () => {
-			has_listened = true
+			server_has_listened = true
 			logger.info(`socket server listening on :${port}`)
 			status_bar.notify(
 				`$(server-process) Socket server listening on :${port}`
@@ -78,10 +78,10 @@ export async function start_websocket_server({
 			resolve(server)
 		})
 
-		const handle_error = (error: any) => {
+		const handle_error = (error: unknown) => {
 			logger.error('socket server error:', error)
 
-			if (!has_listened) {
+			if (!server_has_listened) {
 				vscode.window
 					.showErrorMessage(
 						'Failed to start websockets server.',
@@ -301,9 +301,9 @@ export async function ensure_socket_server({
 				)
 				if (follow_cursor.active_process === process) {
 					await sync_editor_with_renpy({
-						path: message.path,
-						relative_path: message.relative_path,
-						line: message.line - 1,
+						path: message.path as string,
+						relative_path: message.relative_path as string,
+						line: (message.line as number) - 1,
 					})
 				}
 			} else {

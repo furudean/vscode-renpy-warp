@@ -10,7 +10,7 @@ import AdmZip from 'adm-zip'
 import { glob } from 'glob'
 import { createHash } from 'node:crypto'
 import { get_sdk_path } from './path'
-import { get_config, show_file } from './config'
+import { show_file } from './config'
 
 const RPE_FILE_PATTERN =
 	/renpy_warp_(?<version>\d+\.\d+\.\d+)(?:_(?<checksum>[a-z0-9]+))?\.rpe(?:\.py)?/

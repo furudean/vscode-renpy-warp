@@ -6,13 +6,13 @@ export function get_configuration_object(): vscode.WorkspaceConfiguration {
 	return vscode.workspace.getConfiguration(extension_name)
 }
 
-export function get_config(key: string): any {
+export function get_config(key: string): unknown {
 	return vscode.workspace.getConfiguration(extension_name).get(key)
 }
 
 export async function set_config(
 	key: string,
-	value: any,
+	value: unknown,
 	workspace = false
 ): Promise<void> {
 	return vscode.workspace
@@ -32,7 +32,7 @@ export async function set_config(
  */
 export async function set_config_exclusive(
 	key: string,
-	value: any,
+	value: unknown,
 	workspace = false
 ): Promise<void> {
 	await set_config(key, value, workspace)

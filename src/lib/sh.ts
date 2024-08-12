@@ -79,7 +79,7 @@ export function find_project_root(
 export async function get_editor_path(
 	sdk_path: string
 ): Promise<string | undefined> {
-	const editor_setting: string = get_config('editor')
+	const editor_setting = get_config('editor') as string
 	let editor_path: string
 
 	if (path.isAbsolute(editor_setting)) {

@@ -25,7 +25,7 @@ export async function sync_editor_with_renpy({
 }: SyncEditorWithRenpyOptions): Promise<void> {
 	if (
 		!["Ren'Py updates Visual Studio Code", 'Update both'].includes(
-			get_config('followCursorMode')
+			get_config('followCursorMode') as string
 		)
 	)
 		return
@@ -122,7 +122,7 @@ export class FollowCursor {
 					[
 						"Visual Studio Code updates Ren'Py",
 						'Update both',
-					].includes(get_config('followCursorMode')) &&
+					].includes(get_config('followCursorMode') as string) &&
 					event.kind !== vscode.TextEditorSelectionChangeKind.Command
 				) {
 					await warp_renpy_to_cursor(process, this.status_bar)
@@ -136,7 +136,7 @@ export class FollowCursor {
 
 		if (
 			["Visual Studio Code updates Ren'Py", 'Update both'].includes(
-				get_config('followCursorMode')
+				get_config('followCursorMode') as string
 			)
 		) {
 			await warp_renpy_to_cursor(process, this.status_bar)

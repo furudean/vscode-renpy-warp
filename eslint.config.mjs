@@ -1,36 +1,16 @@
 import globals from 'globals'
+import eslint from '@eslint/js'
+import tseslint from 'typescript-eslint'
 
 export default [
+	{ files: ['**/*.{js,mjs,cjs,ts}'] },
+	{ ignores: ['out', 'dist'] },
+	{ languageOptions: { globals: { ...globals.browser, ...globals.node } } },
+	eslint.configs.recommended,
+	...tseslint.configs.recommended,
 	{
-		languageOptions: {
-			globals: {
-				...Object.fromEntries(
-					Object.entries(globals.browser).map(([key]) => [key, 'off'])
-				),
-				...globals.commonjs,
-				...globals.node,
-				...globals.mocha,
-			},
-
-			ecmaVersion: 2018,
-			sourceType: 'module',
-
-			parserOptions: {
-				ecmaFeatures: {
-					jsx: true,
-				},
-			},
-		},
-
 		rules: {
-			'no-const-assign': 'warn',
-			'no-this-before-super': 'warn',
-			'no-undef': 'warn',
-			'no-unreachable': 'warn',
-			'no-unused-vars': 'warn',
-			'constructor-super': 'warn',
-			'valid-typeof': 'warn',
+			'@typescript-eslint/no-require-imports': 'off',
 		},
-		ignores: ['out', 'dist', '**/*.d.ts', '.vscode-test/'],
 	},
 ]

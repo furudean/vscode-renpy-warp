@@ -14,7 +14,7 @@ export class StatusBar {
 
 	private state = {
 		socket_server_status: 'stopped' as 'starting' | 'running' | 'stopped',
-		processes: new Map<any, 'starting' | 'idle'>(),
+		processes: new Map<unknown, 'starting' | 'idle'>(),
 		is_follow_cursor: false,
 		message: undefined as string | undefined,
 	}
@@ -50,12 +50,12 @@ export class StatusBar {
 		this.update_status_bar()
 	}
 
-	set_process(id: any, state: 'starting' | 'idle'): void {
+	set_process(id: unknown, state: 'starting' | 'idle'): void {
 		this.state.processes.set(id, state)
 		this.update_status_bar()
 	}
 
-	delete_process(id: any): void {
+	delete_process(id: unknown): void {
 		this.state.processes.delete(id)
 		this.update_status_bar()
 	}

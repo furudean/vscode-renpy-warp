@@ -1,10 +1,10 @@
 import * as vscode from 'vscode'
 
 import { ProcessManager } from './lib/process/manager'
-import { FollowCursor, sync_editor_with_renpy } from './lib/follow_cursor'
+import { FollowCursor } from './lib/follow_cursor'
 import { get_logger } from './lib/logger'
-import { find_project_root, get_executable } from './lib/sh'
-import { uninstall_rpes, prompt_install_rpe, has_current_rpe } from './lib/rpe'
+import { get_executable } from './lib/sh'
+import { uninstall_rpes, prompt_install_rpe } from './lib/rpe'
 import { launch_renpy } from './lib/launch'
 import {
 	get_config,
@@ -78,8 +78,8 @@ export function activate(context: vscode.ExtensionContext) {
 					status_bar,
 					follow_cursor,
 				})
-			} catch (error: any) {
-				logger.error(error)
+			} catch (error: unknown) {
+				logger.error(error as Error)
 			}
 		}),
 
@@ -100,8 +100,8 @@ export function activate(context: vscode.ExtensionContext) {
 						status_bar,
 						follow_cursor,
 					})
-				} catch (error: any) {
-					logger.error(error)
+				} catch (error: unknown) {
+					logger.error(error as Error)
 				}
 			}
 		),
@@ -109,8 +109,8 @@ export function activate(context: vscode.ExtensionContext) {
 		vscode.commands.registerCommand('renpyWarp.launch', async () => {
 			try {
 				await launch_renpy({ context, pm, status_bar, follow_cursor })
-			} catch (error: any) {
-				logger.error(error)
+			} catch (error: unknown) {
+				logger.error(error as Error)
 			}
 		}),
 
@@ -167,7 +167,7 @@ export function activate(context: vscode.ExtensionContext) {
 			const input_path = await vscode.window.showInputBox({
 				title: "Set Ren'Py SDK path",
 				prompt: "Input path to the Ren'Py SDK you want to use",
-				value: get_config('sdkPath'),
+				value: get_config('sdkPath') as string,
 				placeHolder: '~/renpy-8.2.3-sdk',
 				ignoreFocusOut: true,
 				async validateInput(value) {
@@ -199,8 +199,8 @@ export function activate(context: vscode.ExtensionContext) {
 
 				try {
 					await prompt_configure_extensions(executable.join(' '))
-				} catch (error: any) {
-					logger.error(error)
+				} catch (error: unknown) {
+					logger.error(error as Error)
 				}
 			}
 		),
@@ -261,8 +261,8 @@ export function activate(context: vscode.ExtensionContext) {
 					logger.info('reloading process on save', process.pid)
 					await process.set_autoreload()
 				}
-			} catch (error: any) {
-				logger.error(error)
+			} catch (error: unknown) {
+				logger.error(error as Error)
 			}
 		}
 	)
