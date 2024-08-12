@@ -6,7 +6,8 @@
 	"publisher": "PaisleySoftworks",
 	"icon": "images/eileen.png",
 	"engines": {
-		"vscode": "^1.87.0"
+		"vscode": "^1.87.0",
+		"node": "^20.0.0"
 	},
 	"keywords": [
 		"renpy"
