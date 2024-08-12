@@ -13,6 +13,7 @@ import json
 import functools
 import re
 import os
+from pathlib import Path
 
 
 def get_meta():
@@ -89,16 +90,15 @@ def socket_producer(websocket):
                 return
 
             filename, line = renpy.exports.get_filename_line()
-            relative_filename = re.sub(r"^game/", "", filename)
-            filename_abs = os.path.join(
-                renpy.config.gamedir, relative_filename)
+            relative_filename = Path(filename).relative_to('game')
+            filename_abs = Path(renpy.config.gamedir, relative_filename)
 
             message = json.dumps(
                 {
                     "type": "current_line",
                     "line": line,
-                    "path": filename_abs,
-                    "relative_path": relative_filename,
+                    "path": filename_abs.as_posix(),
+                    "relative_path": relative_filename.as_posix(),
                 }
             )
 
@@ -117,7 +117,7 @@ def socket_service(port):
         version, checksum = get_meta()
         headers = {
             "pid": str(os.getpid()),
-            "warp-project-root": re.sub(r"/game$", "", renpy.config.gamedir),
+            "warp-project-root": Path(renpy.config.gamedir).parent.as_posix(),
             "warp-version": version,
             "warp-checksum": checksum,
         }
