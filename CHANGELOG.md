@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## Unreleased
+
+-   Resolve symlinks when syncing editor to line
+
 ## 1.14.2 - 2024-08-12
 
 -   Fix socket not being reconnected on game reload

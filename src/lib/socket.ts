@@ -300,8 +300,10 @@ export async function ensure_socket_server({
 					`current line reported as ${message.relative_path}:${message.line}`
 				)
 				if (follow_cursor.active_process === process) {
+					const message_path = await realpath(message.path as string)
+
 					await sync_editor_with_renpy({
-						path: message.path as string,
+						path: message_path,
 						relative_path: message.relative_path as string,
 						line: (message.line as number) - 1,
 					})
