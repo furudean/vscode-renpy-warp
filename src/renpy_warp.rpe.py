@@ -76,6 +76,7 @@ def socket_listener(websocket):
 
 def socket_producer(websocket):
     """produces messages to the socket server"""
+    from websockets.exceptions import ConnectionClosedOK  # type: ignore
 
     first = True
 
@@ -105,19 +106,23 @@ def socket_producer(websocket):
                 }
             )
 
-            print("socket >", message)
-            websocket.send(message)
+            try:
+                websocket.send(message)
+                print("socket >", message)
+            except ConnectionClosedOK:
+                # socket is closed, remove the callback
+                renpy.config.all_character_callbacks.remove(fn)
 
     renpy.config.all_character_callbacks.append(fn)
 
 
-def socket_service(port):
+def socket_service(port, version, checksum):
+    """connects to the socket server. returns True if the connection has completed its lifecycle"""
     # websockets module is bundled with renpy
     from websockets.sync.client import connect  # type: ignore
     from websockets.exceptions import WebSocketException, ConnectionClosedOK  # type: ignore
 
     try:
-        version, checksum = get_meta()
         headers = {
             "pid": str(os.getpid()),
             "warp-project-root": Path(renpy.config.gamedir).parent.as_posix(),
@@ -135,35 +140,48 @@ def socket_service(port):
             close_timeout=5,
         ) as websocket:
             def quit():
-                print("closing websocket connection")
-                websocket.close()
+                print(f"closing websocket connection :{port}")
+                websocket.close(4000, 'renpy quit')
 
             renpy.config.quit_callbacks.append(quit)
+
+            print(f"connected to renpy warp socket server on :{port}")
 
             socket_producer(websocket)
             socket_listener(websocket)  # this blocks until socket is closed
 
     except ConnectionClosedOK:
-        print("connection closed by renpy warp socket server")
-        pass
+        print("socket close ok")
 
     except WebSocketException as e:
-        print("websocket error:", e)
+        if e.code == 4000:
+            print("got socket code 4000, service closing")
+            return True
+        else:
+            print("unexpected websocket error:", e)
 
     except ConnectionRefusedError:
         print(f"socket connection refused on :{port}")
 
+    return False
+
 
 def try_socket_ports_forever():
-    while True:
+    version, checksum = get_meta()
+    service_closed = False
+
+    while service_closed is False:
         for port in range(40111, 40121):
-            socket_service(port)
+            service_closed = socket_service(
+                port=port, version=version, checksum=checksum)
+
+            if service_closed:
+                break
 
         print("exhausted all ports, waiting 5 seconds before retrying")
         sleep(5)
 
 
-@functools.lru_cache(maxsize=1)  # only run once
 def start_renpy_warp_service():
     if renpy.config.developer:
         renpy_warp_thread = threading.Thread(
