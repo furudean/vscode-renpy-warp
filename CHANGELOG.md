@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## Unreleased
+
+-   fix `renpyWarp.setAutoReloadOnSave` not working
+
 ## 1.14.3 - 2024-08-16
 
 -   Resolve symlinks when syncing editor to line

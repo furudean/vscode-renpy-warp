@@ -247,7 +247,7 @@ export function activate(context: vscode.ExtensionContext) {
 			try {
 				if (!document.fileName.endsWith('.rpy')) return
 				if (document.isDirty === false) return
-				if (get_config('warpOnSave') !== true) return
+				if (get_config('setAutoReloadOnSave') !== true) return
 
 				if (
 					vscode.window.activeTextEditor?.selection.active.line ===
