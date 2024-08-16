@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## Unreleased
+## 1.14.3 - 2024-08-16
 
 -   Resolve symlinks when syncing editor to line
 -   Stability improvements for socket pick up and hangup
