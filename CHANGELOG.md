@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## Unreleased
+## 1.14.4 - 2024-08-16
 
 -   fix `renpyWarp.setAutoReloadOnSave` not working
 
