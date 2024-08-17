@@ -200,14 +200,14 @@ export class ManagedProcess extends UnmanagedProcess {
 			this.output_channel!.appendLine(line)
 		})
 
-		this.process.on('close', (code) => {
+		this.process.on('close', async (code) => {
 			this.dead = true
-			this.emit('exit')
-
-			tail.quit()
-
 			this.exit_code = code
+			this.emit('exit')
 			logger.info(`process ${this.pid} exited with code ${code}`)
+
+			await tail.quit()
+			this.output_channel?.appendLine(`process exited with code ${code}`)
 		})
 	}
 
