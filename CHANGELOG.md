@@ -7,7 +7,8 @@ All notable changes to this project will be documented in this file.
 -   Add option to hide some notifications, which can be reset with the command
     `renpyWarp.resetSupressedMessages`
 -   Consistency improvements to `renpyWarp.followCursorOnLaunch`
--   Allow processes launched with the extension to stay open... kind of
+-   Allow processes launched with the extension to stay open when Visual Studio
+    Code is closed
 -   Now logs process output to a log file instead of via pipe
 -   Buffer IPC messages until the socket is ready
 
