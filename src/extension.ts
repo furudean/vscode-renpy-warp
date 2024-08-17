@@ -37,6 +37,9 @@ export function activate(context: vscode.ExtensionContext) {
 	const extensions_enabled = get_config('renpyExtensionsEnabled')
 
 	pm.on('exit', () => {
+		if (pm.length === 0) {
+			pm_init = false
+		}
 		if (follow_cursor.active_process && extensions_enabled === 'Enabled') {
 			const most_recent = pm.at(-1)
 
@@ -46,11 +49,6 @@ export function activate(context: vscode.ExtensionContext) {
 					`$(debug-line-by-line) Now following pid ${most_recent.pid}`
 				)
 			}
-		}
-	})
-	pm.on('exit', () => {
-		if (pm.length === 0) {
-			pm_init = false
 		}
 	})
 	pm.on('attach', async (rpp: AnyProcess) => {
