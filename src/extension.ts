@@ -47,10 +47,20 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 	})
 
+	let init = false
+
+	pm.on('exit', () => {
+		if (pm.length === 0) {
+			init = false
+		}
+	})
+
 	pm.on('attach', async (rpp: AnyProcess) => {
 		if (
-			extensions_enabled === 'Enabled' &&
-			(get_config('followCursorOnLaunch') || follow_cursor.active_process) // follow cursor is already active, replace it
+			(extensions_enabled === 'Enabled' &&
+				get_config('followCursorOnLaunch') &&
+				!init) ||
+			follow_cursor.active_process // follow cursor is already active, replace it
 		) {
 			logger.info('enabling follow cursor for new process')
 			await follow_cursor.set(rpp)
@@ -61,6 +71,8 @@ export function activate(context: vscode.ExtensionContext) {
 				)
 			}
 		}
+
+		init = true
 	})
 
 	context.subscriptions.push(

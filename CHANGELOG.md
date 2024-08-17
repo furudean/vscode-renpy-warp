@@ -5,6 +5,7 @@ All notable changes to this project will be documented in this file.
 ## Unreleased
 
 -   Add option to hide the "external process connected" notification
+-   Consistency improvements to `renpyWarp.followCursorOnLaunch`
 
 ## 1.14.4 - 2024-08-16
 
