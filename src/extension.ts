@@ -7,7 +7,7 @@ import { get_config, get_configuration_object, set_config } from './lib/config'
 import { StatusBar } from './lib/status_bar'
 import { ensure_socket_server } from './lib/socket'
 import { AnyProcess } from './lib/process'
-import { get_commands } from './lib/commands'
+import { get_commands, register_commmands } from './lib/commands'
 import { prompt_install_rpe } from './lib/rpe'
 import { register_handlers } from './lib/handlers'
 
@@ -73,14 +73,7 @@ export function activate(context: vscode.ExtensionContext) {
 		pm_init = true
 	})
 
-	for (const [name, handler] of Object.entries(
-		get_commands(context, pm, status_bar, follow_cursor)
-	)) {
-		context.subscriptions.push(
-			vscode.commands.registerCommand(name, handler)
-		)
-	}
-
+	register_commmands(context, pm, status_bar, follow_cursor)
 	register_handlers(context, pm, status_bar, follow_cursor)
 
 	if (extensions_enabled === 'Enabled') {

@@ -185,3 +185,18 @@ export function get_commands(
 
 	return commands
 }
+
+export function register_commmands(
+	context: vscode.ExtensionContext,
+	pm: ProcessManager,
+	status_bar: StatusBar,
+	follow_cursor: FollowCursor
+) {
+	const commands = get_commands(context, pm, status_bar, follow_cursor)
+
+	for (const [name, handler] of Object.entries(commands)) {
+		context.subscriptions.push(
+			vscode.commands.registerCommand(name, handler)
+		)
+	}
+}
