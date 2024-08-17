@@ -83,8 +83,15 @@ export class UnmanagedProcess {
 		})
 	}
 
+	get socket_ready(): boolean {
+		return (
+			this.socket !== undefined &&
+			this.socket.readyState === WebSocket.OPEN
+		)
+	}
+
 	async wait_for_socket(timeout_ms: number): Promise<void> {
-		if (this.socket) return
+		if (this.socket_ready) return
 
 		logger.info('waiting for socket connection from renpy window...')
 
@@ -95,11 +102,11 @@ export class UnmanagedProcess {
 			}, timeout_ms)
 
 			const interval = setInterval(() => {
-				if (this.socket || this.dead) {
+				if (this.socket_ready || this.dead) {
 					clearTimeout(timeout)
 					clearInterval(interval)
 
-					if (this.socket) {
+					if (this.socket_ready) {
 						resolve()
 					} else {
 						reject(
@@ -111,13 +118,9 @@ export class UnmanagedProcess {
 		})
 	}
 
+	/** Send a message to the Ren'Py process via WebSocket */
 	private async ipc(message: SocketMessage): Promise<void> {
-		if (
-			this.socket === undefined ||
-			this.socket?.readyState !== WebSocket.OPEN
-		) {
-			throw new Error('no socket connection')
-		}
+		await this.wait_for_socket(5000)
 
 		return new Promise((resolve, reject) => {
 			const serialized = JSON.stringify(message)
