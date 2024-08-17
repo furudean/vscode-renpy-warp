@@ -31,16 +31,17 @@ export function activate(context: vscode.ExtensionContext) {
 	const status_bar = new StatusBar()
 	const follow_cursor = new FollowCursor({ status_bar })
 	const pm = new ProcessManager()
-	let pm_init = false
 	context.subscriptions.push(pm, follow_cursor, status_bar)
 
-	const extensions_enabled = get_config('renpyExtensionsEnabled')
-
+	let pm_init = false
 	pm.on('exit', () => {
 		if (pm.length === 0) {
 			pm_init = false
 		}
-		if (follow_cursor.active_process && extensions_enabled === 'Enabled') {
+		if (
+			follow_cursor.active_process &&
+			get_config('renpyExtensionsEnabled') === 'Enabled'
+		) {
 			const most_recent = pm.at(-1)
 
 			if (most_recent) {
@@ -53,7 +54,7 @@ export function activate(context: vscode.ExtensionContext) {
 	})
 	pm.on('attach', async (rpp: AnyProcess) => {
 		if (
-			(extensions_enabled === 'Enabled' &&
+			(get_config('renpyExtensionsEnabled') === 'Enabled' &&
 				get_config('followCursorOnLaunch') &&
 				!pm_init) ||
 			follow_cursor.active_process // follow cursor is already active, replace it
@@ -74,7 +75,7 @@ export function activate(context: vscode.ExtensionContext) {
 	register_commmands(context, pm, status_bar, follow_cursor)
 	register_handlers(context, pm, status_bar, follow_cursor)
 
-	if (extensions_enabled === 'Enabled') {
+	if (get_config('renpyExtensionsEnabled') === 'Enabled') {
 		prompt_install_rpe(context).catch((error) => {
 			logger.error(error)
 			vscode.window
