@@ -4,7 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
--   Add option to hide the "external process connected" notification
+-   Add option to hide some notifications, which can be reset with the command
+    `renpyWarp.resetSupressedMessages`
 -   Consistency improvements to `renpyWarp.followCursorOnLaunch`
 -   Allow processes launched with the extension to stay open... kind of
 -   Buffer IPC messages until the socket is ready

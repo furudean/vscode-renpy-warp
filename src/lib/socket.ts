@@ -141,7 +141,8 @@ export async function start_websocket_server({
 				if (picked === 'Update') {
 					await prompt_install_rpe(
 						context,
-						"Ren'Py extensions were updated. Please restart the game to connect."
+						"Ren'Py extensions were updated. Please restart the game to connect.",
+						true
 					)
 				}
 

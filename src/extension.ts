@@ -149,20 +149,7 @@ export function activate(context: vscode.ExtensionContext) {
 		),
 
 		vscode.commands.registerCommand('renpyWarp.installRpe', async () => {
-			const installed_path = await prompt_install_rpe(context)
-			if (!installed_path) return
-
-			vscode.window
-				.showInformationMessage(
-					`Ren'Py extensions were successfully installed at ${installed_path}`,
-					'OK',
-					'Show'
-				)
-				.then(async (selection) => {
-					if (selection === 'Show') {
-						await show_file(installed_path)
-					}
-				})
+			await prompt_install_rpe(context, undefined, true)
 		}),
 
 		vscode.commands.registerCommand('renpyWarp.uninstallRpe', async () => {
@@ -171,7 +158,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 			await uninstall_rpes(sdk_path)
 			vscode.window.showInformationMessage(
-				"Ren'Py extensions were successfully uninstalled from the project and SDK"
+				"Ren'Py extensions were successfully uninstalled from the project"
 			)
 		}),
 
@@ -251,7 +238,18 @@ export function activate(context: vscode.ExtensionContext) {
 
 		vscode.commands.registerCommand('renpyWarp.stopSocketServer', () => {
 			stop_socket_server(pm, status_bar)
-		})
+		}),
+
+		vscode.commands.registerCommand(
+			'renpyWarp.resetSupressedMessages',
+			() => {
+				context.globalState.update(
+					'hideExternalProcessConnected',
+					false
+				)
+				context.globalState.update('hideRpeInstallUpdateMessage', false)
+			}
+		)
 	)
 
 	const save_text_handler = vscode.workspace.onWillSaveTextDocument(

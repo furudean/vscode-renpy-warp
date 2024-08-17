@@ -131,7 +131,8 @@ export async function has_current_rpe({
 
 export async function prompt_install_rpe(
 	context: vscode.ExtensionContext,
-	message = "Ren'Py extensions were {installed/updated} at {installed_path}"
+	message = "Ren'Py extensions were {installed/updated} at {installed_path}",
+	force = false
 ): Promise<string | undefined> {
 	const file_path = await vscode.workspace
 		.findFiles('**/game/**/*.rpy', null, 1)
@@ -164,9 +165,7 @@ export async function prompt_install_rpe(
 		context,
 	})
 
-	const any_rpe = (await list_rpes(sdk_path)).length === 0
-
-	if (has_current) {
+	if (has_current && !force) {
 		logger.info('rpe already up to date')
 		return
 	}
@@ -178,29 +177,40 @@ export async function prompt_install_rpe(
 		executable: executable.join(' '),
 	})
 
-	vscode.window
-		.showInformationMessage(
-			message
-				.replaceAll(
-					'{installed/updated}',
-					any_rpe ? 'installed' : 'updated'
-				)
-				.replaceAll(
-					'{installed_path}',
-					path.relative(
-						vscode.workspace.workspaceFolders?.[0].uri.fsPath ??
-							project_root,
-						installed_path
-					)
-				),
-			'OK',
-			'Show'
+	const any_rpe = (await list_rpes(sdk_path)).length === 0
+
+	const fmt_message = message
+		.replaceAll('{installed/updated}', any_rpe ? 'installed' : 'updated')
+		.replaceAll(
+			'{installed_path}',
+			path.relative(
+				vscode.workspace.workspaceFolders?.[0].uri.fsPath ??
+					project_root,
+				installed_path
+			)
 		)
-		.then(async (selection) => {
-			if (selection === 'Show') {
-				await show_file(installed_path)
-			}
-		})
+
+	if (!context.globalState.get('hideRpeInstallUpdateMessage') || force) {
+		const options = ['OK', 'Reveal']
+
+		if (!force) {
+			options.push("Don't show again")
+		}
+
+		vscode.window
+			.showInformationMessage(fmt_message, ...options)
+			.then(async (selection) => {
+				if (selection === 'Reveal') {
+					await show_file(installed_path)
+				}
+				if (selection === "Don't show again") {
+					await context.globalState.update(
+						'hideRpeInstallUpdateMessage',
+						true
+					)
+				}
+			})
+	}
 
 	return installed_path
 }

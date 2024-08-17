@@ -141,6 +141,11 @@
 				"command": "renpyWarp.stopSocketServer",
 				"title": "Stop socket server",
 				"category": "Ren'Py Launch"
+			},
+			{
+				"command": "renpyWarp.resetSupressedMessages",
+				"title": "Reset supressed notifications",
+				"category": "Ren'Py Launch"
 			}
 		],
 		"menus": {
