@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## Unreleased
+## 1.15.0 - 2024-08-17
 
 -   Add option to hide some notifications, which can be reset with the command
     `renpyWarp.resetSupressedMessages`
