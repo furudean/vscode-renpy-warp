@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## Unreleased
+
+-   Add option to hide the "external process connected" notification
+
 ## 1.14.4 - 2024-08-16
 
 -   fix `renpyWarp.setAutoReloadOnSave` not working

@@ -224,9 +224,29 @@ export async function start_websocket_server({
 
 					pm.add(pid, rpp)
 					status_bar.set_process(pid, 'idle')
-					vscode.window.showInformationMessage(
-						"Connected to external Ren'Py process"
-					)
+
+					if (
+						!context.globalState.get('hideExternalProcessConnected')
+					) {
+						vscode.window
+							.showInformationMessage(
+								"Connected to external Ren'Py process",
+								'OK',
+								"Don't show again"
+							)
+							.then((selection) => {
+								if (selection === "Don't show again") {
+									context.globalState.update(
+										'hideExternalProcessConnected',
+										true
+									)
+								}
+							})
+					} else {
+						status_bar.notify(
+							`$(info) Connected to external process ${pid}`
+						)
+					}
 				}
 			}
 
