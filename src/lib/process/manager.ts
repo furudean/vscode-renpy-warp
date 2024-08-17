@@ -68,12 +68,6 @@ export class ProcessManager {
 	dispose() {
 		for (const process of this) {
 			process.dispose()
-
-			// kill managed processes since their ipc pipes are connected to
-			// vscode process
-			if (process instanceof ManagedProcess) {
-				process.kill()
-			}
 		}
 	}
 }

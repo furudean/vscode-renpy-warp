@@ -5,8 +5,12 @@ import fs from 'node:fs/promises'
 import { get_logger } from './logger'
 import { get_config } from './config'
 import { get_executable } from './sh'
+import env_paths from 'env-paths'
+import { name as pkg_name } from '../../package.json'
 
 const logger = get_logger()
+
+export const paths = env_paths(pkg_name, { suffix: '' })
 
 /**
  * @param {string} str

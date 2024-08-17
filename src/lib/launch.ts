@@ -8,11 +8,12 @@ import { get_logger } from './logger'
 import { get_editor_path, get_executable, find_project_root } from './sh'
 import { has_current_rpe, prompt_install_rpe } from './rpe'
 import { StatusBar } from './status_bar'
-import { get_sdk_path } from './path'
+import { get_sdk_path, paths } from './path'
 import { prompt_configure_extensions } from './onboard'
 import { focus_window } from './window'
 import { ensure_socket_server } from './socket'
 import { FollowCursor } from './follow_cursor'
+import { mkdir, open } from 'fs/promises'
 
 const logger = get_logger()
 
@@ -171,14 +172,27 @@ export async function launch_renpy({
 						'with env',
 						process_env
 					)
+
+					const log_file = path.join(
+						paths.log,
+						`process-${nonce}.log`
+					)
+					await mkdir(paths.log, { recursive: true })
+					const file_handle = await open(log_file, 'w+')
+					logger.info('logging to', log_file)
+
 					const process = child_process.spawn(
 						cmds[0],
 						cmds.slice(1),
 						{
 							env: process_env,
-							// TODO: in order to properly detatch the process, we need use something
-							// other than pipe for stdout and stderr
-							stdio: ['ignore', 'pipe', 'pipe', 'ipc'],
+							detached: true,
+							stdio: [
+								'ignore',
+								file_handle.fd,
+								file_handle.fd,
+								'ipc',
+							],
 						}
 					)
 					process.on('error', (e) => {
@@ -194,9 +208,11 @@ export async function launch_renpy({
 					const rpp = new ManagedProcess({
 						process,
 						project_root: project_root,
+						log_file,
 					})
 					rpp.on('exit', () => {
 						status_bar.delete_process(nonce)
+						file_handle.close()
 					})
 
 					cancel.onCancellationRequested(() => {
