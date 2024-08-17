@@ -7,7 +7,7 @@ import { get_config, get_configuration_object, set_config } from './lib/config'
 import { StatusBar } from './lib/status_bar'
 import { ensure_socket_server } from './lib/socket'
 import { AnyProcess } from './lib/process'
-import { get_commands, register_commmands } from './lib/commands'
+import { register_commmands } from './lib/commands'
 import { prompt_install_rpe } from './lib/rpe'
 import { register_handlers } from './lib/handlers'
 
