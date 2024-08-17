@@ -8,6 +8,7 @@ All notable changes to this project will be documented in this file.
     `renpyWarp.resetSupressedMessages`
 -   Consistency improvements to `renpyWarp.followCursorOnLaunch`
 -   Allow processes launched with the extension to stay open... kind of
+-   Now logs process output to a log file instead of via pipe
 -   Buffer IPC messages until the socket is ready
 
 ## 1.14.4 - 2024-08-16
