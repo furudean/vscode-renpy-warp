@@ -6,6 +6,8 @@ All notable changes to this project will be documented in this file.
 
 -   Handle "misbehaving" Ren'Py processes
 -   `renpyWarp.focusWindowOnWarp` now affects jumping to labels
+-   Utilize enablements to hide some commands that are invalid in certain
+    contexts ([#47](https://github.com/furudean/vscode-renpy-warp/issues/47))
 
 ## 1.17.1 - 2024-08-18
 

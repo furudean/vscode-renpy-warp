@@ -35,6 +35,12 @@ export function activate(context: vscode.ExtensionContext) {
 
 	let pm_init = false
 	pm.on('exit', () => {
+		vscode.commands.executeCommand(
+			'setContext',
+			'renpyWarp.runningProcesses',
+			pm.length
+		)
+
 		if (pm.length === 0) {
 			pm_init = false
 		}
@@ -53,6 +59,12 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 	})
 	pm.on('attach', async (rpp: AnyProcess) => {
+		vscode.commands.executeCommand(
+			'setContext',
+			'renpyWarp.runningProcesses',
+			pm.length
+		)
+
 		if (
 			(get_config('renpyExtensionsEnabled') === 'Enabled' &&
 				get_config('followCursorOnLaunch') &&

@@ -357,12 +357,22 @@ export async function ensure_socket_server({
 	status_bar.update(() => ({
 		socket_server_status: 'running',
 	}))
+	vscode.commands.executeCommand(
+		'setContext',
+		'renpyWarp.socketServerRunning',
+		true
+	)
 
 	socket_server.on('close', () => {
 		socket_server = undefined
 		status_bar.update(() => ({
 			socket_server_status: 'stopped',
 		}))
+		vscode.commands.executeCommand(
+			'setContext',
+			'renpyWarp.socketServerRunning',
+			false
+		)
 	})
 
 	context.subscriptions.push({

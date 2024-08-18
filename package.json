@@ -106,17 +106,20 @@
 				"command": "renpyWarp.jumpToLabel",
 				"title": "Open Ren'Py at label",
 				"category": "Ren'Py Launch",
-				"icon": "$(play)"
+				"icon": "$(play)",
+				"enablement": "renpyWarp.renpyExtensionsEnabled"
 			},
 			{
 				"command": "renpyWarp.killAll",
 				"title": "Kill active Ren'Py instances",
-				"category": "Ren'Py Launch"
+				"category": "Ren'Py Launch",
+				"enablement": "renpyWarp.runningProcesses > 0"
 			},
 			{
 				"command": "renpyWarp.toggleFollowCursor",
 				"title": "Toggle following cursor mode",
-				"category": "Ren'Py Launch"
+				"category": "Ren'Py Launch",
+				"enablement": "renpyWarp.runningProcesses > 0"
 			},
 			{
 				"command": "renpyWarp.installRpe",
@@ -141,12 +144,14 @@
 			{
 				"command": "renpyWarp.startSocketServer",
 				"title": "Start socket server",
-				"category": "Ren'Py Launch"
+				"category": "Ren'Py Launch",
+				"enablement": "!renpyWarp.socketServerRunning"
 			},
 			{
 				"command": "renpyWarp.stopSocketServer",
 				"title": "Stop socket server",
-				"category": "Ren'Py Launch"
+				"category": "Ren'Py Launch",
+				"enablement": "renpyWarp.socketServerRunning"
 			},
 			{
 				"command": "renpyWarp.resetSupressedMessages",

@@ -54,6 +54,12 @@ export function register_handlers(
 			} else {
 				stop_socket_server(pm, status_bar)
 			}
+
+			vscode.commands.executeCommand(
+				'setContext',
+				'renpyWarp.renpyExtensionsEnabled',
+				get_config('renpyExtensionsEnabled') === 'Enabled'
+			)
 		}
 	})
 	context.subscriptions.push(server_on_change)
