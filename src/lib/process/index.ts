@@ -171,12 +171,17 @@ interface ManagedProcessOptions extends Omit<UnmanagedProcessOptions, 'pid'> {
 
 export class ManagedProcess extends UnmanagedProcess {
 	private process: child_process.ChildProcess
+	private tail: TailFile
 	output_channel?: vscode.OutputChannel
 	exit_code?: number | null
 
 	constructor({ process, project_root, log_file }: ManagedProcessOptions) {
+		if (!process.pid) {
+			throw new Error('process must have a pid')
+		}
+
 		super({
-			pid: process.pid!,
+			pid: process.pid,
 			project_root,
 			monitor: false,
 		})
@@ -191,12 +196,12 @@ export class ManagedProcess extends UnmanagedProcess {
 		this.output_channel.appendLine(`process ${this.process.pid} started`)
 		logger.info(`logging process ${this.pid} to ${log_file}`)
 
-		const tail = new TailFile(log_file, {
+		this.tail = new TailFile(log_file, {
 			encoding: 'utf8',
 		})
-		tail.start()
+		this.tail.start()
 
-		tail.pipe(split2()).on('data', (line: string) => {
+		this.tail.pipe(split2()).on('data', (line: string) => {
 			this.output_channel!.appendLine(line)
 		})
 
@@ -206,7 +211,7 @@ export class ManagedProcess extends UnmanagedProcess {
 			this.emit('exit')
 			logger.info(`process ${this.pid} exited with code ${code}`)
 
-			await tail.quit()
+			await this.tail.quit()
 			this.output_channel?.appendLine(`process exited with code ${code}`)
 		})
 	}
@@ -220,6 +225,9 @@ export class ManagedProcess extends UnmanagedProcess {
 		super.dispose()
 		this.process.unref()
 		this.output_channel?.dispose()
+		this.tail.quit().catch((err) => {
+			logger.error('error stopping tail:', err)
+		})
 	}
 }
 
