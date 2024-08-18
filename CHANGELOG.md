@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## Unreleased
+
+-   Handle "misbehaving" Ren'Py processes
+
 ## 1.17.1 - 2024-08-18
 
 -   Accidentally shipped some bad code in the RPE file. This has been fixed.

@@ -131,22 +131,29 @@ export async function start_websocket_server({
 				)
 
 				if (ack_bad_process.has(socket_pid)) return
+				ack_bad_process.add(socket_pid)
 
-				const picked = await vscode.window.showErrorMessage(
-					`Ren'Py extension checksum mismatch: ${socket_checksum} != ${rpe_checksum}. This may be due to outdated extensions. Would you like to update them?`,
-					'Update',
-					"Don't Update"
-				)
-
-				if (picked === 'Update') {
-					await prompt_install_rpe(
-						context,
-						"Ren'Py extensions were updated. Please restart the game to connect.",
-						true
+				if (socket_checksum === undefined) {
+					vscode.window.showErrorMessage(
+						`Ren'Py extension reported no checksum. Ren'Py might have misbehaved.`,
+						'Oh no'
 					)
+				} else {
+					const picked = await vscode.window.showErrorMessage(
+						`Ren'Py extension checksum mismatch: ${socket_checksum} != ${rpe_checksum}. This may be due to outdated extensions. Would you like to update them?`,
+						'Update',
+						"Don't Update"
+					)
+
+					if (picked === 'Update') {
+						await prompt_install_rpe(
+							context,
+							"Ren'Py extensions were updated. Please restart the game to connect.",
+							true
+						)
+					}
 				}
 
-				ack_bad_process.add(socket_pid)
 				socket.close()
 				return
 			}
