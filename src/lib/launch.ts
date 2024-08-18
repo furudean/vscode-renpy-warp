@@ -189,17 +189,15 @@ export async function launch_renpy({
 						{
 							env: process_env,
 							detached: true,
-							stdio: [
-								'ignore',
-								file_handle.fd,
-								file_handle.fd,
-								'ipc',
-							],
+							stdio: ['ignore', file_handle.fd, file_handle.fd],
 						}
 					)
 					process.on('error', (e) => {
 						logger.error('process error:', e)
 					})
+
+					// close the file handle for parent process, since the child has a copy
+					file_handle.close()
 
 					if (!process.pid) {
 						throw new Error('failed to start process')

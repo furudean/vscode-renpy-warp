@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file.
 
 -   Now focuses window and warp in parallel, which should make it more
     responsive
+-   Properly clean up file descriptors when launching a Ren'Py process
 
 ## 1.15.0 - 2024-08-17
 
