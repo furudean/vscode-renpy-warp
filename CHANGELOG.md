@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## Unreleased
+## 1.17.0 - 2024-08-18
 
 -   Adds a new command, `renpyWarp.jumpToLabel`, which allows you to jump to a
     label in your Ren'Py project
