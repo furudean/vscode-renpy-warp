@@ -66,10 +66,6 @@ def socket_listener(websocket):
             """)
             py_exec(script)
 
-        elif payload["type"] == "reload":
-            py_exec("renpy.reload_script()")
-            break
-
         else:
             print(f"unhandled message type '{payload['type']}'")
 
