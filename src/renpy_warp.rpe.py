@@ -45,6 +45,13 @@ def py_exec(text: str):
     renpy.exports.invoke_in_main_thread(fn)
 
 
+def socket_send(message, websocket):
+    """sends a message to the socket server"""
+    stringified = json.dumps(message)
+    websocket.send(stringified)
+    print("socket >", stringified)
+
+
 def socket_listener(websocket):
     """listens for messages from the socket server"""
     for message in websocket:
@@ -66,6 +73,19 @@ def socket_listener(websocket):
             """)
             py_exec(script)
 
+        elif payload["type"] == "jump_to_label":
+            label = payload["label"]
+
+            script = textwrap.dedent(f"""
+                renpy.clear()
+                if renpy.context_nesting_level() > 0:
+                    renpy.jump_out_of_context('{label}')
+                else:
+                    renpy.jump('{label}')
+            """)
+
+            py_exec(script)
+
         else:
             print(f"unhandled message type '{payload['type']}'")
 
@@ -74,42 +94,43 @@ def socket_producer(websocket):
     """produces messages to the socket server"""
     from websockets.exceptions import ConnectionClosedOK  # type: ignore
 
-    first = True
+    send = functools.partial(socket_send, websocket=websocket)
+
+    is_first_event = True
 
     # report current line to warp server
     def fn(event, interact=True, **kwargs):
-        nonlocal first
+        nonlocal is_first_event
 
         if not interact:
             return
 
         if event == "begin":
             # skip the first event, as it usually is not useful
-            if first:
-                first = False
+            if is_first_event:
+                is_first_event = False
                 return
 
             filename, line = renpy.exports.get_filename_line()
             relative_filename = Path(filename).relative_to('game')
             filename_abs = Path(renpy.config.gamedir, relative_filename)
 
-            message = json.dumps(
-                {
-                    "type": "current_line",
-                    "line": line,
-                    "path": filename_abs.as_posix(),
-                    "relative_path": relative_filename.as_posix(),
-                }
-            )
+            message = {
+                "type": "current_line",
+                "line": line,
+                "path": filename_abs.as_posix(),
+                "relative_path": relative_filename.as_posix(),
+            }
 
             try:
-                websocket.send(message)
-                print("socket >", message)
+                send(message)
             except ConnectionClosedOK:
                 # socket is closed, remove the callback
                 renpy.config.all_character_callbacks.remove(fn)
 
     renpy.config.all_character_callbacks.append(fn)
+
+    send({"type": "list_labels", "labels": list(renpy.exports.get_all_labels())})
 
 
 def socket_service(port, version, checksum):

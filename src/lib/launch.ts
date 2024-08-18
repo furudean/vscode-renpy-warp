@@ -30,6 +30,7 @@ interface LaunchRenpyOptions {
 	pm: ProcessManager
 	status_bar: StatusBar
 	follow_cursor: FollowCursor
+	extra_environment?: Record<string, string | undefined>
 }
 
 /**
@@ -50,6 +51,7 @@ export async function launch_renpy({
 	pm,
 	status_bar,
 	follow_cursor,
+	extra_environment,
 }: LaunchRenpyOptions): Promise<ManagedProcess | undefined> {
 	logger.info('launch_renpy:', { file, line })
 
@@ -155,6 +157,7 @@ export async function launch_renpy({
 			}
 
 			const process_env = {
+				...extra_environment,
 				WARP_WS_NONCE: nonce.toString(),
 				// see: https://www.renpy.org/doc/html/editor.html
 				RENPY_EDIT_PY: await get_editor_path(sdk_path),
@@ -168,11 +171,11 @@ export async function launch_renpy({
 				},
 				async (_, cancel) => {
 					logger.info(
-						'spawning process',
-						cmds.join(' '),
-						'\n',
-						'with env',
-						process_env
+						'spawning process:',
+						Object.entries(process_env)
+							.map(([k, v]) => `${k}="${v}"`)
+							.join(' '),
+						cmds.map((k) => `"${k}"`).join(' ')
 					)
 
 					const log_file = path.join(

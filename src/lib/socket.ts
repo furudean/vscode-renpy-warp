@@ -316,21 +316,33 @@ export async function ensure_socket_server({
 		project_root,
 		context,
 		async message_handler(process, message) {
-			if (message.type === 'current_line') {
-				logger.debug(
-					`current line reported as ${message.relative_path}:${message.line}`
-				)
-				if (follow_cursor.active_process === process) {
-					const message_path = await realpath(message.path as string)
+			const messsage_handler: Record<string, () => Promise<void> | void> =
+				{
+					async current_line() {
+						logger.debug(
+							`current line reported as ${message.relative_path}:${message.line}`
+						)
+						if (follow_cursor.active_process === process) {
+							const message_path = await realpath(
+								message.path as string
+							)
 
-					await sync_editor_with_renpy({
-						path: message_path,
-						relative_path: message.relative_path as string,
-						line: (message.line as number) - 1,
-					})
+							await sync_editor_with_renpy({
+								path: message_path,
+								relative_path: message.relative_path as string,
+								line: (message.line as number) - 1,
+							})
+						}
+					},
+					async list_labels() {
+						process.labels = message.labels as string[]
+					},
 				}
+
+			if (message.type in messsage_handler) {
+				await messsage_handler[message.type]()
 			} else {
-				logger.warn('unhandled message:', message)
+				logger.error('unhandled socket message:', message)
 			}
 		},
 	})

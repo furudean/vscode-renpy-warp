@@ -24,6 +24,7 @@ export class UnmanagedProcess {
 	project_root: string
 	socket?: WebSocket
 	dead: boolean = false
+	labels: string[] | undefined = undefined
 
 	private emitter = new EventEmitter()
 	emit = this.emitter.emit.bind(this.emitter)
@@ -118,6 +119,34 @@ export class UnmanagedProcess {
 		})
 	}
 
+	async wait_for_labels(timeout_ms: number): Promise<void> {
+		if (this.labels) return
+
+		logger.info('waiting for labels from renpy window...')
+
+		return new Promise((resolve, reject) => {
+			const timeout = setTimeout(() => {
+				clearInterval(interval)
+				reject(new Error('timed out waiting for labels'))
+			}, timeout_ms)
+
+			const interval = setInterval(() => {
+				if (this.labels || this.dead) {
+					clearTimeout(timeout)
+					clearInterval(interval)
+
+					if (this.labels) {
+						resolve()
+					} else {
+						reject(
+							new Error('process died before labels connected')
+						)
+					}
+				}
+			})
+		})
+	}
+
 	/** Send a message to the Ren'Py process via WebSocket */
 	private async ipc(message: SocketMessage): Promise<void> {
 		await this.wait_for_socket(5000)
@@ -160,6 +189,13 @@ export class UnmanagedProcess {
 	async set_autoreload() {
 		return this.ipc({
 			type: 'set_autoreload',
+		})
+	}
+
+	async jump_to_label(label: string) {
+		return this.ipc({
+			type: 'jump_to_label',
+			label,
 		})
 	}
 }

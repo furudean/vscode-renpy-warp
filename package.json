@@ -85,20 +85,26 @@
 	"contributes": {
 		"commands": [
 			{
+				"command": "renpyWarp.launch",
+				"title": "Start Ren'Py project",
+				"category": "Ren'Py Launch",
+				"icon": "$(play)"
+			},
+			{
 				"command": "renpyWarp.warpToLine",
-				"title": "Open Ren'Py at line",
+				"title": "Open Ren'Py to current line",
 				"category": "Ren'Py Launch",
 				"icon": "$(play)"
 			},
 			{
 				"command": "renpyWarp.warpToFile",
-				"title": "Open Ren'Py at file",
+				"title": "Open Ren'Py to current file",
 				"category": "Ren'Py Launch",
 				"icon": "$(play)"
 			},
 			{
-				"command": "renpyWarp.launch",
-				"title": "Launch project in Ren'Py",
+				"command": "renpyWarp.jumpToLabel",
+				"title": "Open Ren'Py at label",
 				"category": "Ren'Py Launch",
 				"icon": "$(play)"
 			},
@@ -190,6 +196,12 @@
 		},
 		"keybindings": [
 			{
+				"command": "renpyWarp.launch",
+				"key": "alt+shift+l",
+				"mac": "cmd+shift+l",
+				"when": "workbenchState == 'folder'"
+			},
+			{
 				"command": "renpyWarp.warpToLine",
 				"key": "alt+shift+e",
 				"mac": "cmd+shift+e",
@@ -202,9 +214,9 @@
 				"when": "editorTextFocus && resourceExtname == '.rpy'"
 			},
 			{
-				"command": "renpyWarp.launch",
-				"key": "alt+shift+l",
-				"mac": "cmd+shift+l",
+				"command": "renpyWarp.jumpToLabel",
+				"key": "alt+shift+j",
+				"mac": "cmd+shift+j",
 				"when": "workbenchState == 'folder'"
 			},
 			{
@@ -245,6 +257,18 @@
 						"Kill the existing instance and launch a new one."
 					]
 				},
+				"renpyWarp.renpyExtensionsEnabled": {
+					"type": "string",
+					"enum": [
+						"Not set",
+						"Enabled",
+						"Disabled"
+					],
+					"default": "Not set",
+					"markdownDescription": "Enable Ren'Py Extension (.rpe) support",
+					"order": 1,
+					"scope": "machine-overridable"
+				},
 				"renpyWarp.followCursorMode": {
 					"type": "string",
 					"order": 2,
@@ -264,42 +288,31 @@
 				"renpyWarp.followCursorOnLaunch": {
 					"type": "boolean",
 					"default": false,
-					"order": 3,
+					"order": 2,
 					"markdownDescription": "Automatically enter _Follow Cursor_ mode when launching Ren'Py. This is ignored if `#renpyWarp.renpyExtensionsEnabled#` is set to _Disabled_."
+				},
+				"renpyWarp.setAutoReloadOnSave": {
+					"type": "boolean",
+					"default": false,
+					"order": 3,
+					"markdownDescription": "Enable autoreload in the Ren'Py process when a file is saved"
+				},
+				"renpyWarp.autoStartSocketServer": {
+					"type": "boolean",
+					"default": true,
+					"order": 3,
+					"markdownDescription": "Automatically start the socket server when in a Ren'Py project"
 				},
 				"renpyWarp.focusWindowOnWarp": {
 					"type": "boolean",
 					"default": false,
-					"order": 4,
+					"order": 3,
 					"markdownDescription": "Focus the Ren'Py window after a warp command is executed.\n\nNot supported on Linux. Requires accessibility permissions to be granted to Visual Studio Code on macOS."
 				},
 				"renpyWarp.editor": {
 					"type": "string",
 					"default": "launcher/Visual Studio Code (System).edit.py",
 					"markdownDescription": "The `Editor` class to supply to `renpy.sh`. Should be a relative or absolute path to an `.edit.py` file.\n\nThis setting is equivalent to the environment variable [`RENPY_EDIT_PY`](https://www.renpy.org/doc/html/editor.html).\n\nRelative paths are resolved from `#renpyWarp.sdkPath#`. For example, a valid value would be [`launcher/System Editor.edit.py`](https://github.com/renpy/renpy/blob/master/launcher/System%20Editor.edit.py).\n\n"
-				},
-				"renpyWarp.renpyExtensionsEnabled": {
-					"type": "string",
-					"enum": [
-						"Not set",
-						"Enabled",
-						"Disabled"
-					],
-					"default": "Not set",
-					"markdownDescription": "Enable Ren'Py Extension (.rpe) support",
-					"scope": "machine-overridable"
-				},
-				"renpyWarp.setAutoReloadOnSave": {
-					"type": "boolean",
-					"default": false,
-					"order": 2,
-					"markdownDescription": "Enable autoreload in the Ren'Py process when a file is saved"
-				},
-				"renpyWarp.autoStartSocketServer": {
-					"type": "boolean",
-					"default": true,
-					"order": 2,
-					"markdownDescription": "Automatically start the socket server when in a Ren'Py project"
 				}
 			}
 		}

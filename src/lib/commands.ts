@@ -71,6 +71,76 @@ export function get_commands(
 			}
 		},
 
+		'renpyWarp.jumpToLabel': async () => {
+			if (get_config('renpyExtensionsEnabled') !== 'Enabled') {
+				vscode.window.showErrorMessage(
+					"Ren'Py extensions must be enabled to use this feature",
+					'OK'
+				)
+				return
+			}
+
+			let process = pm.at(-1)
+
+			if (process === undefined) {
+				process = await launch_renpy({
+					pm,
+					status_bar,
+					follow_cursor,
+					context,
+					extra_environment: {
+						RENPY_SKIP_SPLASHSCREEN: '1',
+					},
+				})
+				if (process === undefined) return
+				await process.wait_for_labels(500)
+			}
+
+			if (process.labels === undefined) {
+				vscode.window.showErrorMessage(
+					"Ren'Py has not reported any labels",
+					'OK'
+				)
+				return
+			}
+
+			// https://www.renpy.org/doc/html/label.html#special-labels
+			const renpy_special_labels = [
+				// 'start',
+				'quit',
+				'after_load',
+				'splashscreen',
+				'before_main_menu',
+				// 'main_menu',
+				'after_warp',
+				'hide_windows',
+			]
+
+			const filtered_labels = process.labels
+				.filter(
+					(label) =>
+						!label.startsWith('_') &&
+						!label.endsWith('_screen') &&
+						!renpy_special_labels.includes(label)
+				)
+				.sort()
+
+			const selection = await vscode.window.showQuickPick(
+				filtered_labels,
+				{
+					placeHolder: 'Select a label to jump to',
+					title: "Jump to Ren'Py label",
+				}
+			)
+
+			if (selection === undefined) return
+
+			await process.jump_to_label(selection)
+			status_bar.notify(
+				`$(debug-line-by-line) Jumped to label '${selection}'`
+			)
+		},
+
 		'renpyWarp.toggleFollowCursor': () => {
 			if (follow_cursor.active_process) {
 				follow_cursor.off()
