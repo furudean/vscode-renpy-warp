@@ -147,7 +147,7 @@ export async function launch_renpy({
 				})
 			}
 
-			if (strategy === 'Replace Window') pm.kill_all()
+			if (strategy === 'Replace Window') pm.at(-1)?.kill()
 
 			let cmds = [...executable, project_root]
 
