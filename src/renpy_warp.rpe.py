@@ -77,7 +77,6 @@ def socket_listener(websocket):
             label = payload["label"]
 
             script = textwrap.dedent(f"""
-                renpy.clear()
                 if renpy.context_nesting_level() > 0:
                     renpy.jump_out_of_context('{label}')
                 else:

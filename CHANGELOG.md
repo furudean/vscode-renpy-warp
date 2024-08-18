@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.17.1 - 2024-08-18
+
+-   Accidentally shipped some bad code in the RPE file. This has been fixed.
+
 ## 1.17.0 - 2024-08-18
 
 -   Adds a new command, `renpyWarp.jumpToLabel`, which allows you to jump to a
