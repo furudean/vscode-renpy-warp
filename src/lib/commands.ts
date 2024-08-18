@@ -184,10 +184,13 @@ export function get_commands(
 				ignoreFocusOut: true,
 				async validateInput(value) {
 					const parsed_path = resolve_path(value)
-					const exists = await path_exists(parsed_path)
-					if (!exists) return 'Path does not exist'
 
-					const is_sdk = await path_is_sdk(parsed_path)
+					const [exists, is_sdk] = await Promise.all([
+						path_exists(parsed_path),
+						path_is_sdk(parsed_path),
+					])
+
+					if (!exists) return 'Path does not exist'
 					if (!is_sdk) return "Path is not a Ren'Py SDK"
 
 					return null
