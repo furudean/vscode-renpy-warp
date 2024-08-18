@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## Unreleased
+## 1.16.0 - 2024-08-18
 
 -   Now focuses window and warp in parallel, which should make it more
     responsive
