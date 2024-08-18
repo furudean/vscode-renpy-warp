@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## Unreleased
+
+-   Now focuses window and warp in parallel, which should make it more
+    responsive
+
 ## 1.15.0 - 2024-08-17
 
 -   Add option to hide some notifications, which can be reset with the command

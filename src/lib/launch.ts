@@ -94,16 +94,18 @@ export async function launch_renpy({
 
 		const rpp = pm.at(-1) as AnyProcess
 
-		await rpp.warp_to_line(filename_relative, line + 1)
+		const promises = [rpp.warp_to_line(filename_relative, line + 1)]
+
+		if (get_config('focusWindowOnWarp') && rpp.pid) {
+			logger.info('focusing window')
+			promises.push(focus_window(rpp.pid))
+		}
+
+		await Promise.all(promises)
 
 		status_bar.notify(
 			`$(debug-line-by-line) Warped to ${filename_relative}:${line + 1}`
 		)
-
-		if (get_config('focusWindowOnWarp') && rpp.pid) {
-			logger.info('focusing window')
-			await focus_window(rpp.pid)
-		}
 
 		return
 	} else {
