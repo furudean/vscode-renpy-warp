@@ -151,7 +151,7 @@ def socket_service(port, version, checksum):
 
     except WebSocketException as e:
         if e.code == 4000:
-            print("got socket code 4000, service closing")
+            print("socket service got code 4000, service closing")
             return True
         else:
             print("unexpected websocket error:", e)
@@ -173,6 +173,9 @@ def try_socket_ports_forever():
 
             if service_closed:
                 break
+
+        if service_closed:
+            break
 
         print("exhausted all ports, waiting 5 seconds before retrying")
         sleep(5)
