@@ -10,6 +10,7 @@ import { ProcessManager } from './process'
 import { StatusBar } from './status_bar'
 import { FollowCursor } from './follow_cursor'
 import { get_logger } from './logger'
+import { focus_window } from './window'
 
 const logger = get_logger()
 
@@ -135,7 +136,14 @@ export function get_commands(
 
 			if (selection === undefined) return
 
-			await process.jump_to_label(selection)
+			const promises = [process.jump_to_label(selection)]
+
+			if (get_config('focusWindowOnWarp') && process.pid) {
+				promises.push(focus_window(process.pid))
+			}
+
+			await Promise.all(promises)
+
 			status_bar.notify(
 				`$(debug-line-by-line) Jumped to label '${selection}'`
 			)

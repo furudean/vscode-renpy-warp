@@ -5,6 +5,7 @@ All notable changes to this project will be documented in this file.
 ## Unreleased
 
 -   Handle "misbehaving" Ren'Py processes
+-   `renpyWarp.focusWindowOnWarp` now affects jumping to labels
 
 ## 1.17.1 - 2024-08-18
 

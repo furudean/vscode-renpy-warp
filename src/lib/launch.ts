@@ -99,7 +99,6 @@ export async function launch_renpy({
 		const promises = [rpp.warp_to_line(filename_relative, line + 1)]
 
 		if (get_config('focusWindowOnWarp') && rpp.pid) {
-			logger.info('focusing window')
 			promises.push(focus_window(rpp.pid))
 		}
 

@@ -22,6 +22,8 @@ export async function focus_window(pid: number) {
 	const has_accessibility = windowManager.requestAccessibility()
 
 	if (has_accessibility) {
+		logger.info('focusing window')
+
 		matching_windows.forEach((win) => {
 			// bring all windows to top. windows creates many
 			// subprocesses and figuring out the right one is not straightforward
