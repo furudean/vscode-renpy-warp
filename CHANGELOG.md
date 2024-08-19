@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## Unreleased
+
+-   Fix a bug where jump to label would be disabled when it shouldn't be
+
 ## 1.18.0 - 2024-08-18
 
 -   Handle "misbehaving" Ren'Py processes

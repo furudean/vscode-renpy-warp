@@ -40,6 +40,11 @@ export function register_handlers(
 	)
 	context.subscriptions.push(save_text_handler)
 
+	vscode.commands.executeCommand(
+		'setContext',
+		'renpyWarp.renpyExtensionsEnabled',
+		get_config('renpyExtensionsEnabled') === 'Enabled'
+	)
 	const server_on_change = vscode.workspace.onDidChangeConfiguration((e) => {
 		if (
 			e.affectsConfiguration('renpyWarp.autoStartSocketServer') ||
