@@ -1,6 +1,17 @@
 # Ren'Py Launch and Sync
 
-Launch and sync your Ren'Py game at the current line in Visual Studio Code.
+Launch and sync your Ren'Py game at the current line directly from inside Visual
+Studio Code.
+
+## Features
+
+-   Start and quit your Ren'Py game directly from Visual Studio Code
+-   Warp games to a specific line, or jump to a label
+-   Move cursor position in Visual Studio Code as dialogue progresses with the
+    _Follow Cursor_ mode
+-   Automatically enable autoreload when files change (with a setting)
+-   Can discover and bind to games that were started outside of Visual Studio
+    Code
 
 ## Commands
 
@@ -15,7 +26,7 @@ to know about the following:
 | Open Ren'Py at label                          | <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>J</kbd> | <kbd>⌘</kbd>+<kbd>Shift</kbd>+<kbd>J</kbd> |
 | Toggle: Warp to selected line as cursor moves | <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>C</kbd> | <kbd>⌘</kbd>+<kbd>Shift</kbd>+<kbd>C</kbd> |
 
-## Triggers
+### Triggers
 
 The commands can be triggered in several ways:
 
