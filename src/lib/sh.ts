@@ -131,6 +131,8 @@ export async function get_executable(
 
 		return IS_WINDOWS ? [executable, renpy_path] : [executable]
 	} else {
+		logger.debug('could not find executable', executable)
+
 		if (prompt) {
 			vscode.window
 				.showErrorMessage(
