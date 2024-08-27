@@ -30,9 +30,6 @@ export async function path_exists(path: string): Promise<boolean> {
 }
 
 export async function path_is_sdk(absolute_path: string): Promise<boolean> {
-	const exists = await path_exists(absolute_path)
-	if (!exists) return false
-
 	const executable = await get_executable(absolute_path)
 	if (executable === undefined) return false
 
