@@ -142,15 +142,12 @@ export async function get_executable(
 		if (prompt) {
 			vscode.window
 				.showErrorMessage(
-					"Ren'Py SDK path is invalid. Please set it in the extension settings.",
-					'Open settings'
+					"Ren'Py SDK path is invalid",
+					'Update SDK Path'
 				)
 				.then((selection) => {
-					if (selection === 'Open settings') {
-						vscode.commands.executeCommand(
-							'workbench.action.openSettings',
-							'@ext:PaisleySoftworks.renpyWarp'
-						)
+					if (selection === 'Update SDK Path') {
+						vscode.commands.executeCommand('renpyWarp.setSdkPath')
 					}
 				})
 		}
@@ -172,9 +169,10 @@ export async function get_executable(
 		)
 
 		if (!executable) {
-			throw new Error(
+			logger.error(
 				`could not find a valid python executable in ${candidate_paths}`
 			)
+			return undefined
 		}
 
 		return [

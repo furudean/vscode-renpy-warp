@@ -117,10 +117,16 @@ export async function launch_renpy({
 
 		try {
 			const sdk_path = await get_sdk_path()
-			if (!sdk_path) return
+			if (!sdk_path) {
+				status_bar.delete_process(nonce)
+				return undefined
+			}
 
 			const executable = await get_executable(sdk_path, true)
-			if (!executable) return
+			if (!executable) {
+				status_bar.delete_process(nonce)
+				return undefined
+			}
 			const executable_flat = executable.join(' ')
 
 			if (extensions_enabled === 'Not set') {
