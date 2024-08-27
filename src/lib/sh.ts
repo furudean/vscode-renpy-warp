@@ -36,6 +36,8 @@ export function get_version(executable_str: string): {
 		}
 	)
 
+	if (version_string.error) throw version_string.error
+
 	// output commonly usually stderr, but we try and capture whichever one has
 	// a valid value just in case
 	const output = version_string.output.find(

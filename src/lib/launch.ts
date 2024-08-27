@@ -6,7 +6,7 @@ import { ProcessManager, ManagedProcess, AnyProcess } from './process'
 import { get_config } from './config'
 import { get_logger } from './logger'
 import { get_editor_path, get_executable, find_project_root } from './sh'
-import { has_current_rpe, prompt_install_rpe } from './rpe'
+import { prompt_install_rpe } from './rpe'
 import { StatusBar } from './status_bar'
 import { get_sdk_path, paths } from './path'
 import { prompt_configure_extensions } from './onboard'
@@ -127,22 +127,17 @@ export async function launch_renpy({
 				status_bar.delete_process(nonce)
 				return undefined
 			}
-			const executable_flat = executable.join(' ')
-
 			if (extensions_enabled === 'Not set') {
 				await prompt_configure_extensions(executable.join(' '))
 				extensions_enabled = get_config('renpyExtensionsEnabled')
 			}
 
 			if (extensions_enabled === 'Enabled') {
-				if (
-					!(await has_current_rpe({
-						executable: executable_flat,
-						sdk_path,
-						context,
-					}))
-				) {
-					await prompt_install_rpe(context)
+				const installed_path = await prompt_install_rpe(context)
+
+				if (!installed_path) {
+					status_bar.delete_process(nonce)
+					return undefined
 				}
 
 				await ensure_socket_server({

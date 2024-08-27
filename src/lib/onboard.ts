@@ -35,19 +35,44 @@ export async function prompt_configure_extensions(
 	}
 
 	const renpy_version = get_version(executable)
-	const supports_rpe_py = semver.gte(renpy_version.semver, '8.3.0')
-	const desination = supports_rpe_py ? 'SDK' : 'project'
 
-	const selection = await vscode.window.showQuickPick(
-		Object.keys(selection_map),
-		{
-			ignoreFocusOut: true,
-			title: `Ren'Py and VSCode can be synchronized by installing an extension in your Ren'Py ${desination}`,
-			placeHolder: 'How should extensions be installed?',
-		}
+	if (semver.satisfies(renpy_version.semver, '>=8')) {
+		const supports_rpe_py = semver.gte(renpy_version.semver, '8.3.0')
+		const desination = supports_rpe_py ? 'SDK' : 'project'
+
+		const selection = await vscode.window.showQuickPick(
+			Object.keys(selection_map),
+			{
+				ignoreFocusOut: true,
+				title: `Ren'Py and VSCode can be synchronized by installing an extension in your Ren'Py ${desination}`,
+				placeHolder: 'How should extensions be installed?',
+			}
+		)
+
+		if (!selection) return undefined
+
+		await selection_map[selection]()
+	}
+}
+
+export async function prompt_not_rpy8_invalid_configuration(
+	version_str: string
+) {
+	const selection = await vscode.window.showWarningMessage(
+		`Ren'Py version must be 8.0.0 or newer to use extensions (is ${version_str})`,
+		'OK',
+		'Disable for this project',
+		'Update SDK Path'
 	)
 
-	if (!selection) throw new Error('user cancelled')
+	if (selection === 'Update SDK Path') {
+		vscode.commands.executeCommand('renpyWarp.setSdkPath')
+		return
+	}
 
-	await selection_map[selection]()
+	if (selection === 'Disable for this project') {
+		await set_config_exclusive('renpyExtensionsEnabled', 'Disabled')
+	}
+
+	return
 }

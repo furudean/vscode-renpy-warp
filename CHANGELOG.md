@@ -4,7 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
--   Should now properly support launching Ren'Py versions 7 and lower on Windows
+-   The status bar will now have a button action to "Set Ren'Py SDK Path" if the
+    path is not set
+-   Should now properly support Ren'Py versions 7 and lower on Windows, with the
+    caveat that RPE features will not be available
 -   SDK path detection now relies on a more simple method, which should be more
     reliable
 

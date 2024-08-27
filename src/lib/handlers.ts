@@ -5,6 +5,8 @@ import { ProcessManager } from './process'
 import { ensure_socket_server, stop_socket_server } from './socket'
 import { StatusBar } from './status_bar'
 import { FollowCursor } from './follow_cursor'
+import { uninstall_rpes } from './rpe'
+import { get_sdk_path } from './path'
 
 const logger = get_logger()
 
@@ -45,27 +47,40 @@ export function register_handlers(
 		'renpyWarp.renpyExtensionsEnabled',
 		get_config('renpyExtensionsEnabled') === 'Enabled'
 	)
-	const server_on_change = vscode.workspace.onDidChangeConfiguration((e) => {
-		if (
-			e.affectsConfiguration('renpyWarp.autoStartSocketServer') ||
-			e.affectsConfiguration('renpyWarp.renpyExtensionsEnabled')
-		) {
-			logger.info('server settings changed')
+	const server_on_change = vscode.workspace.onDidChangeConfiguration(
+		async (e) => {
 			if (
-				get_config('autoStartSocketServer') &&
-				get_config('renpyExtensionsEnabled') === 'Enabled'
+				e.affectsConfiguration('renpyWarp.autoStartSocketServer') ||
+				e.affectsConfiguration('renpyWarp.renpyExtensionsEnabled') ||
+				e.affectsConfiguration('renpyWarp.sdkPath')
 			) {
-				ensure_socket_server({ pm, status_bar, follow_cursor, context })
-			} else {
-				stop_socket_server(pm, status_bar)
-			}
+				logger.info('server settings changed')
+				if (
+					get_config('autoStartSocketServer') &&
+					get_config('renpyExtensionsEnabled') === 'Enabled'
+				) {
+					await ensure_socket_server({
+						pm,
+						status_bar,
+						follow_cursor,
+						context,
+					})
+				} else {
+					stop_socket_server(pm, status_bar)
+					const sdk_path = await get_sdk_path()
 
-			vscode.commands.executeCommand(
-				'setContext',
-				'renpyWarp.renpyExtensionsEnabled',
-				get_config('renpyExtensionsEnabled') === 'Enabled'
-			)
+					if (sdk_path) {
+						await uninstall_rpes(sdk_path)
+					}
+				}
+
+				vscode.commands.executeCommand(
+					'setContext',
+					'renpyWarp.renpyExtensionsEnabled',
+					get_config('renpyExtensionsEnabled') === 'Enabled'
+				)
+			}
 		}
-	})
+	)
 	context.subscriptions.push(server_on_change)
 }

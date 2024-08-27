@@ -11,6 +11,7 @@ import { glob } from 'glob'
 import { createHash } from 'node:crypto'
 import { get_sdk_path } from './path'
 import { show_file } from './config'
+import { prompt_not_rpy8_invalid_configuration } from './onboard'
 
 const RPE_FILE_PATTERN =
 	/renpy_warp_(?<version>\d+\.\d+\.\d+)(?:_(?<checksum>[a-z0-9]+))?\.rpe(?:\.py)?/
@@ -55,15 +56,22 @@ export async function install_rpe({
 	executable: string
 	project_root: string
 	context: vscode.ExtensionContext
-}): Promise<string> {
+}): Promise<string | undefined> {
 	const version = get_version(executable)
-	const supports_rpe_py = semver.gte(version.semver, '8.3.0')
+
+	if (!semver.satisfies(version.semver, '>=8')) {
+		logger.error(
+			`Ren'Py version must be 8.0.0 or newer to use extensions (is ${version.semver})`
+		)
+		return undefined
+	}
 
 	await uninstall_rpes(sdk_path)
 
 	const rpe_source = await get_rpe_source(context)
 	const file_base = `renpy_warp_${pkg_version}_${get_checksum(rpe_source)}`
 
+	const supports_rpe_py = semver.gte(version.semver, '8.3.0')
 	let file_path: string
 
 	if (supports_rpe_py) {
@@ -96,7 +104,7 @@ export async function has_current_rpe({
 	executable: string
 	sdk_path: string
 	context: vscode.ExtensionContext
-}): Promise<boolean> {
+}): Promise<string | false> {
 	const files = await list_rpes(sdk_path)
 	logger.debug('check rpe:', files)
 
@@ -105,6 +113,8 @@ export async function has_current_rpe({
 
 	const renpy_version = get_version(executable)
 	logger.debug('renpy version (semver):', renpy_version.semver)
+
+	if (semver.satisfies(renpy_version.semver, '<8')) return false
 
 	const supports_rpe_py = semver.gte(renpy_version.semver, '8.3.0')
 	logger.debug('supports rpe.py:', supports_rpe_py)
@@ -122,7 +132,7 @@ export async function has_current_rpe({
 
 		if (match?.checksum === checksum) {
 			logger.debug('has current rpe')
-			return true
+			return file
 		}
 	}
 
@@ -159,14 +169,21 @@ export async function prompt_install_rpe(
 	const executable = await get_executable(sdk_path, true)
 	if (!executable) return
 
-	const has_current = await has_current_rpe({
+	const current_rpe = await has_current_rpe({
 		executable: executable.join(' '),
 		sdk_path,
 		context,
 	})
 
-	if (has_current && !force) {
+	if (current_rpe && !force) {
 		logger.info('rpe already up to date')
+		return current_rpe
+	}
+
+	const version = get_version(executable.join(' '))
+
+	if (!semver.satisfies(version.semver, '>=8')) {
+		await prompt_not_rpy8_invalid_configuration(version.semver)
 		return
 	}
 
@@ -176,6 +193,7 @@ export async function prompt_install_rpe(
 		context,
 		executable: executable.join(' '),
 	})
+	if (!installed_path) return
 
 	const any_rpe = (await list_rpes(sdk_path)).length === 0
 

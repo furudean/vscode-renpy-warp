@@ -218,11 +218,7 @@ export function get_commands(
 			const executable = await get_executable(sdk_path, true)
 			if (!executable) return
 
-			try {
-				await prompt_configure_extensions(executable.join(' '))
-			} catch (error: unknown) {
-				logger.error(error as Error)
-			}
+			await prompt_configure_extensions(executable.join(' '))
 		},
 
 		'renpyWarp.startSocketServer': async () => {

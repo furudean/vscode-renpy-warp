@@ -388,8 +388,11 @@ export function stop_socket_server(
 	pm: ProcessManager,
 	status_bar: StatusBar
 ): void {
-	logger.info('stopping socket server')
 	pm.clear()
 	status_bar.update(() => ({ processes: new Map() }))
-	socket_server?.close()
+
+	if (socket_server) {
+		logger.info('stopping socket server')
+		socket_server.close()
+	}
 }

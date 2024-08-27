@@ -106,6 +106,25 @@ export class StatusBar {
 			this.notification_bar.hide()
 		}
 
+		this.instance_bar.show()
+
+		if (!get_config('sdkPath')) {
+			this.instance_bar.text = "$(gear) Set Ren'Py SDK path"
+			this.instance_bar.command = 'renpyWarp.setSdkPath'
+			this.instance_bar.tooltip = "Set path to Ren'Py SDK"
+			this.instance_bar.backgroundColor = new vscode.ThemeColor(
+				'statusBarItem.warningBackground'
+			)
+			this.instance_bar.color = new vscode.ThemeColor(
+				'statusBarItem.warningForeground'
+			)
+			this.follow_cursor_bar.hide()
+			return
+		} else {
+			this.instance_bar.backgroundColor = undefined
+			this.instance_bar.color = undefined
+		}
+
 		const extensions_enabled =
 			get_config('renpyExtensionsEnabled') === 'Enabled'
 
@@ -131,8 +150,6 @@ export class StatusBar {
 			this.follow_cursor_bar.color = undefined
 			this.follow_cursor_bar.backgroundColor = undefined
 		}
-
-		this.instance_bar.show()
 
 		if (
 			this.state.socket_server_status === 'stopped' &&

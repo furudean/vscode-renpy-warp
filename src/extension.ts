@@ -87,7 +87,10 @@ export function activate(context: vscode.ExtensionContext) {
 	register_commmands(context, pm, status_bar, follow_cursor)
 	register_handlers(context, pm, status_bar, follow_cursor)
 
-	if (get_config('renpyExtensionsEnabled') === 'Enabled') {
+	if (
+		get_config('renpyExtensionsEnabled') === 'Enabled' &&
+		get_config('sdkPath')
+	) {
 		prompt_install_rpe(context).catch((error) => {
 			logger.error(error)
 			vscode.window
