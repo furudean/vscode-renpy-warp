@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## Unreleased
+
+-   Should now properly support launching Ren'Py versions 7 and lower on Windows
+-   SDK path detection now relies on a more simple method, which should be more
+    reliable
+
 ## 1.18.1 - 2024-08-18
 
 -   Fix a bug where jump to label would be disabled when it shouldn't be

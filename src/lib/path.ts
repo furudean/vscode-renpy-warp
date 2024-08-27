@@ -4,7 +4,6 @@ import untildify from 'untildify'
 import fs from 'node:fs/promises'
 import { get_logger } from './logger'
 import { get_config } from './config'
-import { get_executable } from './sh'
 import env_paths from 'env-paths'
 import { name as pkg_name } from '../../package.json'
 
@@ -30,10 +29,7 @@ export async function path_exists(path: string): Promise<boolean> {
 }
 
 export async function path_is_sdk(absolute_path: string): Promise<boolean> {
-	const executable = await get_executable(absolute_path)
-	if (executable === undefined) return false
-
-	return true
+	return await path_exists(path.join(absolute_path, 'renpy.py'))
 }
 
 /**

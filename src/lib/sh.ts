@@ -4,8 +4,9 @@ import { get_logger } from './logger'
 import { get_config } from './config'
 import os from 'node:os'
 import child_process from 'node:child_process'
-import { path_exists, resolve_path } from './path'
+import { path_exists, path_is_sdk, resolve_path } from './path'
 import find_process from 'find-process'
+import p_find from 'p-locate'
 
 const logger = get_logger()
 const IS_WINDOWS = os.platform() === 'win32'
@@ -22,19 +23,36 @@ export function get_version(executable_str: string): {
 	rest: string
 } {
 	const RENPY_VERSION_REGEX =
-		/^(?<major>\d+)\.(?<minor>\d+)\.(?<patch>\d+)(?:\.(?<rest>.*))?$/
+		/^Ren'Py (?<major>\d+)\.(?<minor>\d+)\.(?<patch>\d+)(?:\.(?<rest>.*))?\s*$/
 
-	const version_string = child_process
-		.execSync(executable_str + ' --version')
-		.toString('utf-8')
-		.trim()
-		.replace("Ren'Py ", '')
+	logger.debug('getting version for', executable_str)
+
+	const version_string = child_process.spawnSync(
+		executable_str,
+		['--version'],
+		{
+			stdio: 'pipe',
+			encoding: 'utf-8',
+		}
+	)
+
+	// output commonly usually stderr, but we try and capture whichever one has
+	// a valid value just in case
+	const output = version_string.output.find(
+		(o) => typeof o === 'string' && o.length > 0
+	) as string | undefined
+
+	if (output === undefined) {
+		throw new Error(
+			`bad output from version command ${version_string.output}`
+		)
+	}
 
 	const { major, minor, patch, rest } =
-		RENPY_VERSION_REGEX.exec(version_string)?.groups ?? {}
+		RENPY_VERSION_REGEX.exec(output)?.groups ?? {}
 
 	if (major === undefined || minor === undefined || patch === undefined) {
-		throw new Error('bad version string: ' + version_string)
+		throw new Error('bad version string: ' + output)
 	}
 
 	return {
@@ -110,28 +128,16 @@ export async function get_editor_path(
 }
 
 /**
- * Returns the path to the Ren'Py SDK directory, if not set, prompts the user
- * with an error message.
+ * Returns an array of executable commands to run the Ren'Py CLI.
+ *
+ * If not configured correctly, prompts the user with an error message.
  */
 export async function get_executable(
 	sdk_path: string,
 	prompt = false
 ): Promise<string[] | undefined> {
-	// on windows, we call python.exe and pass renpy.py as an argument
-	// on all other systems, we call renpy.sh directly
-	// https://www.renpy.org/doc/html/cli.html#command-line-interface
-	const executable_name = IS_WINDOWS
-		? 'lib/py3-windows-x86_64/python.exe'
-		: 'renpy.sh'
-
-	const executable = path.join(sdk_path, executable_name)
-
-	if (await path_exists(executable)) {
-		const renpy_path = path.join(sdk_path, 'renpy.py')
-
-		return IS_WINDOWS ? [executable, renpy_path] : [executable]
-	} else {
-		logger.debug('could not find executable', executable)
+	if (!(await path_is_sdk(sdk_path))) {
+		logger.debug('not valid sdk', sdk_path)
 
 		if (prompt) {
 			vscode.window
@@ -150,6 +156,35 @@ export async function get_executable(
 		}
 
 		return undefined
+	}
+
+	if (IS_WINDOWS) {
+		// on windows, we call python.exe and pass renpy.py as an argument
+		const machine_type = os.machine()
+
+		const candidate_paths = [
+			`lib/py3-windows-${machine_type}/python.exe`,
+			`lib/py2-windows-${machine_type}/python.exe`,
+		]
+
+		const executable = await p_find(candidate_paths, async (candidate) =>
+			path_exists(path.join(sdk_path, candidate))
+		)
+
+		if (!executable) {
+			throw new Error(
+				`could not find a valid python executable in ${candidate_paths}`
+			)
+		}
+
+		return [
+			path.join(sdk_path, executable),
+			path.join(sdk_path, 'renpy.py'),
+		]
+	} else {
+		// on all other systems, we call renpy.sh directly
+		// https://www.renpy.org/doc/html/cli.html#command-line-interface
+		return [path.join(sdk_path, 'renpy.sh')]
 	}
 }
 
