@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## Unreleased
+## 1.19.0 - 2024-08-28
 
 -   The status bar will now have a button action to "Set Ren'Py SDK Path" if the
     path is not set
