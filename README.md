@@ -112,6 +112,11 @@ apply the changes.
 
 ![The accessibility prompt on macOs](images/accessibility.png)
 
+## Version support
+
+Ren'Py 8+ has full feature support. Ren'Py 7 and lower does not support RPE
+features as there is no websockets client library distributed with the binary.
+
 ## Troubleshooting
 
 In order to use the current line/file feature, your game must be compatible with
