@@ -114,8 +114,9 @@ apply the changes.
 
 ## Version support
 
-Ren'Py 8+ has full feature support. Ren'Py 7 and lower does not support RPE
-features as there is no websockets client library distributed with the binary.
+Ren'Py 8+ is fully supported.
+
+Ren'Py 7 and earlier does not support RPE features.
 
 ## Troubleshooting
 
