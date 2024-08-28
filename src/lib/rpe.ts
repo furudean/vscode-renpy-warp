@@ -209,7 +209,14 @@ export async function prompt_install_rpe(
 		)
 
 	if (!context.globalState.get('hideRpeInstallUpdateMessage') || force) {
-		const options = ['OK', 'Reveal']
+		const options = ['OK']
+
+		if (installed_path.endsWith('.rpe.py')) {
+			// since .rpe binaries are not human readable, vscode doesn't have
+			// a built-in way to view them. so we only offer this option for
+			// .rpe.py files.
+			options.push('Reveal')
+		}
 
 		if (!force) {
 			options.push("Don't show again")
