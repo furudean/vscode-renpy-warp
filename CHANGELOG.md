@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## Unreleased
+## 1.19.1 - 2024-08-28
 
 -   Fix a Windows bug where trying to install the RPE would fail
 
