@@ -9,7 +9,7 @@ import { set_config, set_config_exclusive } from './config'
  * Throws an error if the user cancels the prompt.
  */
 export async function prompt_configure_extensions(
-	executable: string
+	executable: string[]
 ): Promise<void> {
 	const selection_map: Record<string, () => Promise<void>> = {
 		'Always use extensions (recommended)': async () => {

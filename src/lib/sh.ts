@@ -15,7 +15,7 @@ const IS_WINDOWS = os.platform() === 'win32'
  * @param executable_str
  * base renpy.sh command
  */
-export function get_version(executable_str: string): {
+export function get_version(executable: string[]): {
 	semver: string
 	major: number
 	minor: number
@@ -25,11 +25,11 @@ export function get_version(executable_str: string): {
 	const RENPY_VERSION_REGEX =
 		/^Ren'Py (?<major>\d+)\.(?<minor>\d+)\.(?<patch>\d+)(?:\.(?<rest>.*))?\s*$/
 
-	logger.debug('getting version for', executable_str)
+	logger.debug('getting version for', executable)
 
 	const version_string = child_process.spawnSync(
-		executable_str,
-		['--version'],
+		executable[0],
+		[...executable.slice(1),'--version'],
 		{
 			stdio: 'pipe',
 			encoding: 'utf-8',

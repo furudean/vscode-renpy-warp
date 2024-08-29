@@ -53,7 +53,7 @@ export async function install_rpe({
 	context,
 }: {
 	sdk_path: string
-	executable: string
+	executable: string[]
 	project_root: string
 	context: vscode.ExtensionContext
 }): Promise<string | undefined> {
@@ -101,7 +101,7 @@ export async function has_current_rpe({
 	sdk_path,
 	context,
 }: {
-	executable: string
+	executable: string[]
 	sdk_path: string
 	context: vscode.ExtensionContext
 }): Promise<string | false> {
@@ -170,7 +170,7 @@ export async function prompt_install_rpe(
 	if (!executable) return
 
 	const current_rpe = await has_current_rpe({
-		executable: executable.join(' '),
+		executable,
 		sdk_path,
 		context,
 	})
@@ -180,7 +180,7 @@ export async function prompt_install_rpe(
 		return current_rpe
 	}
 
-	const version = get_version(executable.join(' '))
+	const version = get_version(executable)
 
 	if (!semver.satisfies(version.semver, '>=8')) {
 		await prompt_not_rpy8_invalid_configuration(version.semver)
@@ -191,7 +191,7 @@ export async function prompt_install_rpe(
 		sdk_path,
 		project_root,
 		context,
-		executable: executable.join(' '),
+		executable,
 	})
 	if (!installed_path) return
 
