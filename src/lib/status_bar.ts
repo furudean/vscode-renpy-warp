@@ -146,7 +146,7 @@ export class StatusBar {
 			this.follow_cursor_bar.text = '$(pin) Follow Cursor'
 			this.follow_cursor_bar.command = 'renpyWarp.toggleFollowCursor'
 			this.follow_cursor_bar.tooltip =
-				"When enabled, keep editor cursor and Ren'Py in sync"
+				"When enabled, keep editor cursor and Ren'Py dialogue in sync"
 			this.follow_cursor_bar.color = undefined
 			this.follow_cursor_bar.backgroundColor = undefined
 		}
