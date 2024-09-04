@@ -126,12 +126,12 @@ export async function start_websocket_server({
 				: undefined
 
 			if (socket_checksum !== rpe_checksum) {
-				logger.debug(
-					`rpe checksum ${socket_version} does not match expected ${rpe_checksum}`
-				)
-
 				if (ack_bad_process.has(socket_pid)) return
 				ack_bad_process.add(socket_pid)
+
+				logger.info(
+					`rpe checksum ${socket_version} does not match expected ${rpe_checksum}`
+				)
 
 				if (socket_checksum === undefined) {
 					vscode.window.showErrorMessage(
@@ -140,7 +140,7 @@ export async function start_websocket_server({
 					)
 				} else {
 					const picked = await vscode.window.showErrorMessage(
-						`Ren'Py extension checksum mismatch: ${socket_checksum} != ${rpe_checksum}. This may be due to outdated extensions. Would you like to update them?`,
+						`RPE in running Ren'Py process does not match extension. It may be out of date. Update?`,
 						'Update',
 						"Don't Update"
 					)
