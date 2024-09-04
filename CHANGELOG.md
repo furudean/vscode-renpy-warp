@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## Unreleased
+
+-   Overhaul logging system to use `logging.Logger` instead of `print`
+-   The logging level can be set with the environment variable `WARP_LOGLEVEL`
+-   A new setting, `renpyWarp.processEnvironment` has been added to allow you to
+    set environment variables for the Ren'Py process
+
 ## 1.19.1 - 2024-08-28
 
 -   Fix a Windows bug where trying to install the RPE would fail

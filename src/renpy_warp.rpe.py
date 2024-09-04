@@ -14,6 +14,16 @@ import functools
 import re
 import os
 from pathlib import Path
+import logging
+
+logging.basicConfig()
+
+logger = logging.getLogger("renpy_warp_service")
+
+try:
+    logger.setLevel(level=os.getenv('WARP_LOGLEVEL', 'INFO'))
+except ValueError:
+    logger.setLevel(logging.INFO)
 
 
 def get_meta():
@@ -38,7 +48,7 @@ def get_meta():
 
 def py_exec(text: str):
     while renpy.exports.is_init_phase():
-        print("in init phase, waiting...")
+        logger.debug("in init phase, waiting...")
         sleep(0.2)
 
     fn = functools.partial(renpy.python.py_exec, text)
@@ -49,15 +59,14 @@ def socket_send(message, websocket):
     """sends a message to the socket server"""
     stringified = json.dumps(message)
     websocket.send(stringified)
-    print("socket >", stringified)
-
+    logger.debug(f"sent message: {stringified}")
 
 def socket_listener(websocket):
     """listens for messages from the socket server"""
     for message in websocket:
+        logger.debug(f"receive message: {message}")
         payload = json.loads(message)
 
-        print("socket <", message)
 
         if payload["type"] == "warp_to_line":
             file = payload["file"]
@@ -86,7 +95,7 @@ def socket_listener(websocket):
             py_exec(script)
 
         else:
-            print(f"unhandled message type '{payload['type']}'")
+            logger.warn(f"unhandled message type '{payload['type']}'")
 
 
 def socket_producer(websocket):
@@ -156,28 +165,30 @@ def socket_service(port, version, checksum):
             close_timeout=5,
         ) as websocket:
             def quit():
-                print(f"closing websocket connection :{port}")
+                logger.info(f"closing websocket connection :{port}")
                 websocket.close(4000, 'renpy quit')
 
             renpy.config.quit_callbacks.append(quit)
 
-            print(f"connected to renpy warp socket server on :{port}")
+            logger.info(f"connected to renpy warp socket server on :{port}")
 
             socket_producer(websocket)
             socket_listener(websocket)  # this blocks until socket is closed
 
+            logger.info(f"socket service on :{port} exited")
+
     except ConnectionClosedOK:
-        print("socket close ok")
+        logger.info("socket close ok")
 
     except WebSocketException as e:
         if e.code == 4000:
-            print("socket service got code 4000, service closing")
+            logger.info("socket service got code 4000, service closing")
             return True
         else:
-            print("unexpected websocket error:", e)
+            logger.exception(f"unexpected websocket error", exc_info=e)
 
     except ConnectionRefusedError:
-        print(f"socket connection refused on :{port}")
+        logger.debug(f"socket connection refused on :{port}")
 
     return False
 
@@ -197,8 +208,8 @@ def try_socket_ports_forever():
         if service_closed:
             break
 
-        print("exhausted all ports, waiting 5 seconds before retrying")
-        sleep(5)
+        logger.debug("exhausted all ports, waiting 3 seconds before retrying")
+        sleep(3)
 
 
 def start_renpy_warp_service():
@@ -207,7 +218,7 @@ def start_renpy_warp_service():
             target=try_socket_ports_forever, daemon=True)
         renpy_warp_thread.start()
 
-        print("renpy warp thread started")
+        logger.info("service thread started. periodically scanning ports for warp server")
 
 
 def declassify():

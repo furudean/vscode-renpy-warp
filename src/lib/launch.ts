@@ -156,7 +156,8 @@ export async function launch_renpy({
 				cmds = [...cmds, '--warp', `${filename_relative}:${line + 1}`]
 			}
 
-			const process_env = {
+			const process_env: Record<string, string | undefined> = {
+				...(get_config('processEnvironment') as object),
 				...extra_environment,
 				WARP_WS_NONCE: nonce.toString(),
 				// see: https://www.renpy.org/doc/html/editor.html
