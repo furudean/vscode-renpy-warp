@@ -37,8 +37,6 @@ async function main() {
 		external: ['vscode', 'node-window-manager', 'extract-file-icon'],
 		logLevel: 'silent',
 		plugins: [
-			/* add to the end of plugins array */
-			esbuildProblemMatcherPlugin,
 			copy({
 				resolveFrom: 'cwd',
 				assets: {
@@ -47,6 +45,8 @@ async function main() {
 				},
 				watch,
 			}),
+			/* add to the end of plugins array */
+			esbuildProblemMatcherPlugin,
 		],
 	})
 	if (watch) {
