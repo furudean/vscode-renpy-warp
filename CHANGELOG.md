@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## Unreleased
+## 1.20.0 - 2024-09-03
 
 -   Overhaul logging system to use `logging.getLogger` instead of `print`
 -   The logging level can be set with the environment variable `WARP_LOGLEVEL`
