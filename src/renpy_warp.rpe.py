@@ -21,9 +21,9 @@ logging.basicConfig()
 logger = logging.getLogger("renpy_warp_service")
 
 try:
-    logger.setLevel(level=os.getenv('WARP_LOGLEVEL', 'INFO'))
+    logger.setLevel(level=os.getenv('WARP_LOGLEVEL', logging.INFO))
 except ValueError:
-    logger.setLevel(logging.INFO)
+    logger.setLevel(level=logging.INFO)
 
 
 def get_meta():
