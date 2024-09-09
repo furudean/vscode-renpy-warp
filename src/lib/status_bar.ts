@@ -17,6 +17,7 @@ export class StatusBar {
 		processes: new Map<unknown, 'starting' | 'idle'>(),
 		is_follow_cursor: false,
 		message: undefined as string | undefined,
+		message_level: undefined as number | undefined,
 	}
 
 	constructor() {
@@ -94,8 +95,10 @@ export class StatusBar {
 		this.update_status_bar()
 	}
 
-	notify(message: string) {
-		this.update(() => ({ message }))
+	notify(message: string, level = 0) {
+		if (level >= (this.state.message_level ?? -1)) {
+			this.update(() => ({ message, message_level: level }))
+		}
 	}
 
 	private update_status_bar() {
