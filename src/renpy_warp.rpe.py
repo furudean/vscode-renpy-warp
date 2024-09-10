@@ -95,7 +95,7 @@ def socket_listener(websocket):
             py_exec(script)
 
         else:
-            logger.warn(f"unhandled message type '{payload['type']}'")
+            logger.warning(f"unhandled message type '{payload['type']}'")
 
 
 def socket_producer(websocket):
@@ -178,7 +178,10 @@ def socket_service(port, version, checksum):
             logger.info(f"socket service on :{port} exited")
 
     except ConnectionClosedOK:
-        logger.info("socket close ok")
+        logger.info("server closed connection")
+
+    except ConnectionRefusedError:
+        logger.debug(f"socket connection refused on :{port}")
 
     except WebSocketException as e:
         if e.code == 4000:
@@ -186,9 +189,6 @@ def socket_service(port, version, checksum):
             return True
         else:
             logger.exception(f"unexpected websocket error", exc_info=e)
-
-    except ConnectionRefusedError:
-        logger.debug(f"socket connection refused on :{port}")
 
     return False
 
