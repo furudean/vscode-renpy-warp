@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## Unreleased
+
+-   Prompt when external Ren'Py process is detected to ask if the user wants to
+    use the extension with it
+
 ## 1.20.0 - 2024-09-03
 
 -   Overhaul logging system to use `logging.getLogger` instead of `print`

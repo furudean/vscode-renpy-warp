@@ -275,6 +275,17 @@
 					"order": 1,
 					"scope": "machine-overridable"
 				},
+				"renpyWarp.autoConnectExternalProcesses": {
+					"type": "string",
+					"enum": [
+						"Ask",
+						"Always connect",
+						"Never connect"
+					],
+					"default": "Ask",
+					"markdownDescription": "What to do when a process launched outside of Ren'Py is detected",
+					"order": 2
+				},
 				"renpyWarp.followCursorMode": {
 					"type": "string",
 					"order": 2,

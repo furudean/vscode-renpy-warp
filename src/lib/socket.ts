@@ -15,6 +15,7 @@ import { FollowCursor, sync_editor_with_renpy } from './follow_cursor'
 import { find_project_root } from './sh'
 import path from 'upath'
 import { realpath } from 'node:fs/promises'
+import { get_config, set_config } from './config'
 
 const logger = get_logger()
 
@@ -109,7 +110,7 @@ export async function start_websocket_server({
 			reject()
 		})
 
-		const ack_bad_process = new Set<number>()
+		const ack_process = new Set<number>()
 
 		server.on('connection', async (socket, req) => {
 			logger.debug(
@@ -125,9 +126,16 @@ export async function start_websocket_server({
 				? Number(req.headers['warp-nonce'])
 				: undefined
 
+			if (ack_process.has(socket_pid)) {
+				logger.debug(
+					`ignoring connection request from pid ${socket_pid}`
+				)
+				socket.close()
+				return
+			}
+
 			if (socket_checksum !== rpe_checksum) {
-				if (ack_bad_process.has(socket_pid)) return
-				ack_bad_process.add(socket_pid)
+				ack_process.add(socket_pid)
 
 				logger.info(
 					`rpe checksum ${socket_version} does not match expected ${rpe_checksum}`
@@ -219,6 +227,43 @@ export async function start_websocket_server({
 					rpp.socket?.close(4000, 'connection replaced') // close existing socket
 					rpp.socket = socket
 				} else {
+					const auto_connect_setting = get_config(
+						'autoConnectExternalProcesses'
+					) as string
+
+					if (auto_connect_setting === 'Ask') {
+						const picked =
+							await vscode.window.showInformationMessage(
+								`A Ren'Py process wants to connect to this window`,
+								'Connect',
+								'Ignore',
+								'Always connect',
+								'Always ignore'
+							)
+
+						ack_process.add(socket_pid)
+
+						if (picked === 'Always connect') {
+							await set_config(
+								'autoConnectExternalProcesses',
+								'Always connect'
+							)
+						}
+						if (['Ignore', undefined].includes(picked)) {
+							socket.close()
+							return
+						}
+						if (picked === 'Always ignore') {
+							await set_config(
+								'autoConnectExternalProcesses',
+								'Never connect'
+							)
+						}
+					} else if (auto_connect_setting === 'Never connect') {
+						socket.close()
+						return
+					}
+
 					logger.info('creating new unmanaged process')
 					rpp = new UnmanagedProcess({ pid, project_root, socket })
 
