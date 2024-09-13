@@ -125,12 +125,34 @@ export async function start_websocket_server({
 			const socket_nonce = req.headers['warp-nonce']
 				? Number(req.headers['warp-nonce'])
 				: undefined
+			const socket_project_root = req.headers[
+				'warp-project-root'
+			] as string
 
 			if (ack_process.has(socket_pid)) {
 				logger.debug(
 					`ignoring connection request from pid ${socket_pid}`
 				)
 				socket.close()
+				return
+			}
+
+			const project_root_realpath = await realpath(project_root)
+			const socket_project_root_realpath = await realpath(
+				socket_project_root
+			)
+			// check if they're the same
+			if (
+				path.relative(
+					project_root_realpath,
+					socket_project_root_realpath
+				) !== ''
+			) {
+				logger.info(
+					`rejecting connection to socket because socket root '${socket_project_root}' does not match expected '${project_root}'`
+				)
+				socket?.close()
+
 				return
 			}
 
@@ -195,31 +217,8 @@ export async function start_websocket_server({
 				rpp.socket = socket
 			} else {
 				const pid = Number(req.headers['pid'])
-				const socket_project_root = req.headers[
-					'warp-project-root'
-				] as string
 
 				logger.info(`socket server discovered unmanaged process ${pid}`)
-
-				const project_root_realpath = await realpath(project_root)
-				const socket_project_root_realpath = await realpath(
-					socket_project_root
-				)
-
-				// check if they're the same
-				if (
-					path.relative(
-						project_root_realpath,
-						socket_project_root_realpath
-					) !== ''
-				) {
-					logger.info(
-						`rejecting connection to socket because socket root '${socket_project_root}' does not match expected '${project_root}'`
-					)
-					socket?.close()
-
-					return
-				}
 
 				if (pm.get(pid)) {
 					logger.info('has existing process, reusing it')

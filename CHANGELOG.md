@@ -7,6 +7,8 @@ All notable changes to this project will be documented in this file.
 -   Prompt when external Ren'Py process is detected to ask if the user wants to
     use the extension with it
 -   Jump to label now ignores focus out on the quick pick
+-   Change the order of checks to ignore games not associated with the current
+    workspace
 
 ## 1.20.0 - 2024-09-03
 
