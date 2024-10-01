@@ -91,16 +91,18 @@ export function activate(context: vscode.ExtensionContext) {
 		get_config('renpyExtensionsEnabled') === 'Enabled' &&
 		get_config('sdkPath')
 	) {
-		prompt_install_rpe(context).catch((error) => {
-			logger.error(error)
-			vscode.window
-				.showErrorMessage('Failed to install RPE', 'Logs', 'OK')
-				.then((selection) => {
-					if (selection === 'Logs') {
-						logger.show()
-					}
-				})
-		})
+		prompt_install_rpe(context, undefined, undefined, true).catch(
+			(error) => {
+				logger.error(error)
+				vscode.window
+					.showErrorMessage('Failed to install RPE', 'Logs', 'OK')
+					.then((selection) => {
+						if (selection === 'Logs') {
+							logger.show()
+						}
+					})
+			}
+		)
 
 		if (get_config('autoStartSocketServer')) {
 			ensure_socket_server({

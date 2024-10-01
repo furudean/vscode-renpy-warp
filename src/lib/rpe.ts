@@ -142,14 +142,20 @@ export async function has_current_rpe({
 export async function prompt_install_rpe(
 	context: vscode.ExtensionContext,
 	message = "Ren'Py extensions were {installed/updated} at {installed_path}",
-	force = false
+	force = false,
+	silent_error = false
 ): Promise<string | undefined> {
 	const file_path = await vscode.workspace
 		.findFiles('**/game/**/*.rpy', null, 1)
 		.then((files) => (files.length ? files[0].fsPath : null))
 
 	if (!file_path) {
-		vscode.window.showErrorMessage("No Ren'Py project in workspace", 'OK')
+		if (!silent_error) {
+			vscode.window.showErrorMessage(
+				"Install RPE error: No Ren'Py project in workspace",
+				'OK'
+			)
+		}
 		return
 	}
 

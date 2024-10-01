@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## Unreleased
+
+-   Silently fail if RPE is being installed on project init
+
 ## 1.21.0 - 2024-09-13
 
 -   Prompt when external Ren'Py process is detected to ask if the user wants to
