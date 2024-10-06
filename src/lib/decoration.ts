@@ -37,14 +37,14 @@ function set_decorations(
 	) {
 		current_decoration = vscode.window.createTextEditorDecorationType({
 			gutterIconPath: context.asAbsolutePath('dist/arrow-right.svg'),
-			gutterIconSize: '60%',
+			gutterIconSize: '70%',
 			dark: {
 				gutterIconPath: context.asAbsolutePath(
 					'dist/arrow-right-white.svg'
 				),
 			},
 			overviewRulerColor: new vscode.ThemeColor(
-				'editor.selectionHighlightBackground'
+				'editorCursor.foreground'
 			),
 			overviewRulerLane: vscode.OverviewRulerLane.Center,
 		})
