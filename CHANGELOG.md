@@ -5,6 +5,7 @@ All notable changes to this project will be documented in this file.
 ## Unreleased
 
 -   Silently fail if RPE is being installed on project init
+-   Set a gutter icon at current cursor position (#62)
 
 ## 1.21.0 - 2024-09-13
 
