@@ -1,5 +1,6 @@
 import * as vscode from 'vscode'
 import { AnyProcess } from './process'
+import path from 'upath'
 
 let current_decoration: vscode.TextEditorDecorationType | undefined
 let current_line: number | undefined
@@ -32,8 +33,8 @@ function set_decorations(
 	if (
 		current_line &&
 		current_path &&
-		editor &&
-		editor.document.uri.fsPath.endsWith(current_path)
+		editor?.document.uri.fsPath ===
+			path.join(process.project_root, 'game', current_path)
 	) {
 		current_decoration = vscode.window.createTextEditorDecorationType({
 			gutterIconPath: context.asAbsolutePath('dist/arrow-right.svg'),
@@ -53,6 +54,9 @@ function set_decorations(
 		])
 		context.subscriptions.push(current_decoration)
 		process.on('exit', () => {
+			current_line = undefined
+			current_path = undefined
+			current_subscription?.dispose()
 			current_decoration?.dispose()
 		})
 	}

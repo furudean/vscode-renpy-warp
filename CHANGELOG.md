@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## Unreleased
+
+-   Fixes some bad state with gutter icon
+
 ## 1.22.1 - 2024-10-05
 
 -   Tweak gutter appearance
