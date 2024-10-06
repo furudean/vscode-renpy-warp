@@ -9,6 +9,8 @@ Studio Code.
 -   Warp games to a specific line, or jump to a label
 -   Move cursor position in Visual Studio Code as dialogue progresses with the
     _Follow Cursor_ mode
+-   A gutter decoration to remind you where you are in the game, even when the
+    cursor moves away
 -   Automatically enable autoreload when files change (with a setting)
 -   Can discover and bind to games that were started outside of Visual Studio
     Code
