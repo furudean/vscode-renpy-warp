@@ -104,21 +104,12 @@ def socket_producer(websocket):
 
     send = functools.partial(socket_send, websocket=websocket)
 
-    is_first_event = True
-
     # report current line to warp server
     def fn(event, interact=True, **kwargs):
-        nonlocal is_first_event
-
         if not interact:
             return
 
         if event == "begin":
-            # skip the first event, as it usually is not useful
-            if is_first_event:
-                is_first_event = False
-                return
-
             filename, line = renpy.exports.get_filename_line()
             relative_filename = Path(filename).relative_to('game')
             filename_abs = Path(renpy.config.gamedir, relative_filename)

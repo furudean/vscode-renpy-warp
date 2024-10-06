@@ -40,7 +40,7 @@ async function main() {
 			copy({
 				resolveFrom: 'cwd',
 				assets: {
-					from: ['./src/**/*.py'],
+					from: ['./src/**/*.py', './src/**/*.svg'],
 					to: ['./dist/'],
 				},
 				watch,
