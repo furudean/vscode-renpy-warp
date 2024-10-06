@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## Unreleased
+## 1.22.2 - 2024-10-05
 
 -   Fixes some bad state with gutter icon
 
