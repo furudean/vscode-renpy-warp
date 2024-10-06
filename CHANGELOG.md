@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## Unreleased
+
+-   Tweak gutter appearance
+
 ## 1.22.0 - 2024-10-05
 
 -   Silently fail if RPE is being installed on project init
