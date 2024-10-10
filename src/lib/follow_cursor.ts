@@ -30,12 +30,9 @@ export async function sync_editor_with_renpy({
 	)
 		return
 
-	// prevent feedback loop with warp to cursor
-	//
-	// TODO: this will still happen if renpy warps to a different line
-	// than the one requested.
-	//
-	// last_warp_spec = `${relative_path}:${line}`
+	const warp_spec = `${path}:${line + 1}`
+	if (warp_spec === last_warps.get(process.pid)) return // no change
+	last_warps.set(process.pid, warp_spec)
 
 	const doc = await vscode.workspace.openTextDocument(path)
 	await vscode.window.showTextDocument(doc)

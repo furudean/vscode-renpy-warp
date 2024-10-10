@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## Unreleased
+
+-   Consistency fixes. Fix redundant cursor moving upon reload
+-   Set decoration for entire line, not just first character
+-   Set decoration for all visible editors, not just the active one
+
 ## 1.23.0 - 2024-10-09
 
 -   Redo handling of current line decorators, which hopefully fixes some bugs
