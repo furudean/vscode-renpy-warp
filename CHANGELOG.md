@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## Unreleased
+## 1.23.0 - 2024-10-09
 
 -   Redo handling of current line decorators, which hopefully fixes some bugs
     with bad state
