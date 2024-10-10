@@ -326,6 +326,12 @@
 					"order": 3,
 					"markdownDescription": "Focus the Ren'Py window after a warp/jump command is executed.\n\nNot supported on Linux. Requires accessibility permissions to be granted to Visual Studio Code on macOS."
 				},
+				"renpyWarp.showEditorDecorations": {
+					"type": "boolean",
+					"default": true,
+					"order": 3,
+					"markdownDescription": "Show a decoration where the cursor is in the Ren'Py game"
+				},
 				"renpyWarp.editor": {
 					"type": "string",
 					"default": "launcher/Visual Studio Code (System).edit.py",

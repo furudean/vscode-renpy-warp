@@ -6,6 +6,8 @@ All notable changes to this project will be documented in this file.
 
 -   Redo handling of current line decorators, which hopefully fixes some bugs
     with bad state
+-   Adds a new setting, `renpyWarp.showEditorDecorations` which adds the ability
+    to hide the current line decorator
 
 ## 1.22.2 - 2024-10-05
 

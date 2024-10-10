@@ -2,6 +2,7 @@ import * as vscode from 'vscode'
 import { AnyProcess } from './process'
 import path from 'upath'
 import { SocketMessage } from './socket'
+import { get_config } from './config'
 
 interface State {
 	line: number
@@ -12,14 +13,26 @@ export class DecorationService {
 	private context: vscode.ExtensionContext
 	private state = new Map<number, State>()
 	private decorations = new Set<vscode.Disposable>()
-	private handler: vscode.Disposable
+	private handlers: vscode.Disposable[]
+	private enabled: boolean
 
 	constructor({ context }: { context: vscode.ExtensionContext }) {
 		this.context = context
+		this.enabled = get_config('showEditorDecorations') as boolean
 
-		this.handler = vscode.window.onDidChangeActiveTextEditor(() =>
-			this.update_decorations(vscode.window.activeTextEditor)
-		)
+		this.handlers = [
+			vscode.window.onDidChangeActiveTextEditor(() =>
+				this.update_decorations(vscode.window.activeTextEditor)
+			),
+			vscode.workspace.onDidChangeConfiguration(async (e) => {
+				if (e.affectsConfiguration('renpyWarp.showEditorDecorations')) {
+					this.enabled = get_config(
+						'showEditorDecorations'
+					) as boolean
+					this.update_decorations(vscode.window.activeTextEditor)
+				}
+			}),
+		]
 	}
 
 	private update_decorations(editor?: vscode.TextEditor) {
@@ -27,6 +40,7 @@ export class DecorationService {
 		this.decorations.clear()
 
 		if (!editor) return
+		if (!this.enabled) return
 
 		const ranges: vscode.Range[] = []
 
@@ -84,6 +98,6 @@ export class DecorationService {
 
 	dispose() {
 		this.decorations.forEach((decoration) => decoration.dispose())
-		this.handler.dispose()
+		this.handlers.forEach((subscription) => subscription.dispose())
 	}
 }
