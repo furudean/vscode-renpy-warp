@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## Unreleased
+## 1.24.0 - 2024-10-10
 
 -   Consistency fixes. Fix redundant cursor moving upon reload
 -   Set decoration for entire line, not just first character
