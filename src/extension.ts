@@ -10,6 +10,7 @@ import { AnyProcess } from './lib/process'
 import { register_commmands } from './lib/commands'
 import { prompt_install_rpe } from './lib/rpe'
 import { register_handlers } from './lib/handlers'
+import { DecorationService } from './lib/decoration'
 
 const logger = get_logger()
 
@@ -31,7 +32,8 @@ export function activate(context: vscode.ExtensionContext) {
 	const status_bar = new StatusBar()
 	const follow_cursor = new FollowCursor({ status_bar })
 	const pm = new ProcessManager()
-	context.subscriptions.push(pm, follow_cursor, status_bar)
+	const ds = new DecorationService({ context })
+	context.subscriptions.push(pm, follow_cursor, status_bar, ds)
 
 	let pm_init = false
 	pm.on('exit', () => {
@@ -64,6 +66,8 @@ export function activate(context: vscode.ExtensionContext) {
 			'renpyWarp.runningProcesses',
 			pm.length
 		)
+
+		ds.track(rpp)
 
 		if (
 			(get_config('renpyExtensionsEnabled') === 'Enabled' &&

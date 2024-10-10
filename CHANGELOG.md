@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## Unreleased
+
+-   Redo handling of current line decorators, which hopefully fixes some bugs
+    with bad state
+
 ## 1.22.2 - 2024-10-05
 
 -   Fixes some bad state with gutter icon

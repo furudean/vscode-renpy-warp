@@ -16,7 +16,6 @@ import { find_project_root } from './sh'
 import path from 'upath'
 import { realpath } from 'node:fs/promises'
 import { get_config, set_config } from './config'
-import { update_decorations } from './decoration'
 
 const logger = get_logger()
 
@@ -307,6 +306,7 @@ export async function start_websocket_server({
 				logger.debug(`websocket (${rpp.pid}) <`, data.toString())
 				const message = JSON.parse(data.toString())
 
+				rpp.emit('socketMessage', message)
 				await message_handler(rpp, message)
 			})
 
@@ -374,15 +374,6 @@ export async function ensure_socket_server({
 						logger.debug(
 							`current line reported as ${message.relative_path}:${message.line}`
 						)
-						const line = (message.line as number) - 1
-						const relative_path = message.relative_path as string
-
-						update_decorations(
-							line,
-							relative_path,
-							process,
-							context
-						)
 
 						if (follow_cursor.active_process === process) {
 							const message_path = await realpath(
@@ -392,7 +383,7 @@ export async function ensure_socket_server({
 							await sync_editor_with_renpy({
 								path: message_path,
 								relative_path: message.relative_path as string,
-								line,
+								line: (message.line as number) - 1,
 							})
 						}
 					},
