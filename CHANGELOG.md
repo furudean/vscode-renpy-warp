@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## Unreleased
+
+-   Gutter icon is smaller
+
 ## 1.24.0 - 2024-10-10
 
 -   Consistency fixes. Fix redundant cursor moving upon reload

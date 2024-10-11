@@ -61,7 +61,6 @@ export class DecorationService {
 						gutterIconPath: this.context.asAbsolutePath(
 							'dist/arrow-right.svg'
 						),
-						gutterIconSize: '70%',
 						dark: {
 							gutterIconPath: this.context.asAbsolutePath(
 								'dist/arrow-right-white.svg'
