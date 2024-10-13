@@ -65,9 +65,7 @@ export class DecorationService {
 					path.toUnix(state.path)
 				) {
 					const line = state.line - 1
-					ranges.push(
-						new vscode.Range(line, 0, line, Number.MAX_SAFE_INTEGER)
-					)
+					ranges.push(new vscode.Range(line, 0, line, 0))
 				}
 			}
 
