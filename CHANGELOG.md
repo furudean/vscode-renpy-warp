@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file.
 
 -   Gutter icon is smaller
 -   Reuse the same decorations object when rendering for better perf
+-   Update decoration when document changes
 
 ## 1.24.0 - 2024-10-10
 
