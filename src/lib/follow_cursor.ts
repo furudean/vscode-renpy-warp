@@ -35,13 +35,7 @@ export async function sync_editor_with_renpy({
 	last_warps.set(process.pid, warp_spec)
 
 	const doc = await vscode.workspace.openTextDocument(path)
-	await vscode.window.showTextDocument(doc)
-	const editor = vscode.window.activeTextEditor
-
-	if (!editor) {
-		logger.warn('no active text editor')
-		return
-	}
+	const editor = await vscode.window.showTextDocument(doc)
 
 	// if the cursor is already on the correct line, don't munge it
 	if (editor.selection.start.line !== line) {
@@ -64,11 +58,11 @@ export async function warp_renpy_to_cursor(
 
 	if (!editor) return
 
-	const language_id = editor.document.languageId
+	const filename = editor.document.fileName
 	const file = editor.document.uri.fsPath
 	const line = editor.selection.active.line
 
-	if (language_id !== 'renpy') return
+	if (!filename.endsWith('.rpy')) return
 
 	const project_root = find_project_root(file)
 	const filename_relative = path.relative(
