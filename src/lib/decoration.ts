@@ -9,21 +9,34 @@ interface State {
 }
 
 export class DecorationService {
-	private context: vscode.ExtensionContext
 	private state = new Map<number, State>()
 	private decorations = new Set<vscode.Disposable>()
-	private handlers: vscode.Disposable[]
+	private subscriptions: vscode.Disposable[]
 	private enabled: boolean
+	private decoration: vscode.TextEditorDecorationType
 
 	constructor({ context }: { context: vscode.ExtensionContext }) {
-		this.context = context
 		this.enabled = get_config('showEditorDecorations') as boolean
 
-		this.handlers = [
+		this.decoration = vscode.window.createTextEditorDecorationType({
+			gutterIconPath: context.asAbsolutePath('dist/arrow-right.svg'),
+			dark: {
+				gutterIconPath: context.asAbsolutePath(
+					'dist/arrow-right-white.svg'
+				),
+			},
+			overviewRulerColor: new vscode.ThemeColor(
+				'editorCursor.foreground'
+			),
+			overviewRulerLane: vscode.OverviewRulerLane.Center,
+		})
+
+		this.subscriptions = [
+			this.decoration,
 			vscode.window.onDidChangeActiveTextEditor(() =>
 				this.update_decorations()
 			),
-			vscode.workspace.onDidChangeConfiguration(async (e) => {
+			vscode.workspace.onDidChangeConfiguration((e) => {
 				if (e.affectsConfiguration('renpyWarp.showEditorDecorations')) {
 					this.enabled = get_config(
 						'showEditorDecorations'
@@ -31,16 +44,19 @@ export class DecorationService {
 					this.update_decorations()
 				}
 			}),
+			vscode.workspace.onDidChangeTextDocument((e) => {
+				if (e.contentChanges.length) {
+					this.update_decorations()
+				}
+			}),
 		]
 	}
 
 	private update_decorations() {
-		this.decorations.forEach((decoration) => decoration.dispose())
-		this.decorations.clear()
-
-		if (!this.enabled) return
-
 		for (const editor of vscode.window.visibleTextEditors) {
+			editor.setDecorations(this.decoration, [])
+			if (!this.enabled) return
+
 			const ranges: vscode.Range[] = []
 
 			for (const [, state] of this.state) {
@@ -56,25 +72,8 @@ export class DecorationService {
 			}
 
 			if (ranges.length) {
-				const decoration = vscode.window.createTextEditorDecorationType(
-					{
-						gutterIconPath: this.context.asAbsolutePath(
-							'dist/arrow-right.svg'
-						),
-						dark: {
-							gutterIconPath: this.context.asAbsolutePath(
-								'dist/arrow-right-white.svg'
-							),
-						},
-						overviewRulerColor: new vscode.ThemeColor(
-							'editorCursor.foreground'
-						),
-						overviewRulerLane: vscode.OverviewRulerLane.Center,
-					}
-				)
-
-				this.decorations.add(decoration)
-				editor.setDecorations(decoration, ranges)
+				this.decorations.add(this.decoration)
+				editor.setDecorations(this.decoration, ranges)
 			}
 		}
 	}
@@ -93,7 +92,6 @@ export class DecorationService {
 	}
 
 	dispose() {
-		this.decorations.forEach((decoration) => decoration.dispose())
-		this.handlers.forEach((subscription) => subscription.dispose())
+		this.subscriptions.forEach((subscription) => subscription.dispose())
 	}
 }
