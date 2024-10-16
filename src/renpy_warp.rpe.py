@@ -61,12 +61,12 @@ def socket_send(message, websocket):
     websocket.send(stringified)
     logger.debug(f"sent message: {stringified}")
 
+
 def socket_listener(websocket):
     """listens for messages from the socket server"""
     for message in websocket:
         logger.debug(f"receive message: {message}")
         payload = json.loads(message)
-
 
         if payload["type"] == "warp_to_line":
             file = payload["file"]
@@ -179,7 +179,7 @@ def socket_service(port, version, checksum):
             logger.info("socket service got code 4000, service closing")
             return True
         else:
-            logger.exception(f"unexpected websocket error", exc_info=e)
+            logger.exception("unexpected websocket error", exc_info=e)
 
     return False
 
@@ -209,7 +209,8 @@ def start_renpy_warp_service():
             target=try_socket_ports_forever, daemon=True)
         renpy_warp_thread.start()
 
-        logger.info("service thread started. periodically scanning ports for warp server")
+        logger.info(
+            "service thread started. periodically scanning ports for warp server")
 
 
 def declassify():
