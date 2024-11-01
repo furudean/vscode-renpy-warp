@@ -65,7 +65,7 @@
 		"ovsx": "^0.9.5",
 		"split2": "^4.2.0",
 		"typescript": "^5.5.4",
-		"typescript-eslint": "^8.8.0"
+		"typescript-eslint": "^8.12.2"
 	},
 	"dependencies": {
 		"@logdna/tail-file": "^4.0.2",
