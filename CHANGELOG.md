@@ -8,6 +8,7 @@ All notable changes to this project will be documented in this file.
 -   Reuse the same decorations object when rendering for better perf
 -   Update decoration when document changes
 -   Fix a bug where cursor sync won't work if renpy language isn't defined
+-   Pass process environment from vscode to new process
 
 ## 1.24.0 - 2024-10-10
 

@@ -157,6 +157,7 @@ export async function launch_renpy({
 			}
 
 			const process_env: Record<string, string | undefined> = {
+				...process.env,
 				...(get_config('processEnvironment') as object),
 				...extra_environment,
 				WARP_WS_NONCE: nonce.toString(),
