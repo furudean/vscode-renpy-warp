@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## Unreleased
+
+-   Adds a new command `renpyWarp.syncCursorPosition`, which will move the
+    editor to the last reported Ren'Py line
+
 ## 1.25.0 - 2024-11-03
 
 -   Gutter icon is smaller

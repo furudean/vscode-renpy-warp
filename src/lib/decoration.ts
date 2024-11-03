@@ -2,14 +2,10 @@ import * as vscode from 'vscode'
 import { AnyProcess } from './process'
 import path from 'upath'
 import { get_config } from './config'
-
-interface State {
-	line: number
-	path: string
-}
+import { CurrentLineSocketMessage, SocketMessage } from './socket'
 
 export class DecorationService {
-	private state = new Map<number, State>()
+	private state = new Map<number, CurrentLineSocketMessage>()
 	private decorations = new Set<vscode.Disposable>()
 	private subscriptions: vscode.Disposable[]
 	private enabled: boolean
@@ -77,10 +73,10 @@ export class DecorationService {
 	}
 
 	track(process: AnyProcess) {
-		process.on('socketMessage', (message) => {
+		process.on('socketMessage', (message: SocketMessage) => {
 			if (message.type !== 'current_line') return
 
-			this.state.set(process.pid, message as unknown as State)
+			this.state.set(process.pid, message as CurrentLineSocketMessage)
 			this.update_decorations()
 		})
 		process.on('exit', () => {

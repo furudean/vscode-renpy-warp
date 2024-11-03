@@ -5,7 +5,7 @@ import { get_logger } from '../logger'
 import { ProcessManager } from './manager'
 import { EventEmitter } from 'node:events'
 import tree_kill from 'tree-kill'
-import { SocketMessage } from '../socket'
+import { CurrentLineSocketMessage, SocketMessage } from '../socket'
 import { process_finished } from '../sh'
 import TailFile from '@logdna/tail-file'
 import split2 from 'split2'
@@ -25,6 +25,7 @@ export class UnmanagedProcess {
 	socket?: WebSocket
 	dead: boolean = false
 	labels: string[] | undefined = undefined
+	last_cursor?: CurrentLineSocketMessage = undefined
 
 	private emitter = new EventEmitter()
 	emit = this.emitter.emit.bind(this.emitter)
@@ -55,6 +56,12 @@ export class UnmanagedProcess {
 				}
 			}, 400)
 		}
+
+		this.on('socketMessage', (message: SocketMessage) => {
+			if (message.type === 'current_line') {
+				this.last_cursor = message as CurrentLineSocketMessage
+			}
+		})
 
 		this.on('exit', () => {
 			logger.debug(`process ${this.pid} got exit event`)

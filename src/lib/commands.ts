@@ -8,7 +8,7 @@ import { get_executable } from './sh'
 import { ensure_socket_server, stop_socket_server } from './socket'
 import { ProcessManager } from './process'
 import { StatusBar } from './status_bar'
-import { FollowCursor } from './follow_cursor'
+import { FollowCursor, sync_editor_with_renpy } from './follow_cursor'
 import { get_logger } from './logger'
 import { focus_window } from './window'
 
@@ -166,6 +166,25 @@ export function get_commands(
 
 				follow_cursor.set(process)
 			}
+		},
+
+		'renpyWarp.syncCursorPosition': async () => {
+			const recent = pm.at(-1)
+			const last_cursor = recent?.last_cursor
+
+			if (last_cursor === undefined) {
+				vscode.window.showInformationMessage(
+					'Sync Cursor Position: No cursor reported from process yet',
+					'OK'
+				)
+				return
+			}
+			await sync_editor_with_renpy({
+				line: last_cursor.line - 1,
+				path: last_cursor.path,
+				relative_path: last_cursor.relative_path,
+				force: true,
+			})
 		},
 
 		'renpyWarp.killAll': () => pm.kill_all(),

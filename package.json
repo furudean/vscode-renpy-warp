@@ -123,6 +123,12 @@
 				"enablement": "renpyWarp.runningProcesses > 0"
 			},
 			{
+				"command": "renpyWarp.syncCursorPosition",
+				"title": "Go to to current Ren'Py line",
+				"category": "Ren'Py Launch",
+				"enablement": "renpyWarp.runningProcesses > 0"
+			},
+			{
 				"command": "renpyWarp.installRpe",
 				"title": "Install Ren'Py extensions (.rpe)",
 				"category": "Ren'Py Launch"
@@ -236,6 +242,11 @@
 				"key": "alt+shift+c",
 				"mac": "cmd+shift+c",
 				"when": "editorTextFocus && resourceExtname == '.rpy'"
+			},
+			{
+				"command": "renpyWarp.syncCursorPosition",
+				"key": "ctrl+shift+e",
+				"mac": "alt+shift+e"
 			}
 		],
 		"configuration": {

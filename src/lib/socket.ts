@@ -40,6 +40,18 @@ export interface SocketMessage {
 	[key: string]: unknown
 }
 
+export interface CurrentLineSocketMessage extends SocketMessage {
+	type: 'current_line'
+	line: number
+	path: string
+	relative_path: string
+}
+
+export interface ListLabelsSocketMessage extends SocketMessage {
+	type: 'list_labels'
+	labels: string[]
+}
+
 export type MessageHandler = (
 	process: AnyProcess,
 	data: SocketMessage

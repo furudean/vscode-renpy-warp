@@ -20,13 +20,13 @@ Studio Code.
 The extension provides many commands to interact with Ren'Py. You probably want
 to know about the following:
 
-| Command                                       | Shortcut                                     | Shortcut (Mac)                             |
-| --------------------------------------------- | -------------------------------------------- | ------------------------------------------ |
-| Start Ren'Py project                          | <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>L</kbd> | <kbd>⌘</kbd>+<kbd>Shift</kbd>+<kbd>L</kbd> |
-| Open Ren'Py at the current line               | <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>E</kbd> | <kbd>⌘</kbd>+<kbd>Shift</kbd>+<kbd>E</kbd> |
-| Open Ren'Py at the current file               | <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd> | <kbd>⌘</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd> |
-| Open Ren'Py at label                          | <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>J</kbd> | <kbd>⌘</kbd>+<kbd>Shift</kbd>+<kbd>J</kbd> |
-| Toggle: Warp to selected line as cursor moves | <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>C</kbd> | <kbd>⌘</kbd>+<kbd>Shift</kbd>+<kbd>C</kbd> |
+| Command                         | Shortcut                                      | Shortcut (Mac)                             |
+| ------------------------------- | --------------------------------------------- | ------------------------------------------ |
+| Start Ren'Py project            | <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>L</kbd>  | <kbd>⌘</kbd>+<kbd>Shift</kbd>+<kbd>L</kbd> |
+| Open Ren'Py at the current line | <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>E</kbd>  | <kbd>⌘</kbd>+<kbd>Shift</kbd>+<kbd>E</kbd> |
+| Open Ren'Py at label            | <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>J</kbd>  | <kbd>⌘</kbd>+<kbd>Shift</kbd>+<kbd>J</kbd> |
+| Go to current Ren'Py line       | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>E</kbd> | <kbd>⌥</kbd>+<kbd>Shift</kbd>+<kbd>E</kbd> |
+| Toggle following cursor mode    | <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>C</kbd>  | <kbd>⌘</kbd>+<kbd>Shift</kbd>+<kbd>C</kbd> |
 
 ### Triggers
 

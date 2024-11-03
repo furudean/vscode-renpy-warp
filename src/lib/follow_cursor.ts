@@ -16,12 +16,15 @@ interface SyncEditorWithRenpyOptions {
 	relative_path: string
 	/** 0-indexed line number */
 	line: number
+	/** skip redundancy checks */
+	force: boolean
 }
 
 export async function sync_editor_with_renpy({
 	path,
 	relative_path,
 	line,
+	force,
 }: SyncEditorWithRenpyOptions): Promise<void> {
 	if (
 		!["Ren'Py updates Visual Studio Code", 'Update both'].includes(
@@ -31,7 +34,7 @@ export async function sync_editor_with_renpy({
 		return
 
 	const warp_spec = `${path}:${line + 1}`
-	if (warp_spec === last_warps.get(process.pid)) return // no change
+	if (!force && warp_spec === last_warps.get(process.pid)) return // no change
 	last_warps.set(process.pid, warp_spec)
 
 	const doc = await vscode.workspace.openTextDocument(path)
