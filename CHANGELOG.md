@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## Unreleased
+## 1.26.0 - 2024-11-03
 
 -   Adds a new command `renpyWarp.syncCursorPosition`, which will move the
     editor to the last reported Ren'Py line
