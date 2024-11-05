@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.26.1 - 2024-11-04
+
+Fixes a failing test which prevented a release. No meaningful changes.
+
 ## 1.26.0 - 2024-11-03
 
 -   Adds a new command `renpyWarp.syncCursorPosition`, which will move the
