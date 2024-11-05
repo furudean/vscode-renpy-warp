@@ -17,7 +17,7 @@ interface SyncEditorWithRenpyOptions {
 	/** 0-indexed line number */
 	line: number
 	/** skip redundancy checks */
-	force: boolean
+	force?: boolean
 }
 
 export async function sync_editor_with_renpy({
