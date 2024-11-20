@@ -5,6 +5,7 @@ All notable changes to this project will be documented in this file.
 ## Unreleased
 
 -   Allow toggling follow cursor even if no game is running
+-   Fix websockets detection on older versions (#70)
 
 ## 1.26.1 - 2024-11-04
 

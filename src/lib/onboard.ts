@@ -36,7 +36,7 @@ export async function prompt_configure_extensions(
 
 	const renpy_version = get_version(executable)
 
-	if (semver.satisfies(renpy_version.semver, '>=8')) {
+	if (semver.satisfies(renpy_version.semver, '>=8.2.0')) {
 		const supports_rpe_py = semver.gte(renpy_version.semver, '8.3.0')
 		const desination = supports_rpe_py ? 'SDK' : 'project'
 
@@ -52,6 +52,11 @@ export async function prompt_configure_extensions(
 		if (!selection) return undefined
 
 		await selection_map[selection]()
+	} else {
+		vscode.window.showInformationMessage(
+			`Extensions are only supported on Ren'Py 8.2.0 or higher (is ${renpy_version.semver})`,
+			'OK'
+		)
 	}
 }
 
@@ -59,7 +64,7 @@ export async function prompt_not_rpy8_invalid_configuration(
 	version_str: string
 ) {
 	const selection = await vscode.window.showWarningMessage(
-		`Ren'Py version must be 8.0.0 or newer to use extensions (is ${version_str})`,
+		`Ren'Py version must be 8.2.0 or newer to use extensions (is ${version_str})`,
 		'OK',
 		'Disable for this project',
 		'Update SDK Path'

@@ -188,7 +188,7 @@ export async function prompt_install_rpe(
 
 	const version = get_version(executable)
 
-	if (!semver.satisfies(version.semver, '>=8')) {
+	if (!semver.satisfies(version.semver, '>=8.2.0')) {
 		await prompt_not_rpy8_invalid_configuration(version.semver)
 		return
 	}
