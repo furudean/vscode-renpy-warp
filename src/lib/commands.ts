@@ -150,21 +150,23 @@ export function get_commands(
 			)
 		},
 
-		'renpyWarp.toggleFollowCursor': () => {
-			if (follow_cursor.active_process) {
+		'renpyWarp.toggleFollowCursor': async () => {
+			if (follow_cursor.enabled) {
 				follow_cursor.off()
+
+				if (!pm.length) {
+					status_bar.notify('$(pin) Follow Cursor: Off')
+				}
 			} else {
 				const process = pm.at(-1)
 
 				if (process === undefined) {
-					vscode.window.showErrorMessage(
-						"Ren'Py not running. Cannot follow cursor.",
-						'OK'
-					)
+					status_bar.notify('$(pinned) Follow Cursor: On')
+					follow_cursor.enabled = true
 					return
 				}
 
-				follow_cursor.set(process)
+				await follow_cursor.set(process)
 			}
 		},
 

@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## Unreleased
+
+-   Allow toggling follow cursor even if no game is running
+
 ## 1.26.1 - 2024-11-04
 
 Fixes a failing test which prevented a release. No meaningful changes.

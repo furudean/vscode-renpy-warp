@@ -119,8 +119,7 @@
 			{
 				"command": "renpyWarp.toggleFollowCursor",
 				"title": "Toggle following cursor mode",
-				"category": "Ren'Py Launch",
-				"enablement": "renpyWarp.runningProcesses > 0"
+				"category": "Ren'Py Launch"
 			},
 			{
 				"command": "renpyWarp.syncCursorPosition",

@@ -47,7 +47,7 @@ export function activate(context: vscode.ExtensionContext) {
 			pm_init = false
 		}
 		if (
-			follow_cursor.active_process &&
+			follow_cursor.enabled &&
 			get_config('renpyExtensionsEnabled') === 'Enabled'
 		) {
 			const most_recent = pm.at(-1)
@@ -73,7 +73,7 @@ export function activate(context: vscode.ExtensionContext) {
 			(get_config('renpyExtensionsEnabled') === 'Enabled' &&
 				get_config('followCursorOnLaunch') &&
 				!pm_init) ||
-			follow_cursor.active_process // follow cursor is already active, replace it
+			follow_cursor.enabled // follow cursor is already active, replace it
 		) {
 			logger.info('enabling follow cursor for new process')
 			await follow_cursor.set(rpp)
