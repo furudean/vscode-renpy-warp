@@ -35,6 +35,9 @@ export function activate(context: vscode.ExtensionContext) {
 	const pm = new ProcessManager()
 	const ds = new DecorationService({ context })
 	const wss = new WarpSocketService({
+		pm,
+		status_bar,
+		context,
 		async message_handler(process, message) {
 			const messsage_handler: Record<string, () => Promise<void> | void> =
 				{
@@ -66,9 +69,6 @@ export function activate(context: vscode.ExtensionContext) {
 				logger.error('unhandled socket message:', message)
 			}
 		},
-		pm,
-		status_bar,
-		context,
 	})
 
 	context.subscriptions.push(pm, follow_cursor, status_bar, ds)

@@ -13,7 +13,7 @@ export class StatusBar {
 	private message_timeout: NodeJS.Timeout | undefined
 
 	private state = {
-		socket_server_status: 'stopped' as 'starting' | 'running' | 'stopped',
+		socket_server_status: 'stopped' as 'running' | 'stopped',
 		processes: new Map<unknown, 'starting' | 'idle'>(),
 		is_follow_cursor: false,
 		message: undefined as string | undefined,
@@ -161,13 +161,6 @@ export class StatusBar {
 			this.instance_bar.text = "$(plug) Start Ren'Py socket server"
 			this.instance_bar.command = 'renpyWarp.startSocketServer'
 			this.instance_bar.tooltip = "Start Ren'Py WebSocket server"
-		} else if (
-			this.state.socket_server_status === 'starting' &&
-			extensions_enabled
-		) {
-			this.instance_bar.text = `$(loading~spin) Starting socket server...`
-			this.instance_bar.command = undefined
-			this.instance_bar.tooltip = undefined
 		} else if (this.starting_processes > 0) {
 			this.instance_bar.text = `$(loading~spin) Starting Ren'Py...`
 			this.instance_bar.command = undefined

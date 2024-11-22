@@ -67,7 +67,7 @@ export async function find_projects_in_workspaces(): Promise<string[]> {
 			'**/game/**/*.rpy'
 		)
 		const files = await vscode.workspace.findFiles(pattern)
-		logger.debug(`files in workspace: ${files.map((file) => file.fsPath)}`)
+		logger.trace(`files in workspace: ${files.map((file) => file.fsPath)}`)
 
 		for (const file of files) {
 			const relative = path.relative(workspace.uri.fsPath, file.fsPath)

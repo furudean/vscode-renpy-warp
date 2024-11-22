@@ -246,20 +246,7 @@ export function get_commands(
 
 		'renpyWarp.startSocketServer': async () => {
 			if (get_config('renpyExtensionsEnabled') === 'Enabled') {
-				const server = await wss.start()
-				if (!server) {
-					vscode.window
-						.showErrorMessage(
-							'Failed to start socket server',
-							'OK',
-							'Logs'
-						)
-						.then((selection) => {
-							if (selection === 'Logs') {
-								logger.show()
-							}
-						})
-				}
+				await wss.start()
 			} else {
 				vscode.window.showErrorMessage(
 					"Ren'Py extensions must be enabled to use the socket server",
