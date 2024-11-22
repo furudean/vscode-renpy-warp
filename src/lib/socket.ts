@@ -154,7 +154,7 @@ export class WarpSocketService {
 			) => {
 				let rpp: ManagedProcess | UnmanagedProcess
 
-				if (nonce) {
+				if (nonce && this.pm.get(nonce)) {
 					rpp = this.handle_managed_process(nonce)
 					rpp.socket = ws
 				} else {
@@ -308,13 +308,6 @@ export class WarpSocketService {
 				}
 			}
 
-			return false
-		}
-
-		if (socket_nonce && !this.pm.get(socket_nonce)) {
-			logger.warn(
-				`rejecting connection to socket because ${socket_nonce} is not registered`
-			)
 			return false
 		}
 

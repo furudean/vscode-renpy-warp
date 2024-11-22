@@ -100,7 +100,7 @@ def socket_listener(websocket):
 
 def socket_producer(websocket):
     """produces messages to the socket server"""
-    from websockets.exceptions import ConnectionClosedOK  # type: ignore
+    from websockets.exceptions import ConnectionClosedOK, ConnectionClosedError  # type: ignore
 
     send = functools.partial(socket_send, websocket=websocket)
 
@@ -123,7 +123,7 @@ def socket_producer(websocket):
 
             try:
                 send(message)
-            except ConnectionClosedOK:
+            except (ConnectionClosedOK, ConnectionClosedError):
                 # socket is closed, remove the callback
                 renpy.config.all_character_callbacks.remove(fn)
 
