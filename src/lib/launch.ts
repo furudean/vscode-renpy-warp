@@ -163,9 +163,9 @@ export async function launch_renpy({
 				async (_, cancel) => {
 					logger.info(
 						'spawning process:',
-						Object.entries(process_env)
-							.map(([k, v]) => `${k}="${v}"`)
-							.join(' '),
+						// Object.entries(process_env)
+						// 	.map(([k, v]) => `${k}="${v}"`)
+						// 	.join(' '),
 						cmds.map((k) => `"${k}"`).join(' ')
 					)
 
