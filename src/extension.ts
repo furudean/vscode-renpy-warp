@@ -1,16 +1,17 @@
 import * as vscode from 'vscode'
 
 import { ProcessManager } from './lib/process/manager'
-import { FollowCursor } from './lib/follow_cursor'
+import { FollowCursor, sync_editor_with_renpy } from './lib/follow_cursor'
 import { get_logger } from './lib/logger'
 import { get_config, get_configuration_object, set_config } from './lib/config'
 import { StatusBar } from './lib/status_bar'
-import { ensure_socket_server } from './lib/socket'
+import { WarpSocketService } from './lib/socket'
 import { AnyProcess } from './lib/process'
 import { register_commmands } from './lib/commands'
 import { prompt_install_rpe } from './lib/rpe'
 import { register_handlers } from './lib/handlers'
 import { DecorationService } from './lib/decoration'
+import { realpath } from 'node:fs/promises'
 
 const logger = get_logger()
 
@@ -33,6 +34,43 @@ export function activate(context: vscode.ExtensionContext) {
 	const follow_cursor = new FollowCursor({ status_bar })
 	const pm = new ProcessManager()
 	const ds = new DecorationService({ context })
+	const wss = new WarpSocketService({
+		async message_handler(process, message) {
+			const messsage_handler: Record<string, () => Promise<void> | void> =
+				{
+					async current_line() {
+						logger.debug(
+							`current line reported as ${message.relative_path}:${message.line}`
+						)
+
+						if (follow_cursor.active_process === process) {
+							const message_path = await realpath(
+								message.path as string
+							)
+
+							await sync_editor_with_renpy({
+								path: message_path,
+								relative_path: message.relative_path as string,
+								line: (message.line as number) - 1,
+							})
+						}
+					},
+					async list_labels() {
+						process.labels = message.labels as string[]
+					},
+				}
+
+			if (message.type in messsage_handler) {
+				await messsage_handler[message.type]()
+			} else {
+				logger.error('unhandled socket message:', message)
+			}
+		},
+		pm,
+		status_bar,
+		context,
+	})
+
 	context.subscriptions.push(pm, follow_cursor, status_bar, ds)
 
 	let pm_init = false
@@ -88,33 +126,26 @@ export function activate(context: vscode.ExtensionContext) {
 		pm_init = true
 	})
 
-	register_commmands(context, pm, status_bar, follow_cursor)
-	register_handlers(context, pm, status_bar, follow_cursor)
+	register_commmands(context, pm, status_bar, follow_cursor, wss)
+	register_handlers(context, pm, wss)
 
 	if (
 		get_config('renpyExtensionsEnabled') === 'Enabled' &&
 		get_config('sdkPath')
 	) {
-		prompt_install_rpe(context, undefined, undefined, true).catch(
-			(error) => {
-				logger.error(error)
-				vscode.window
-					.showErrorMessage('Failed to install RPE', 'Logs', 'OK')
-					.then((selection) => {
-						if (selection === 'Logs') {
-							logger.show()
-						}
-					})
-			}
-		)
+		prompt_install_rpe(context).catch((error) => {
+			logger.error(error)
+			vscode.window
+				.showErrorMessage('Failed to install RPE', 'Logs', 'OK')
+				.then((selection) => {
+					if (selection === 'Logs') {
+						logger.show()
+					}
+				})
+		})
 
 		if (get_config('autoStartSocketServer')) {
-			ensure_socket_server({
-				pm,
-				status_bar,
-				follow_cursor,
-				context,
-			}).catch((error) => {
+			wss.start().catch((error) => {
 				logger.error('failed to start socket server:', error)
 			})
 		}

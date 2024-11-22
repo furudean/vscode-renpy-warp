@@ -5,7 +5,7 @@ import { prompt_configure_extensions } from './onboard'
 import { get_sdk_path, resolve_path, path_exists, path_is_sdk } from './path'
 import { prompt_install_rpe, uninstall_rpes } from './rpe'
 import { get_executable } from './sh'
-import { ensure_socket_server, stop_socket_server } from './socket'
+import { WarpSocketService } from './socket'
 import { ProcessManager } from './process'
 import { StatusBar } from './status_bar'
 import { FollowCursor, sync_editor_with_renpy } from './follow_cursor'
@@ -18,7 +18,8 @@ export function get_commands(
 	context: vscode.ExtensionContext,
 	pm: ProcessManager,
 	status_bar: StatusBar,
-	follow_cursor: FollowCursor
+	follow_cursor: FollowCursor,
+	wss: WarpSocketService
 ) {
 	const commands: Record<
 		string,
@@ -26,7 +27,7 @@ export function get_commands(
 	> = {
 		'renpyWarp.launch': async () => {
 			try {
-				await launch_renpy({ context, pm, status_bar, follow_cursor })
+				await launch_renpy({ context, pm, status_bar, wss })
 			} catch (error: unknown) {
 				logger.error(error as Error)
 			}
@@ -44,7 +45,7 @@ export function get_commands(
 					context,
 					pm,
 					status_bar,
-					follow_cursor,
+					wss,
 				})
 			} catch (error: unknown) {
 				logger.error(error as Error)
@@ -65,7 +66,7 @@ export function get_commands(
 					context,
 					pm,
 					status_bar,
-					follow_cursor,
+					wss,
 				})
 			} catch (error: unknown) {
 				logger.error(error as Error)
@@ -87,7 +88,7 @@ export function get_commands(
 				process = await launch_renpy({
 					pm,
 					status_bar,
-					follow_cursor,
+					wss,
 					context,
 					extra_environment: {
 						RENPY_SKIP_SPLASHSCREEN: '1',
@@ -245,13 +246,8 @@ export function get_commands(
 
 		'renpyWarp.startSocketServer': async () => {
 			if (get_config('renpyExtensionsEnabled') === 'Enabled') {
-				const started = await ensure_socket_server({
-					pm,
-					status_bar,
-					follow_cursor,
-					context,
-				})
-				if (!started) {
+				const server = await wss.start()
+				if (!server) {
 					vscode.window
 						.showErrorMessage(
 							'Failed to start socket server',
@@ -273,7 +269,7 @@ export function get_commands(
 		},
 
 		'renpyWarp.stopSocketServer': () => {
-			stop_socket_server(pm, status_bar)
+			wss.close()
 		},
 
 		'renpyWarp.resetSupressedMessages': () => {
@@ -289,9 +285,10 @@ export function register_commmands(
 	context: vscode.ExtensionContext,
 	pm: ProcessManager,
 	status_bar: StatusBar,
-	follow_cursor: FollowCursor
+	follow_cursor: FollowCursor,
+	wss: WarpSocketService
 ) {
-	const commands = get_commands(context, pm, status_bar, follow_cursor)
+	const commands = get_commands(context, pm, status_bar, follow_cursor, wss)
 
 	for (const [name, handler] of Object.entries(commands)) {
 		context.subscriptions.push(

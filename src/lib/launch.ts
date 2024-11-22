@@ -8,11 +8,10 @@ import { get_logger } from './logger'
 import { get_editor_path, get_executable, find_project_root } from './sh'
 import { prompt_install_rpe } from './rpe'
 import { StatusBar } from './status_bar'
-import { get_sdk_path, paths } from './path'
+import { get_sdk_path, paths, prompt_projects_in_workspaces } from './path'
 import { prompt_configure_extensions } from './onboard'
 import { focus_window } from './window'
-import { ensure_socket_server } from './socket'
-import { FollowCursor } from './follow_cursor'
+import { WarpSocketService } from './socket'
 import { mkdir, open } from 'fs/promises'
 
 const logger = get_logger()
@@ -29,7 +28,7 @@ interface LaunchRenpyOptions {
 	context: vscode.ExtensionContext
 	pm: ProcessManager
 	status_bar: StatusBar
-	follow_cursor: FollowCursor
+	wss: WarpSocketService
 	extra_environment?: Record<string, string | undefined>
 }
 
@@ -50,42 +49,16 @@ export async function launch_renpy({
 	context,
 	pm,
 	status_bar,
-	follow_cursor,
+	wss,
 	extra_environment,
 }: LaunchRenpyOptions): Promise<ManagedProcess | undefined> {
 	logger.info('launch_renpy:', { file, line })
-
-	if (!file) {
-		file = await vscode.workspace
-			.findFiles('**/game/**/*.rpy', null, 1)
-			.then((files) => (files.length ? files[0].fsPath : undefined))
-	}
-
-	if (!file) {
-		vscode.window.showErrorMessage("No Ren'Py project in workspace", 'OK')
-		return
-	}
-
-	const project_root = find_project_root(file)
-	const filename_relative = path.relative(
-		path.join(project_root, 'game/'),
-		file
-	)
-	logger.debug('game root:', project_root)
-
-	if (!project_root) {
-		vscode.window.showErrorMessage(
-			'Unable to find "game" folder in parent directory. Not a Ren\'Py project?',
-			'OK'
-		)
-		logger.info(`cannot find game root in ${file}`)
-		return
-	}
 
 	const strategy = get_config('strategy')
 	let extensions_enabled = get_config('renpyExtensionsEnabled')
 
 	if (
+		file &&
 		pm.length &&
 		line !== undefined &&
 		Number.isInteger(line) &&
@@ -93,6 +66,14 @@ export async function launch_renpy({
 		extensions_enabled === 'Enabled'
 	) {
 		logger.info('warping in existing window')
+
+		const project_root = find_project_root(file)
+		logger.debug('game root:', project_root)
+
+		const filename_relative = path.relative(
+			path.join(project_root, 'game/'),
+			file
+		)
 
 		const rpp = pm.at(-1) as AnyProcess
 
@@ -114,6 +95,15 @@ export async function launch_renpy({
 
 		const nonce = Math.trunc(Math.random() * Number.MAX_SAFE_INTEGER)
 		status_bar.set_process(nonce, 'starting')
+
+		const project_root = file
+			? find_project_root(file)
+			: await prompt_projects_in_workspaces()
+
+		if (!project_root) {
+			status_bar.delete_process(nonce)
+			return
+		}
 
 		try {
 			const sdk_path = await get_sdk_path()
@@ -140,19 +130,18 @@ export async function launch_renpy({
 					return undefined
 				}
 
-				await ensure_socket_server({
-					pm,
-					status_bar,
-					follow_cursor,
-					context,
-				})
+				await wss.start()
 			}
 
 			if (strategy === 'Replace Window') pm.at(-1)?.kill()
 
 			let cmds = [...executable, project_root]
 
-			if (line !== undefined) {
+			if (file && line !== undefined) {
+				const filename_relative = path.relative(
+					path.join(project_root, 'game/'),
+					file
+				)
 				cmds = [...cmds, '--warp', `${filename_relative}:${line + 1}`]
 			}
 
@@ -212,7 +201,7 @@ export async function launch_renpy({
 
 					const rpp = new ManagedProcess({
 						process,
-						project_root: project_root,
+						project_root,
 						log_file,
 					})
 					rpp.on('exit', () => {
