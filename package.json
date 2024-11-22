@@ -75,7 +75,6 @@
 		"get-port": "^7.1.0",
 		"glob": "^11.0.0",
 		"node-window-manager": "^2.2.4",
-		"p-locate": "^6.0.0",
 		"pidtree": "^0.6.0",
 		"semver": "^7.6.3",
 		"tree-kill": "^1.2.2",
