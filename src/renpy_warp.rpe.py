@@ -136,7 +136,7 @@ def socket_service(port, version, checksum):
     """connects to the socket server. returns True if the connection has completed its lifecycle"""
     # websockets module is bundled with renpy
     from websockets.sync.client import connect  # type: ignore
-    from websockets.exceptions import WebSocketException, ConnectionClosedOK  # type: ignore
+    from websockets.exceptions import WebSocketException, ConnectionClosedOK, ConnectionClosedError  # type: ignore
 
     try:
         headers = {
@@ -170,6 +170,9 @@ def socket_service(port, version, checksum):
 
     except ConnectionClosedOK:
         logger.info("server closed connection")
+
+    except ConnectionClosedError:
+        logger.warning("server closed connection unexpectedly")
 
     except ConnectionRefusedError:
         logger.debug(f"socket connection refused on :{port}")
