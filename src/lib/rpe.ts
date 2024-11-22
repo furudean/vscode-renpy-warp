@@ -12,7 +12,7 @@ import { createHash } from 'node:crypto'
 import { find_projects_in_workspaces, get_sdk_path } from './path'
 import { show_file } from './config'
 import { prompt_not_rpy8_invalid_configuration } from './onboard'
-import p_memoize from 'p-memoize'
+import memoize from 'memoize'
 
 const RPE_FILE_PATTERN =
 	/renpy_warp_(?<version>\d+\.\d+\.\d+)(?:_(?<checksum>[a-z0-9]+))?\.rpe(?:\.py)?/
@@ -26,7 +26,7 @@ async function _get_rpe_source(extensionPath: string): Promise<Buffer> {
 	)
 	return await fs.readFile(rpe_source_path)
 }
-export const get_rpe_source = p_memoize(_get_rpe_source)
+export const get_rpe_source = memoize(_get_rpe_source)
 
 function get_checksum(data: Buffer): string {
 	const hash = createHash('md5').update(data)
@@ -37,7 +37,7 @@ function get_checksum(data: Buffer): string {
 async function _get_rpe_checksum(extensionPath: string): Promise<string> {
 	return get_rpe_source(extensionPath).then(get_checksum)
 }
-export const get_rpe_checksum = p_memoize(_get_rpe_checksum)
+export const get_rpe_checksum = memoize(_get_rpe_checksum)
 
 export async function list_rpes(sdk_path: string): Promise<string[]> {
 	return await Promise.all([
