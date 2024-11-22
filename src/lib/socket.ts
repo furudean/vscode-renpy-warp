@@ -10,7 +10,7 @@ import {
 } from './process'
 import get_port from 'get-port'
 import { StatusBar } from './status_bar'
-import { prompt_install_rpe, get_rpe_source, get_checksum } from './rpe'
+import { prompt_install_rpe, get_rpe_checksum } from './rpe'
 import path from 'upath'
 import { realpath } from 'node:fs/promises'
 import { get_config, set_config } from './config'
@@ -79,9 +79,8 @@ export class WarpSocketService {
 
 		const socket_server = new WebSocketServer({ noServer: true })
 		this.socket_server = socket_server
-		const port = await this.get_socket_port()
-
 		const http_server = createServer()
+		const port = await this.get_socket_port()
 
 		socket_server.on('close', () => {
 			logger.info('socket server closed')
@@ -254,12 +253,10 @@ export class WarpSocketService {
 			return false
 		}
 
-		// TODO memory cache
-		const rpe_checksum = await get_rpe_source(this.context).then(
-			get_checksum
-		)
-
-		const project_roots = await find_projects_in_workspaces()
+		const [rpe_checksum, project_roots] = await Promise.all([
+			get_rpe_checksum(this.context.extensionPath),
+			find_projects_in_workspaces(),
+		])
 
 		const socket_project_root_realpath = await realpath(socket_project_root)
 		const matches_any_root = await Promise.any(

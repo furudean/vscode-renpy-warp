@@ -12,27 +12,32 @@ import { createHash } from 'node:crypto'
 import { find_projects_in_workspaces, get_sdk_path } from './path'
 import { show_file } from './config'
 import { prompt_not_rpy8_invalid_configuration } from './onboard'
+import p_memoize from 'p-memoize'
 
 const RPE_FILE_PATTERN =
 	/renpy_warp_(?<version>\d+\.\d+\.\d+)(?:_(?<checksum>[a-z0-9]+))?\.rpe(?:\.py)?/
 const logger = get_logger()
 
-export function get_checksum(data: Buffer): string {
-	const hash = createHash('md5').update(data)
-
-	return hash.digest('hex').slice(0, 8) // yeah, i know
-}
-
-export async function get_rpe_source(
-	context: vscode.ExtensionContext
-): Promise<Buffer> {
+async function _get_rpe_source(extensionPath: string): Promise<Buffer> {
 	const rpe_source_path = path.join(
-		context.extensionPath,
+		extensionPath,
 		'dist/',
 		'renpy_warp.rpe.py'
 	)
 	return await fs.readFile(rpe_source_path)
 }
+export const get_rpe_source = p_memoize(_get_rpe_source)
+
+function get_checksum(data: Buffer): string {
+	const hash = createHash('md5').update(data)
+
+	return hash.digest('hex').slice(0, 8) // yeah, i know
+}
+
+async function _get_rpe_checksum(extensionPath: string): Promise<string> {
+	return get_rpe_source(extensionPath).then(get_checksum)
+}
+export const get_rpe_checksum = p_memoize(_get_rpe_checksum)
 
 export async function list_rpes(sdk_path: string): Promise<string[]> {
 	return await Promise.all([
@@ -68,7 +73,7 @@ export async function install_rpe({
 
 	await uninstall_rpes(sdk_path)
 
-	const rpe_source = await get_rpe_source(context)
+	const rpe_source = await get_rpe_source(context.extensionPath)
 	const file_base = `renpy_warp_${pkg_version}_${get_checksum(rpe_source)}`
 
 	const supports_rpe_py = semver.gte(version.semver, '8.3.0')
@@ -110,7 +115,7 @@ export async function has_current_rpe({
 	const files = await list_rpes(sdk_path)
 	logger.debug('check rpe:', files)
 
-	const rpe_source = await get_rpe_source(context)
+	const rpe_source = await get_rpe_source(context.extensionPath)
 	const checksum = get_checksum(rpe_source)
 
 	const renpy_version = get_version(executable)
