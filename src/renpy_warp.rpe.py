@@ -175,7 +175,8 @@ def socket_service(port, version, checksum):
         logger.warning("server closed connection unexpectedly")
 
     except ConnectionRefusedError:
-        logger.debug(f"socket connection refused on :{port}")
+        logger.debug(f"socket connection refused on :{port}, service closing")
+        return True
 
     except WebSocketException as e:
         if e.code == 4000:
