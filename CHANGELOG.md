@@ -6,6 +6,8 @@ All notable changes to this project will be documented in this file.
 
 -   Allow toggling follow cursor even if no game is running
 -   Fix websockets detection on older versions (#70)
+-   Redo sockets implementation, now doing a handshake before connecting properly
+-   Fix a bug where decorations were repeatedly being repainted
 
 ## 1.26.1 - 2024-11-04
 

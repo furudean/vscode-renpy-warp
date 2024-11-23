@@ -12,7 +12,6 @@ import get_port from 'get-port'
 import { StatusBar } from './status_bar'
 import { prompt_install_rpe, get_rpe_checksum } from './rpe'
 import path from 'upath'
-import { realpath } from 'node:fs/promises'
 import { get_config, set_config } from './config'
 import { createServer, IncomingMessage } from 'node:http'
 import { find_projects_in_workspaces } from './path'
@@ -266,17 +265,9 @@ export class WarpSocketService {
 			find_projects_in_workspaces(),
 		])
 
-		const socket_project_root_realpath = await realpath(socket_project_root)
-		const matches_any_root = await Promise.any(
-			project_roots.map(async (project_root) => {
-				const project_root_realpath = await realpath(project_root)
-				return (
-					path.relative(
-						project_root_realpath,
-						socket_project_root_realpath
-					) === ''
-				)
-			})
+		const matches_any_root = project_roots.some(
+			(project_root) =>
+				path.relative(project_root, socket_project_root) === ''
 		)
 
 		if (!matches_any_root) {

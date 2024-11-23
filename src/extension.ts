@@ -11,7 +11,6 @@ import { register_commmands } from './lib/commands'
 import { prompt_install_rpe } from './lib/rpe'
 import { register_handlers } from './lib/handlers'
 import { DecorationService } from './lib/decoration'
-import { realpath } from 'node:fs/promises'
 
 const logger = get_logger()
 
@@ -47,12 +46,8 @@ export function activate(context: vscode.ExtensionContext) {
 						)
 
 						if (follow_cursor.active_process === process) {
-							const message_path = await realpath(
-								message.path as string
-							)
-
 							await sync_editor_with_renpy({
-								path: message_path,
+								path: message.path as string,
 								relative_path: message.relative_path as string,
 								line: (message.line as number) - 1,
 							})

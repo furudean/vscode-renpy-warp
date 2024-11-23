@@ -117,8 +117,8 @@ def socket_producer(websocket):
             message = {
                 "type": "current_line",
                 "line": line,
-                "path": filename_abs.as_posix(),
-                "relative_path": relative_filename.as_posix(),
+                "path": filename_abs.resolve().as_posix(),
+                "relative_path": relative_filename.resolve().as_posix(),
             }
 
             try:
@@ -141,7 +141,7 @@ def socket_service(port, version, checksum):
     try:
         headers = {
             "pid": str(os.getpid()),
-            "warp-project-root": Path(renpy.config.gamedir).parent.as_posix(),
+            "warp-project-root": Path(renpy.config.gamedir).parent.resolve().as_posix(),
             "warp-version": version,
             "warp-checksum": checksum,
         }

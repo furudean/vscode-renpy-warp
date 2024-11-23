@@ -3,10 +3,21 @@ import { AnyProcess } from './process'
 import path from 'upath'
 import { get_config } from './config'
 import { CurrentLineSocketMessage, SocketMessage } from './socket'
+import { realpath } from 'node:fs/promises'
+import { get_logger } from './logger'
+
+const logger = get_logger()
+
+async function safe_realpath(p: string): Promise<string | undefined> {
+	try {
+		return await realpath(p)
+	} catch {
+		return undefined
+	}
+}
 
 export class DecorationService {
 	private state = new Map<number, CurrentLineSocketMessage>()
-	private decorations = new Set<vscode.Disposable>()
 	private subscriptions: vscode.Disposable[]
 	private enabled: boolean
 	private decoration: vscode.TextEditorDecorationType
@@ -29,46 +40,50 @@ export class DecorationService {
 
 		this.subscriptions = [
 			this.decoration,
-			vscode.window.onDidChangeActiveTextEditor(() =>
-				this.update_decorations()
-			),
+			vscode.window.onDidChangeActiveTextEditor(() => {
+				this.update_decorations().catch(logger.error)
+			}),
 			vscode.workspace.onDidChangeConfiguration((e) => {
 				if (e.affectsConfiguration('renpyWarp.showEditorDecorations')) {
 					this.enabled = get_config(
 						'showEditorDecorations'
 					) as boolean
-					this.update_decorations()
+					this.update_decorations().catch(logger.error)
 				}
 			}),
 			vscode.workspace.onDidChangeTextDocument((e) => {
-				if (e.contentChanges.length) {
-					this.update_decorations()
+				if (
+					e.document.uri.scheme === 'file' &&
+					e.contentChanges.length
+				) {
+					this.update_decorations().catch(logger.error)
 				}
 			}),
 		]
 	}
 
-	private update_decorations() {
+	private async update_decorations() {
 		for (const editor of vscode.window.visibleTextEditors) {
-			editor.setDecorations(this.decoration, [])
-			if (!this.enabled) return
+			if (!this.enabled) {
+				editor.setDecorations(this.decoration, [])
+				return
+			}
 
+			if (editor.document.uri.scheme !== 'file') continue
+
+			const editor_path = path.toUnix(
+				await realpath(editor.document.uri.fsPath)
+			)
 			const ranges: vscode.Range[] = []
 
 			for (const [, state] of this.state) {
-				if (
-					path.toUnix(editor.document.uri.fsPath) ===
-					path.toUnix(state.path)
-				) {
+				if (editor_path === state.path) {
 					const line = state.line - 1
 					ranges.push(new vscode.Range(line, 0, line, 0))
 				}
 			}
 
-			if (ranges.length) {
-				this.decorations.add(this.decoration)
-				editor.setDecorations(this.decoration, ranges)
-			}
+			editor.setDecorations(this.decoration, ranges)
 		}
 	}
 
@@ -77,11 +92,11 @@ export class DecorationService {
 			if (message.type !== 'current_line') return
 
 			this.state.set(process.pid, message as CurrentLineSocketMessage)
-			this.update_decorations()
+			this.update_decorations().catch(logger.error)
 		})
 		process.on('exit', () => {
 			this.state.delete(process.pid)
-			this.update_decorations()
+			this.update_decorations().catch(logger.error)
 		})
 	}
 
