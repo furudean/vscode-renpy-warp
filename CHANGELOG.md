@@ -8,6 +8,7 @@ All notable changes to this project will be documented in this file.
 -   Fix websockets detection on older versions (#70)
 -   Redo sockets implementation, now doing a handshake before connecting properly
 -   Fix a bug where decorations were repeatedly being repainted
+-   Ask what `game` folder to use when launching if multiple are found
 
 ## 1.26.1 - 2024-11-04
 
