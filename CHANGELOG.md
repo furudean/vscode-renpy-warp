@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## Unreleased
+## 1.27.0 - 2024-11-23
 
 -   Allow toggling follow cursor even if no game is running
 -   Fix websockets detection on older versions ([#47](https://github.com/furudean/vscode-renpy-warp/issues/70))
