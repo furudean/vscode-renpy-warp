@@ -8,14 +8,6 @@ import { get_logger } from './logger'
 
 const logger = get_logger()
 
-async function safe_realpath(p: string): Promise<string | undefined> {
-	try {
-		return await realpath(p)
-	} catch {
-		return undefined
-	}
-}
-
 export class DecorationService {
 	private state = new Map<number, CurrentLineSocketMessage>()
 	private subscriptions: vscode.Disposable[]
