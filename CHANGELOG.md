@@ -5,10 +5,10 @@ All notable changes to this project will be documented in this file.
 ## Unreleased
 
 -   Allow toggling follow cursor even if no game is running
--   Fix websockets detection on older versions (#70)
+-   Fix websockets detection on older versions ([#47](https://github.com/furudean/vscode-renpy-warp/issues/70))
 -   Redo sockets implementation, now doing a handshake before connecting properly
 -   Fix a bug where decorations were repeatedly being repainted
--   Ask what `game` folder to use when launching if multiple are found
+-   Ask what `game` folder to use when launching if multiple are found ([#71](https://github.com/furudean/vscode-renpy-warp/issues/71))
 
 ## 1.26.1 - 2024-11-04
 
