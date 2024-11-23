@@ -19,10 +19,6 @@ import { find_projects_in_workspaces } from './path'
 
 const logger = get_logger()
 
-const PORTS = Object.freeze([
-	40111, 40112, 40113, 40114, 40115, 40116, 40117, 40118, 40119, 40120,
-])
-
 type MaybePromise<T> = T | Promise<T>
 
 export interface SocketMessage {
@@ -54,6 +50,10 @@ export class WarpSocketService {
 
 	private pm: ProcessManager
 	private status_bar: StatusBar
+
+	public readonly ports = Object.freeze([
+		40111, 40112, 40113, 40114, 40115, 40116, 40117, 40118, 40119, 40120,
+	])
 
 	public ackd_processes = new Set<number>()
 
@@ -131,7 +131,8 @@ export class WarpSocketService {
 						socket,
 						head,
 						function done(ws) {
-							socket_server.emit('connection', ws, {
+							socket_server.emit('connection', {
+								ws,
 								pid,
 								nonce,
 								project_root,
@@ -142,48 +143,7 @@ export class WarpSocketService {
 				.catch(logger.error)
 		})
 
-		socket_server.on(
-			'connection',
-			(
-				ws,
-				{
-					pid,
-					nonce,
-					project_root,
-				}: { pid: number; nonce: number; project_root: string }
-			) => {
-				let rpp: ManagedProcess | UnmanagedProcess
-
-				if (nonce && this.pm.get(nonce)) {
-					rpp = this.handle_managed_process(nonce)
-					rpp.socket = ws
-				} else {
-					rpp = this.handle_unmanaged_process({
-						pid,
-						project_root,
-						ws,
-					})
-					rpp.socket = ws
-				}
-
-				ws.on('message', async (data) => {
-					logger.debug(`websocket (${rpp.pid}) <`, data.toString())
-					const message = JSON.parse(data.toString())
-
-					rpp.emit('socketMessage', message)
-					await this.message_handler(rpp, message)
-				})
-
-				ws.on('close', () => {
-					logger.info(`websocket connection closed (pid ${rpp.pid})`)
-					rpp.socket = undefined
-				})
-
-				ws.on('error', (error) => {
-					logger.error(`websocket error (pid ${rpp.pid})`, error)
-				})
-			}
-		)
+		socket_server.on('connection', this.handle_socket_connection.bind(this))
 
 		function handle_error(error: unknown) {
 			logger.error('socket server error:', error)
@@ -228,13 +188,60 @@ export class WarpSocketService {
 	}
 
 	private async get_socket_port(): Promise<number> {
-		const port = await get_port({ port: PORTS })
+		const port = await get_port({ port: this.ports })
 
-		if (!PORTS.includes(port)) {
+		if (!this.ports.includes(port)) {
 			throw new Error('exhausted all available ports')
 		}
 
 		return port
+	}
+
+	private is_managed_process(nonce?: number) {
+		return nonce && this.pm.get(nonce)
+	}
+
+	private handle_socket_connection({
+		ws,
+		pid,
+		nonce,
+		project_root,
+	}: {
+		ws: WebSocket
+		pid: number
+		nonce: number
+		project_root: string
+	}) {
+		let rpp: ManagedProcess | UnmanagedProcess
+
+		if (this.is_managed_process(nonce)) {
+			rpp = this.handle_managed_process(nonce)
+			rpp.socket = ws
+		} else {
+			rpp = this.handle_unmanaged_process({
+				pid,
+				project_root,
+				ws,
+			})
+			rpp.socket = ws
+		}
+
+		ws.on('message', async (data) => {
+			logger.debug(`websocket (${rpp.pid}) <`, data.toString())
+			const message = JSON.parse(data.toString())
+
+			rpp.emit('socketMessage', message)
+			await this.message_handler(rpp, message)
+		})
+
+		ws.on('close', () => {
+			logger.info(`websocket connection closed (pid ${rpp.pid})`)
+			rpp.socket = undefined
+		})
+
+		ws.on('error', (error) => {
+			logger.error(`websocket error (pid ${rpp.pid})`, error)
+		})
 	}
 
 	private async handle_handshake(req: IncomingMessage): Promise<boolean> {
@@ -311,6 +318,42 @@ export class WarpSocketService {
 			return false
 		}
 
+		if (!this.is_managed_process(socket_nonce)) {
+			const auto_connect_setting = get_config(
+				'autoConnectExternalProcesses'
+			) as string
+
+			if (auto_connect_setting === 'Ask') {
+				const picked = await vscode.window.showInformationMessage(
+					`A Ren'Py process wants to connect to this window`,
+					'Connect',
+					'Ignore',
+					'Always connect',
+					'Always ignore'
+				)
+
+				this.ackd_processes.add(socket_pid)
+
+				if (picked === 'Always connect') {
+					await set_config(
+						'autoConnectExternalProcesses',
+						'Always connect'
+					)
+				}
+				if (['Ignore', undefined].includes(picked)) {
+					return false
+				}
+				if (picked === 'Always ignore') {
+					await set_config(
+						'autoConnectExternalProcesses',
+						'Never connect'
+					)
+				}
+			} else if (auto_connect_setting === 'Never connect') {
+				return false
+			}
+		}
+
 		return true
 	}
 
@@ -331,44 +374,6 @@ export class WarpSocketService {
 			rpp.socket?.close(4000, 'connection replaced') // close existing socket
 			rpp.socket = ws
 		} else {
-			// TODO: move to handshake
-
-			// const auto_connect_setting = get_config(
-			// 	'autoConnectExternalProcesses'
-			// ) as string
-
-			// if (auto_connect_setting === 'Ask') {
-			// 	const picked = await vscode.window.showInformationMessage(
-			// 		`A Ren'Py process wants to connect to this window`,
-			// 		'Connect',
-			// 		'Ignore',
-			// 		'Always connect',
-			// 		'Always ignore'
-			// 	)
-
-			// 	this.ackd_processes.add(socket_pid)
-
-			// 	if (picked === 'Always connect') {
-			// 		await set_config(
-			// 			'autoConnectExternalProcesses',
-			// 			'Always connect'
-			// 		)
-			// 	}
-			// 	if (['Ignore', undefined].includes(picked)) {
-			// 		ws.close()
-			// 		return
-			// 	}
-			// 	if (picked === 'Always ignore') {
-			// 		await set_config(
-			// 			'autoConnectExternalProcesses',
-			// 			'Never connect'
-			// 		)
-			// 	}
-			// } else if (auto_connect_setting === 'Never connect') {
-			// 	ws.close()
-			// 	return
-			// }
-
 			logger.info('creating new unmanaged process')
 			rpp = new UnmanagedProcess({
 				pid,
