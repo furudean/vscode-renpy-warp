@@ -332,8 +332,6 @@ export class WarpSocketService {
 					'Always ignore'
 				)
 
-				this.ackd_processes.add(socket_pid)
-
 				if (picked === 'Always connect') {
 					await set_config(
 						'autoConnectExternalProcesses',
@@ -341,15 +339,18 @@ export class WarpSocketService {
 					)
 				}
 				if (['Ignore', undefined].includes(picked)) {
+					this.ackd_processes.add(socket_pid)
 					return false
 				}
 				if (picked === 'Always ignore') {
+					this.ackd_processes.add(socket_pid)
 					await set_config(
 						'autoConnectExternalProcesses',
 						'Never connect'
 					)
 				}
 			} else if (auto_connect_setting === 'Never connect') {
+				this.ackd_processes.add(socket_pid)
 				return false
 			}
 		}
