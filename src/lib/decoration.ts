@@ -58,7 +58,7 @@ export class DecorationService {
 		for (const editor of vscode.window.visibleTextEditors) {
 			if (!this.enabled) {
 				editor.setDecorations(this.decoration, [])
-				return
+				continue
 			}
 
 			if (editor.document.uri.scheme !== 'file') continue
