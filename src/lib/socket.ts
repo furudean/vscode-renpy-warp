@@ -90,6 +90,7 @@ export class WarpSocketService {
 				`$(server-process) Socket server :${port} closed`
 			)
 
+			this.ackd_processes.clear()
 			this.pm.clear()
 			this.status_bar.update(() => ({
 				socket_server_status: 'stopped',
