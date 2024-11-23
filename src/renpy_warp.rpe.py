@@ -100,7 +100,7 @@ def socket_listener(websocket):
 
 def socket_producer(websocket):
     """produces messages to the socket server"""
-    from websockets.exceptions import ConnectionClosedOK  # type: ignore
+    from websockets.exceptions import ConnectionClosedOK, ConnectionClosedError  # type: ignore
 
     send = functools.partial(socket_send, websocket=websocket)
 
@@ -117,13 +117,13 @@ def socket_producer(websocket):
             message = {
                 "type": "current_line",
                 "line": line,
-                "path": filename_abs.as_posix(),
-                "relative_path": relative_filename.as_posix(),
+                "path": filename_abs.resolve().as_posix(),
+                "relative_path": relative_filename.resolve().as_posix(),
             }
 
             try:
                 send(message)
-            except ConnectionClosedOK:
+            except (ConnectionClosedOK, ConnectionClosedError):
                 # socket is closed, remove the callback
                 renpy.config.all_character_callbacks.remove(fn)
 
@@ -136,12 +136,12 @@ def socket_service(port, version, checksum):
     """connects to the socket server. returns True if the connection has completed its lifecycle"""
     # websockets module is bundled with renpy
     from websockets.sync.client import connect  # type: ignore
-    from websockets.exceptions import WebSocketException, ConnectionClosedOK  # type: ignore
+    from websockets.exceptions import WebSocketException, ConnectionClosedOK, ConnectionClosedError  # type: ignore
 
     try:
         headers = {
             "pid": str(os.getpid()),
-            "warp-project-root": Path(renpy.config.gamedir).parent.as_posix(),
+            "warp-project-root": Path(renpy.config.gamedir).parent.resolve().as_posix(),
             "warp-version": version,
             "warp-checksum": checksum,
         }
@@ -171,8 +171,12 @@ def socket_service(port, version, checksum):
     except ConnectionClosedOK:
         logger.info("server closed connection")
 
+    except ConnectionClosedError:
+        logger.warning("server closed connection unexpectedly")
+
     except ConnectionRefusedError:
-        logger.debug(f"socket connection refused on :{port}")
+        logger.debug(f"socket connection refused on :{port}, service closing")
+        return True
 
     except WebSocketException as e:
         if e.code == 4000:

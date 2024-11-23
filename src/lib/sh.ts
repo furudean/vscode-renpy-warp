@@ -29,7 +29,7 @@ export function get_version(executable: string[]): {
 
 	const version_string = child_process.spawnSync(
 		executable[0],
-		[...executable.slice(1),'--version'],
+		[...executable.slice(1), '--version'],
 		{
 			stdio: 'pipe',
 			encoding: 'utf-8',

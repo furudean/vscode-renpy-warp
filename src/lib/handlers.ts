@@ -2,9 +2,7 @@ import * as vscode from 'vscode'
 import { get_config } from './config'
 import { get_logger } from './logger'
 import { ProcessManager } from './process'
-import { ensure_socket_server, stop_socket_server } from './socket'
-import { StatusBar } from './status_bar'
-import { FollowCursor } from './follow_cursor'
+import { WarpSocketService } from './socket'
 import { uninstall_rpes } from './rpe'
 import { get_sdk_path } from './path'
 
@@ -13,8 +11,7 @@ const logger = get_logger()
 export function register_handlers(
 	context: vscode.ExtensionContext,
 	pm: ProcessManager,
-	status_bar: StatusBar,
-	follow_cursor: FollowCursor
+	wss: WarpSocketService
 ) {
 	const save_text_handler = vscode.workspace.onWillSaveTextDocument(
 		async ({ document }) => {
@@ -59,14 +56,9 @@ export function register_handlers(
 					get_config('autoStartSocketServer') &&
 					get_config('renpyExtensionsEnabled') === 'Enabled'
 				) {
-					await ensure_socket_server({
-						pm,
-						status_bar,
-						follow_cursor,
-						context,
-					})
+					wss.start()
 				} else {
-					stop_socket_server(pm, status_bar)
+					wss.close()
 					const sdk_path = await get_sdk_path()
 
 					if (sdk_path) {
