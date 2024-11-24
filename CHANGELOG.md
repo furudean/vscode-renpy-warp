@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## Unreleased
+## 1.27.1 - 2024-11-24
 
 -   There is now a notification rendered when a connection is established or
     disconnected with the server
