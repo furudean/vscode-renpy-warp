@@ -116,9 +116,9 @@ apply the changes.
 
 ## Version support
 
-Ren'Py 8+ is fully supported.
+Ren'Py 8.2+ is fully supported.
 
-Ren'Py 7 and earlier does not support RPE features.
+Ren'Py 8.1 and earlier does not support RPE features.
 
 ## Troubleshooting
 
