@@ -8,6 +8,14 @@ import { get_logger } from './logger'
 
 const logger = get_logger()
 
+async function safe_realpath(p: string): Promise<string | void> {
+	try {
+		return await realpath(p)
+	} catch {
+		return undefined
+	}
+}
+
 export class DecorationService {
 	private state = new Map<number, CurrentLineSocketMessage>()
 	private subscriptions: vscode.Disposable[]
@@ -63,13 +71,13 @@ export class DecorationService {
 
 			if (editor.document.uri.scheme !== 'file') continue
 
-			const editor_path = path.toUnix(
-				await realpath(editor.document.uri.fsPath)
-			)
+			const editor_path = await safe_realpath(editor.document.uri.fsPath)
+			if (!editor_path) continue
+
 			const ranges: vscode.Range[] = []
 
 			for (const [, state] of this.state) {
-				if (editor_path === state.path) {
+				if (path.resolve(editor_path, state.path) === '') {
 					const line = state.line - 1
 					ranges.push(new vscode.Range(line, 0, line, 0))
 				}

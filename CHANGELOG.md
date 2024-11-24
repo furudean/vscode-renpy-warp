@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## Unreleased
+
+-   Ack processes that don't match root
+-   Sanity checks for paths that may throw errors
+
 ## 1.27.0 - 2024-11-23
 
 -   Allow toggling follow cursor even if no game is running

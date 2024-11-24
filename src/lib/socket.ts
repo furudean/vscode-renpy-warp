@@ -276,6 +276,7 @@ export class WarpSocketService {
 					.map((s) => `'${s}'`)
 					.join(', ')}`
 			)
+			this.ackd_processes.add(socket_pid)
 			return false
 		}
 
