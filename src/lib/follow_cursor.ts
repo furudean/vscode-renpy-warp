@@ -26,13 +26,6 @@ export async function sync_editor_with_renpy({
 	line,
 	force,
 }: SyncEditorWithRenpyOptions): Promise<void> {
-	if (
-		!["Ren'Py updates Visual Studio Code", 'Update both'].includes(
-			get_config('followCursorMode') as string
-		)
-	)
-		return
-
 	const warp_spec = `${path}:${line + 1}`
 	if (!force && warp_spec === last_warps.get(process.pid)) return // no change
 	last_warps.set(process.pid, warp_spec)
@@ -40,16 +33,17 @@ export async function sync_editor_with_renpy({
 	const doc = await vscode.workspace.openTextDocument(path)
 	const editor = await vscode.window.showTextDocument(doc)
 
+	logger.debug(`syncing editor to ${relative_path}:${line}`)
+
+	const end_of_line = editor.document.lineAt(line).range.end.character
+	const pos = new vscode.Position(line, end_of_line)
+	const selection = new vscode.Selection(pos, pos)
+
+	editor.revealRange(selection)
+
 	// if the cursor is already on the correct line, don't munge it
 	if (editor.selection.start.line !== line) {
-		logger.debug(`syncing editor to ${relative_path}:${line}`)
-
-		const end_of_line = editor.document.lineAt(line).range.end.character
-		const pos = new vscode.Position(line, end_of_line)
-		const selection = new vscode.Selection(pos, pos)
-
 		editor.selection = selection
-		editor.revealRange(selection)
 	}
 }
 

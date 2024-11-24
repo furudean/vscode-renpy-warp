@@ -45,6 +45,14 @@ export function activate(context: vscode.ExtensionContext) {
 							`current line reported as ${message.relative_path}:${message.line}`
 						)
 
+						if (
+							![
+								"Ren'Py updates Visual Studio Code",
+								'Update both',
+							].includes(get_config('followCursorMode') as string)
+						)
+							return
+
 						if (follow_cursor.active_process === process) {
 							await sync_editor_with_renpy({
 								path: message.path as string,

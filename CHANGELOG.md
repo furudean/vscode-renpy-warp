@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## Unreleased
+
+-   `renpyWarp.syncCursorPosition` will now reveal the cursor even if the position has not changed
+
 ## 1.27.1 - 2024-11-24
 
 -   There is now a notification rendered when a connection is established or
