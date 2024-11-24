@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## Unreleased
+## 1.28.0 - 2024-11-24
 
 -   `renpyWarp.setSdkPath` utilizes the vscode file picker instead of asking for a string for the SDK path
 
