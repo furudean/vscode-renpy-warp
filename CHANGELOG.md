@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## Unreleased
+
+-   `renpyWarp.setSdkPath` utilizes the vscode file picker instead of asking for a string for the SDK path
+
 ## 1.27.2 - 2024-11-24
 
 -   `renpyWarp.syncCursorPosition` will now reveal the cursor even if the position has not changed
