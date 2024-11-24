@@ -136,7 +136,9 @@ def socket_service(port, version, checksum):
     """connects to the socket server. returns True if the connection has completed its lifecycle"""
     # websockets module is bundled with renpy
     from websockets.sync.client import connect  # type: ignore
-    from websockets.exceptions import WebSocketException, ConnectionClosedOK, ConnectionClosedError  # type: ignore
+    from websockets.exceptions import WebSocketException, ConnectionClosed  # type: ignore
+
+    logger.info(f"try port {port}")
 
     try:
         headers = {
@@ -168,22 +170,15 @@ def socket_service(port, version, checksum):
 
             logger.info(f"socket service on :{port} exited")
 
-    except ConnectionClosedOK:
-        logger.info("server closed connection")
-
-    except ConnectionClosedError:
-        logger.warning("server closed connection unexpectedly")
-
     except ConnectionRefusedError:
         logger.debug(f"socket connection refused on :{port}, service closing")
         return True
 
+    except (ConnectionClosed, OSError) as e:
+        logger.info(f"{e.__class__.__name__}: server closed connection")
+
     except WebSocketException as e:
-        if e.code == 4000:
-            logger.info("socket service got code 4000, service closing")
-            return True
-        else:
-            logger.exception("unexpected websocket error", exc_info=e)
+        logger.exception("unexpected websocket error", exc_info=e)
 
     return False
 
@@ -192,19 +187,24 @@ def try_socket_ports_forever():
     version, checksum = get_meta()
     service_closed = False
 
-    while service_closed is False:
-        for port in range(40111, 40121):
-            service_closed = socket_service(
-                port=port, version=version, checksum=checksum)
+    try:
+        while service_closed is False:
+            for port in range(40111, 40121):
+                service_closed = socket_service(
+                    port=port, version=version, checksum=checksum)
+
+                if service_closed:
+                    break
 
             if service_closed:
                 break
 
-        if service_closed:
-            break
+            logger.debug(
+                "exhausted all ports, waiting 3 seconds before retrying")
+            sleep(3)
 
-        logger.debug("exhausted all ports, waiting 3 seconds before retrying")
-        sleep(3)
+    except Exception as e:
+        logger.exception("unexpected error", exc_info=e)
 
 
 def start_renpy_warp_service():
