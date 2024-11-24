@@ -54,7 +54,8 @@ export class WarpSocketService {
 		40111, 40112, 40113, 40114, 40115, 40116, 40117, 40118, 40119, 40120,
 	])
 
-	public ackd_processes = new Set<number>()
+	public deny_processes = new Set<number>()
+	public allowed_processes = new Set<number>()
 
 	constructor({
 		message_handler,
@@ -89,7 +90,7 @@ export class WarpSocketService {
 				`$(server-process) Socket server :${port} closed`
 			)
 
-			this.ackd_processes.clear()
+			this.deny_processes.clear()
 			this.pm.clear()
 			this.status_bar.update(() => ({
 				socket_server_status: 'stopped',
@@ -253,7 +254,7 @@ export class WarpSocketService {
 		const socket_pid = Number(req.headers['pid'])
 		const socket_project_root = req.headers['warp-project-root'] as string
 
-		if (this.ackd_processes.has(socket_pid)) {
+		if (this.deny_processes.has(socket_pid)) {
 			logger.debug(
 				`ignoring connection request from pid ${socket_pid} as its in ack list`
 			)
@@ -276,12 +277,12 @@ export class WarpSocketService {
 					.map((s) => `'${s}'`)
 					.join(', ')}`
 			)
-			this.ackd_processes.add(socket_pid)
+			this.deny_processes.add(socket_pid)
 			return false
 		}
 
 		if (socket_checksum !== rpe_checksum) {
-			this.ackd_processes.add(socket_pid)
+			this.deny_processes.add(socket_pid)
 
 			logger.info(
 				`rpe checksum ${socket_version} does not match expected ${rpe_checksum}`
@@ -317,6 +318,8 @@ export class WarpSocketService {
 			) as string
 
 			if (auto_connect_setting === 'Ask') {
+				if (this.allowed_processes.has(socket_pid)) return true
+
 				const picked = await vscode.window.showInformationMessage(
 					`A Ren'Py process wants to connect to this window`,
 					'Connect',
@@ -325,6 +328,9 @@ export class WarpSocketService {
 					'Always ignore'
 				)
 
+				if (picked === 'Connect') {
+					this.allowed_processes.add(socket_pid)
+				}
 				if (picked === 'Always connect') {
 					await set_config(
 						'autoConnectExternalProcesses',
@@ -332,18 +338,18 @@ export class WarpSocketService {
 					)
 				}
 				if (['Ignore', undefined].includes(picked)) {
-					this.ackd_processes.add(socket_pid)
+					this.deny_processes.add(socket_pid)
 					return false
 				}
 				if (picked === 'Always ignore') {
-					this.ackd_processes.add(socket_pid)
+					this.deny_processes.add(socket_pid)
 					await set_config(
 						'autoConnectExternalProcesses',
 						'Never connect'
 					)
 				}
 			} else if (auto_connect_setting === 'Never connect') {
-				this.ackd_processes.add(socket_pid)
+				this.deny_processes.add(socket_pid)
 				return false
 			}
 		}
@@ -361,6 +367,8 @@ export class WarpSocketService {
 		ws: WebSocket
 	}): UnmanagedProcess {
 		let rpp: UnmanagedProcess
+
+		logger.info(`socket server discovered unmanaged process ${pid}`)
 
 		if (this.pm.get(pid)) {
 			logger.info('has existing process, reusing it')

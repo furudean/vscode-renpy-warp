@@ -100,7 +100,7 @@ def socket_listener(websocket):
 
 def socket_producer(websocket):
     """produces messages to the socket server"""
-    from websockets.exceptions import ConnectionClosedOK, ConnectionClosedError  # type: ignore
+    from websockets.exceptions import ConnectionClosed  # type: ignore
 
     send = functools.partial(socket_send, websocket=websocket)
 
@@ -123,7 +123,7 @@ def socket_producer(websocket):
 
             try:
                 send(message)
-            except (ConnectionClosedOK, ConnectionClosedError):
+            except ConnectionClosed:
                 # socket is closed, remove the callback
                 renpy.config.all_character_callbacks.remove(fn)
 
@@ -158,10 +158,14 @@ def socket_service(port, version, checksum):
         with connect(
             f"ws://localhost:{port}",
             additional_headers=headers,
-            open_timeout=5,
+            open_timeout=None,
             close_timeout=5,
         ) as websocket:
+            quitting = False
+
             def quit():
+                nonlocal quitting
+                quitting = True
                 logger.info(f"closing websocket connection :{port}")
                 websocket.close(4000, 'renpy quit')
 
@@ -174,7 +178,9 @@ def socket_service(port, version, checksum):
             socket_listener(websocket)  # this blocks until socket is closed
 
             logger.info(f"socket service on :{port} exited")
-            py_exec("renpy.notify(\"Disconnected from  Ren'Py Launch and Sync\")")
+
+            if not quitting:
+                py_exec("renpy.notify(\"Disconnected from  Ren'Py Launch and Sync\")")
 
     except ConnectionClosedOK:
         logger.info(f"socket service on :{port} was terminated by server")
@@ -187,7 +193,7 @@ def socket_service(port, version, checksum):
     except WebSocketException as e:
         logger.exception("unexpected websocket error", exc_info=e)
 
-    except ConnectionError as e:
+    except (ConnectionError, TimeoutError) as e:
         logger.debug(f"{e.__class__.__name__}: could not establish connection to socket server")
 
     return False
