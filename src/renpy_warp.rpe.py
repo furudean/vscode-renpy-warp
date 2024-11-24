@@ -168,11 +168,13 @@ def socket_service(port, version, checksum):
             renpy.config.quit_callbacks.append(quit)
 
             logger.info(f"connected to renpy warp socket server on :{port}")
+            py_exec("renpy.notify(\"Connected to Ren'Py Launch and Sync\")")
 
             socket_producer(websocket)
             socket_listener(websocket)  # this blocks until socket is closed
 
             logger.info(f"socket service on :{port} exited")
+            py_exec("renpy.notify(\"Disconnected from  Ren'Py Launch and Sync\")")
 
     except ConnectionClosedOK:
         logger.info(f"socket service on :{port} was terminated by server")
@@ -192,27 +194,23 @@ def socket_service(port, version, checksum):
 
 
 def try_socket_ports_forever():
-    try:
-        version, checksum = get_meta()
-        service_closed = False
+    version, checksum = get_meta()
+    service_closed = False
 
-        while service_closed is False:
-            for port in range(40111, 40121):
-                service_closed = socket_service(
-                    port=port, version=version, checksum=checksum)
-
-                if service_closed:
-                    break
+    while service_closed is False:
+        for port in range(40111, 40121):
+            service_closed = socket_service(
+                port=port, version=version, checksum=checksum)
 
             if service_closed:
                 break
 
-            logger.debug(
-                "exhausted all ports, waiting 3 seconds before retrying")
-            sleep(3)
+        if service_closed:
+            break
 
-    except Exception as e:
-        logger.exception("unexpected error", exc_info=e)
+        logger.debug(
+            "exhausted all ports, waiting 3 seconds before retrying")
+        sleep(3)
 
     logger.info("service closed")
 

@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+-   There is now a notification rendered when a connection is established or
+    disconnected with the server
 -   Fix broken RPE event loop
 -   Ack processes that don't match root
 -   Sanity checks for paths that may throw errors
