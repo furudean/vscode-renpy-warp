@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file.
 
 -   Ack processes that don't match root
 -   Sanity checks for paths that may throw errors
+-   Fix a bug where decorations did not render properly
 
 ## 1.27.0 - 2024-11-23
 

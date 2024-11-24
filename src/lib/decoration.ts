@@ -77,7 +77,7 @@ export class DecorationService {
 			const ranges: vscode.Range[] = []
 
 			for (const [, state] of this.state) {
-				if (path.resolve(editor_path, state.path) === '') {
+				if (path.relative(editor_path, state.path) === '') {
 					const line = state.line - 1
 					ranges.push(new vscode.Range(line, 0, line, 0))
 				}
