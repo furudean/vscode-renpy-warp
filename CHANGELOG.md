@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+-   Fix broken RPE event loop
 -   Ack processes that don't match root
 -   Sanity checks for paths that may throw errors
 -   Fix a bug where decorations did not render properly

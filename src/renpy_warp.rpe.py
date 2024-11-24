@@ -134,11 +134,15 @@ def socket_producer(websocket):
 
 def socket_service(port, version, checksum):
     """connects to the socket server. returns True if the connection has completed its lifecycle"""
-    # websockets module is bundled with renpy
+    # websockets module is bundled with renpy on versions >=8.2.0
     from websockets.sync.client import connect  # type: ignore
-    from websockets.exceptions import WebSocketException, ConnectionClosed  # type: ignore
+    from websockets.exceptions import (  # type: ignore
+        WebSocketException,
+        ConnectionClosedOK,
+        ConnectionClosedError
+    ) 
 
-    logger.info(f"try port {port}")
+    logger.debug(f"try port {port}")
 
     try:
         headers = {
@@ -170,24 +174,28 @@ def socket_service(port, version, checksum):
 
             logger.info(f"socket service on :{port} exited")
 
-    except ConnectionRefusedError:
-        logger.debug(f"socket connection refused on :{port}, service closing")
-        return True
+    except ConnectionClosedOK:
+        logger.info(f"socket service on :{port} was terminated by server")
+        pass
 
-    except (ConnectionClosed, OSError) as e:
-        logger.info(f"{e.__class__.__name__}: server closed connection")
+    except ConnectionClosedError as e:
+        logger.info("connection replaced, service exiting")
+        return True
 
     except WebSocketException as e:
         logger.exception("unexpected websocket error", exc_info=e)
+
+    except ConnectionError as e:
+        logger.debug(f"{e.__class__.__name__}: could not establish connection to socket server")
 
     return False
 
 
 def try_socket_ports_forever():
-    version, checksum = get_meta()
-    service_closed = False
-
     try:
+        version, checksum = get_meta()
+        service_closed = False
+
         while service_closed is False:
             for port in range(40111, 40121):
                 service_closed = socket_service(
@@ -205,6 +213,8 @@ def try_socket_ports_forever():
 
     except Exception as e:
         logger.exception("unexpected error", exc_info=e)
+
+    logger.info("service closed")
 
 
 def start_renpy_warp_service():
