@@ -39,10 +39,17 @@ async function _get_rpe_checksum(extensionPath: string): Promise<string> {
 }
 export const get_rpe_checksum = memoize(_get_rpe_checksum)
 
-export async function list_rpes(sdk_path: string): Promise<string[]> {
+export async function list_rpes(
+	sdk_path: string,
+	project_root: string | vscode.Uri
+): Promise<string[]> {
+	const pattern = new vscode.RelativePattern(
+		project_root,
+		'**/game/renpy_warp_*.{rpe,rpe.py}'
+	)
 	return await Promise.all([
 		vscode.workspace
-			.findFiles(`**/game/renpy_warp_*.{rpe,rpe.py}`)
+			.findFiles(pattern)
 			.then((files) => files.map((f) => f.fsPath)),
 		glob('renpy_warp_*.rpe.py', {
 			cwd: sdk_path,
@@ -71,7 +78,7 @@ export async function install_rpe({
 		return undefined
 	}
 
-	await uninstall_rpes(sdk_path)
+	await uninstall_rpes(sdk_path, project_root)
 
 	const rpe_source = await get_rpe_source(context.extensionPath)
 	const file_base = `renpy_warp_${pkg_version}_${get_checksum(rpe_source)}`
@@ -94,8 +101,11 @@ export async function install_rpe({
 	return file_path
 }
 
-export async function uninstall_rpes(sdk_path: string): Promise<void> {
-	const rpes = await list_rpes(sdk_path)
+export async function uninstall_rpes(
+	sdk_path: string,
+	project_root: string | vscode.Uri
+): Promise<void> {
+	const rpes = await list_rpes(sdk_path, project_root)
 
 	await Promise.all(rpes.map((rpe) => fs.unlink(rpe)))
 	logger.info('uninstalled rpes:', rpes)
@@ -112,7 +122,7 @@ export async function has_current_rpe({
 	context: vscode.ExtensionContext
 	project_root: string
 }): Promise<string | false> {
-	const files = await list_rpes(sdk_path)
+	const files = await list_rpes(sdk_path, project_root)
 	logger.debug('check rpe:', files)
 
 	const rpe_source = await get_rpe_source(context.extensionPath)
@@ -200,7 +210,7 @@ export async function prompt_install_rpe(
 		if (!installed_path) return
 		installed_paths.push(installed_path)
 
-		const any_rpe = (await list_rpes(sdk_path)).length === 0
+		const any_rpe = (await list_rpes(sdk_path, project_root)).length === 0
 
 		const fmt_message = message
 			.replaceAll(

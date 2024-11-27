@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## Unreleased
+
+-   Correct handling of RPE install/uninstall when multiple `game` folders are
+    present in a workspace. The previous behavior would only install/uninstall
+    the RPE in the first `game` folder found and deleted all others
+
 ## 1.28.0 - 2024-11-24
 
 -   `renpyWarp.setSdkPath` utilizes the vscode file picker instead of asking for a string for the SDK path
