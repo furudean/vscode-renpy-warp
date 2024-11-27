@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## Unreleased
+## 1.29.0 - 2024-11-27
 
 -   Correct handling of RPE install/uninstall when multiple `game` folders are
     present in a workspace. The previous behavior would only install/uninstall
