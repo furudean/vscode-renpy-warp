@@ -15,10 +15,10 @@ export async function prompt_configure_extensions(
 		'Always use extensions (recommended)': async () => {
 			await set_config_exclusive('renpyExtensionsEnabled', 'Enabled')
 		},
-		'Use extensions only in this project': async () => {
+		'Use extensions in this project': async () => {
 			await set_config('renpyExtensionsEnabled', 'Enabled', true)
 		},
-		'Disable extensions only in this project': async () => {
+		'Disable extensions in project': async () => {
 			await set_config('renpyExtensionsEnabled', 'Disabled', true)
 
 			vscode.window.showInformationMessage(
