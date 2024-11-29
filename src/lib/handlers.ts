@@ -44,36 +44,38 @@ export function register_handlers(
 		'renpyWarp.renpyExtensionsEnabled',
 		get_config('renpyExtensionsEnabled') === 'Enabled'
 	)
-	const server_on_change = vscode.workspace.onDidChangeConfiguration((e) => {
-		if (
-			e.affectsConfiguration('renpyWarp.autoStartSocketServer') ||
-			e.affectsConfiguration('renpyWarp.renpyExtensionsEnabled') ||
-			e.affectsConfiguration('renpyWarp.sdkPath')
-		) {
-			logger.info('server settings changed')
+	const server_on_change = vscode.workspace.onDidChangeConfiguration(
+		async (e) => {
 			if (
-				get_config('autoStartSocketServer') &&
-				get_config('renpyExtensionsEnabled') === 'Enabled'
+				e.affectsConfiguration('renpyWarp.autoStartSocketServer') ||
+				e.affectsConfiguration('renpyWarp.renpyExtensionsEnabled') ||
+				e.affectsConfiguration('renpyWarp.sdkPath')
 			) {
-				wss.start()
-			} else {
-				wss.close()
-				const sdk_path = get_config('sdkPath') as string
+				logger.info('server settings changed')
+				if (
+					get_config('autoStartSocketServer') &&
+					get_config('renpyExtensionsEnabled') === 'Enabled'
+				) {
+					wss.start()
+				} else {
+					wss.close()
+					const sdk_path = get_config('sdkPath') as string
 
-				if (sdk_path) {
-					for (const folder of vscode.workspace.workspaceFolders ??
-						[]) {
-						await uninstall_rpes(sdk_path, folder.uri)
+					if (sdk_path) {
+						for (const folder of vscode.workspace
+							.workspaceFolders ?? []) {
+							await uninstall_rpes(sdk_path, folder.uri)
+						}
 					}
 				}
-			}
 
-			vscode.commands.executeCommand(
-				'setContext',
-				'renpyWarp.renpyExtensionsEnabled',
-				get_config('renpyExtensionsEnabled') === 'Enabled'
-			)
+				vscode.commands.executeCommand(
+					'setContext',
+					'renpyWarp.renpyExtensionsEnabled',
+					get_config('renpyExtensionsEnabled') === 'Enabled'
+				)
+			}
 		}
-	})
+	)
 	context.subscriptions.push(server_on_change)
 }
