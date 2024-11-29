@@ -4,7 +4,6 @@ import { get_logger } from './logger'
 import { ProcessManager } from './process'
 import { WarpSocketService } from './socket'
 import { uninstall_rpes } from './rpe'
-import { get_sdk_path } from './path'
 
 const logger = get_logger()
 
