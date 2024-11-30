@@ -15,6 +15,7 @@ import path from 'upath'
 import { get_config, set_config } from './config'
 import { createServer, IncomingMessage } from 'node:http'
 import { find_projects_in_workspaces } from './path'
+import { FollowCursorService, sync_editor_with_renpy } from './follow_cursor'
 
 const logger = get_logger()
 
@@ -41,6 +42,46 @@ export type MessageHandler = (
 	process: AnyProcess,
 	data: SocketMessage
 ) => MaybePromise<void>
+
+export function get_message_handler(follow_cursor: FollowCursorService) {
+	return async function message_handler(
+		process: AnyProcess,
+		message: SocketMessage
+	) {
+		const messsage_handler: Record<string, () => Promise<void> | void> = {
+			async current_line() {
+				logger.debug(
+					`current line reported as ${message.relative_path}:${message.line}`
+				)
+
+				if (follow_cursor.active_process === process) {
+					if (
+						![
+							"Ren'Py updates Visual Studio Code",
+							'Update both',
+						].includes(get_config('followCursorMode') as string)
+					)
+						return
+
+					await sync_editor_with_renpy({
+						path: message.path as string,
+						relative_path: message.relative_path as string,
+						line: (message.line as number) - 1,
+					})
+				}
+			},
+			async list_labels() {
+				process.labels = message.labels as string[]
+			},
+		}
+
+		if (message.type in messsage_handler) {
+			await messsage_handler[message.type]()
+		} else {
+			logger.error('unhandled socket message:', message)
+		}
+	}
+}
 
 export class WarpSocketService {
 	private context: vscode.ExtensionContext

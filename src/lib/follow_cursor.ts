@@ -82,7 +82,7 @@ export async function warp_renpy_to_cursor(
 	logger.info('warped to', warp_spec)
 }
 
-export class FollowCursor {
+export class FollowCursorService {
 	private status_bar: StatusBar
 	private text_editor_handle: vscode.Disposable | undefined
 

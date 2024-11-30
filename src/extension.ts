@@ -1,16 +1,16 @@
 import * as vscode from 'vscode'
 
 import { ProcessManager } from './lib/process/manager'
-import { FollowCursor, sync_editor_with_renpy } from './lib/follow_cursor'
+import { FollowCursorService } from './lib/follow_cursor'
 import { get_logger } from './lib/logger'
 import { get_config, get_configuration_object, set_config } from './lib/config'
 import { StatusBar } from './lib/status_bar'
-import { WarpSocketService } from './lib/socket'
-import { AnyProcess } from './lib/process'
+import { get_message_handler, WarpSocketService } from './lib/socket'
 import { register_commmands } from './lib/commands'
 import { prompt_install_rpe } from './lib/rpe'
 import { register_handlers } from './lib/handlers'
 import { DecorationService } from './lib/decoration'
+import { AnyProcess } from './lib/process'
 
 const logger = get_logger()
 
@@ -30,50 +30,14 @@ export function activate(context: vscode.ExtensionContext) {
 	}
 
 	const status_bar = new StatusBar()
-	const follow_cursor = new FollowCursor({ status_bar })
+	const follow_cursor = new FollowCursorService({ status_bar })
 	const pm = new ProcessManager()
 	const ds = new DecorationService({ context })
 	const wss = new WarpSocketService({
+		message_handler: get_message_handler(follow_cursor),
 		pm,
 		status_bar,
 		context,
-		async message_handler(process, message) {
-			const messsage_handler: Record<string, () => Promise<void> | void> =
-				{
-					async current_line() {
-						logger.debug(
-							`current line reported as ${message.relative_path}:${message.line}`
-						)
-
-						if (follow_cursor.active_process === process) {
-							if (
-								![
-									"Ren'Py updates Visual Studio Code",
-									'Update both',
-								].includes(
-									get_config('followCursorMode') as string
-								)
-							)
-								return
-
-							await sync_editor_with_renpy({
-								path: message.path as string,
-								relative_path: message.relative_path as string,
-								line: (message.line as number) - 1,
-							})
-						}
-					},
-					async list_labels() {
-						process.labels = message.labels as string[]
-					},
-				}
-
-			if (message.type in messsage_handler) {
-				await messsage_handler[message.type]()
-			} else {
-				logger.error('unhandled socket message:', message)
-			}
-		},
 	})
 
 	context.subscriptions.push(pm, follow_cursor, status_bar, ds)

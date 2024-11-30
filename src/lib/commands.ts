@@ -8,7 +8,7 @@ import { get_executable } from './sh'
 import { WarpSocketService } from './socket'
 import { ProcessManager } from './process'
 import { StatusBar } from './status_bar'
-import { FollowCursor, sync_editor_with_renpy } from './follow_cursor'
+import { FollowCursorService, sync_editor_with_renpy } from './follow_cursor'
 import { get_logger } from './logger'
 import { focus_window } from './window'
 import { homedir } from 'node:os'
@@ -19,7 +19,7 @@ export function get_commands(
 	context: vscode.ExtensionContext,
 	pm: ProcessManager,
 	status_bar: StatusBar,
-	follow_cursor: FollowCursor,
+	follow_cursor: FollowCursorService,
 	wss: WarpSocketService
 ) {
 	const commands: Record<
@@ -282,7 +282,7 @@ export function register_commmands(
 	context: vscode.ExtensionContext,
 	pm: ProcessManager,
 	status_bar: StatusBar,
-	follow_cursor: FollowCursor,
+	follow_cursor: FollowCursorService,
 	wss: WarpSocketService
 ) {
 	const commands = get_commands(context, pm, status_bar, follow_cursor, wss)
