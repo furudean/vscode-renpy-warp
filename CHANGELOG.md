@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## Unreleased
+## 1.30.0 - 2024-12-04
 
 -   Now uses `config.display_start_callbacks` in place of `game.post_init` to
     run RPE on a game render, but not build
