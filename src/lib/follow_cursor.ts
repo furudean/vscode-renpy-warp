@@ -39,7 +39,10 @@ export async function sync_editor_with_renpy({
 	const pos = new vscode.Position(line, end_of_line)
 	const selection = new vscode.Selection(pos, pos)
 
-	editor.revealRange(selection)
+	editor.revealRange(
+		selection,
+		vscode.TextEditorRevealType.InCenterIfOutsideViewport
+	)
 
 	// if the cursor is already on the correct line, don't munge it
 	if (editor.selection.start.line !== line) {

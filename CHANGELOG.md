@@ -7,6 +7,7 @@ All notable changes to this project will be documented in this file.
 -   Now uses `config.display_start_callbacks` in place of `game.post_init` to
     run RPE on a game render, but not build
 -   Relax needlessly strict command enablements
+-   Use `TextEditorRevealType.InCenterIfOutsideViewport` when following cursor
 
 ## 1.29.0 + 1.29.1 - 2024-11-27
 
