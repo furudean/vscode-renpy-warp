@@ -162,7 +162,18 @@ export function get_commands(
 			} else {
 				const process = pm.at(-1)
 
-				if (process === undefined) {
+				if (process) {
+					const last_cursor = process?.last_cursor
+
+					if (last_cursor !== undefined) {
+						await sync_editor_with_renpy({
+							line: last_cursor.line - 1,
+							path: last_cursor.path,
+							relative_path: last_cursor.relative_path,
+							force: true,
+						})
+					}
+				} else {
 					status_bar.notify('$(pinned) Follow Cursor: On')
 					follow_cursor.enabled = true
 					return

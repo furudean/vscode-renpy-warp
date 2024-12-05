@@ -8,6 +8,7 @@ All notable changes to this project will be documented in this file.
     run RPE on a game render, but not build
 -   Relax needlessly strict command enablements
 -   Use `TextEditorRevealType.InCenterIfOutsideViewport` when following cursor
+-   Sync editor when `renpyWarp.toggleFollowCursor`, if possible
 
 ## 1.29.0 + 1.29.1 - 2024-11-27
 
