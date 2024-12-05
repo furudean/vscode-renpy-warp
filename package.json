@@ -211,8 +211,7 @@
 			{
 				"command": "renpyWarp.launch",
 				"key": "alt+shift+l",
-				"mac": "cmd+shift+l",
-				"when": "workbenchState == 'folder'"
+				"mac": "cmd+shift+l"
 			},
 			{
 				"command": "renpyWarp.warpToLine",
@@ -229,20 +228,17 @@
 			{
 				"command": "renpyWarp.jumpToLabel",
 				"key": "alt+shift+j",
-				"mac": "cmd+shift+j",
-				"when": "workbenchState == 'folder'"
+				"mac": "cmd+shift+j"
 			},
 			{
 				"command": "renpyWarp.killAll",
 				"key": "alt+shift+k",
-				"mac": "cmd+shift+k",
-				"when": "workbenchState == 'folder'"
+				"mac": "cmd+shift+k"
 			},
 			{
 				"command": "renpyWarp.toggleFollowCursor",
 				"key": "alt+shift+c",
-				"mac": "cmd+shift+c",
-				"when": "editorTextFocus && resourceExtname == '.rpy'"
+				"mac": "cmd+shift+c"
 			},
 			{
 				"command": "renpyWarp.syncCursorPosition",
