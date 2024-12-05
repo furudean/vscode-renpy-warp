@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## Unreleased
+
+-   Now uses `config.display_start_callbacks` in place of `game.post_init` to
+    run RPE on a game render, but not build
+
 ## 1.29.0 + 1.29.1 - 2024-11-27
 
 -   Correct handling of RPE install/uninstall when multiple `game` folders are

@@ -140,7 +140,7 @@ def socket_service(port, version, checksum):
         WebSocketException,
         ConnectionClosedOK,
         ConnectionClosedError
-    ) 
+    )
 
     logger.debug(f"try port {port}")
 
@@ -180,7 +180,8 @@ def socket_service(port, version, checksum):
             logger.info(f"socket service on :{port} exited")
 
             if not quitting:
-                py_exec("renpy.notify(\"Disconnected from  Ren'Py Launch and Sync\")")
+                py_exec(
+                    "renpy.notify(\"Disconnected from  Ren'Py Launch and Sync\")")
 
     except ConnectionClosedOK:
         logger.info(f"socket service on :{port} was terminated by server")
@@ -194,7 +195,8 @@ def socket_service(port, version, checksum):
         logger.exception("unexpected websocket error", exc_info=e)
 
     except (ConnectionError, TimeoutError) as e:
-        logger.debug(f"{e.__class__.__name__}: could not establish connection to socket server")
+        logger.debug(
+            f"{e.__class__.__name__}: could not establish connection to socket server")
 
     return False
 
@@ -239,4 +241,4 @@ def declassify():
 
 
 renpy.game.post_init.append(declassify)
-renpy.game.post_init.append(start_renpy_warp_service)
+renpy.config.display_start_callbacks.append(start_renpy_warp_service)
