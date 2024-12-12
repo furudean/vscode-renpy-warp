@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## Unreleased
+## 1.31.0 - 2024-12-11
 
 -   Improve the launch game picker to show a more grepable list of games
 
