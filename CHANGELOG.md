@@ -5,6 +5,7 @@ All notable changes to this project will be documented in this file.
 ## Unreleased
 
 -   Current line decoration is slightly larger
+-   Launch quick pick now matches on description too
 
 ## 1.31.0 - 2024-12-11
 

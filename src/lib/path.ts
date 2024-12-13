@@ -153,6 +153,7 @@ export async function prompt_projects_in_workspaces(
 	const selection = await vscode.window.showQuickPick(options, {
 		title: 'Which project should be started?',
 		placeHolder: 'Select a project',
+		matchOnDescription: true,
 	})
 
 	return selection?.value
