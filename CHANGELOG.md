@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## Unreleased
+
+-   Current line decoration is slightly larger
+
 ## 1.31.0 - 2024-12-11
 
 -   Improve the launch game picker to show a more grepable list of games
@@ -33,7 +37,7 @@ All notable changes to this project will be documented in this file.
 -   There is now a notification rendered when a connection is established or
     disconnected with the server
 -   Fix broken RPE event loop
--   Handle unmanaged processes that have already been approved
+-   Handle unmanaged processes that have already been approveda
 -   Ack processes that don't match root
 -   Sanity checks for paths that may throw errors
 -   Fix a bug where decorations did not render properly
