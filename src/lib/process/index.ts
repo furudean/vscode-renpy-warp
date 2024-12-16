@@ -5,10 +5,15 @@ import { get_logger } from '../logger'
 import { ProcessManager } from './manager'
 import { EventEmitter } from 'node:events'
 import tree_kill from 'tree-kill'
-import { CurrentLineSocketMessage, SocketMessage } from '../socket'
+import {
+	AnySocketMessage,
+	CurrentLineSocketMessage,
+	SocketMessage,
+} from '../socket'
 import { process_finished } from '../sh'
 import TailFile from '@logdna/tail-file'
 import split2 from 'split2'
+import { is_special_label } from '../label'
 
 const logger = get_logger()
 
@@ -26,6 +31,7 @@ export class UnmanagedProcess {
 	dead: boolean = false
 	labels: string[] | undefined = undefined
 	last_cursor?: CurrentLineSocketMessage = undefined
+	current_label?: string = undefined
 
 	private emitter = new EventEmitter()
 	emit = this.emitter.emit.bind(this.emitter)
@@ -57,9 +63,17 @@ export class UnmanagedProcess {
 			}, 400)
 		}
 
-		this.on('socketMessage', (message: SocketMessage) => {
+		this.on('socketMessage', (message: AnySocketMessage) => {
+			if (message.type === 'list_labels') {
+				this.labels = message.labels as string[]
+			}
 			if (message.type === 'current_line') {
-				this.last_cursor = message as CurrentLineSocketMessage
+				this.last_cursor = message
+			}
+			if (message.type === 'current_label') {
+				if (!is_special_label(message.label)) {
+					this.current_label = message.label
+				}
 			}
 		})
 

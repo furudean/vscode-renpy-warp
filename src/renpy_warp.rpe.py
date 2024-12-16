@@ -129,6 +129,15 @@ def socket_producer(websocket):
 
     renpy.config.all_character_callbacks.append(fn)
 
+    def label_callback(name, abnormal):
+        try:
+            send({"type": "current_label", "label": name})
+        except ConnectionClosed:
+            # socket is closed, remove the callback
+            renpy.config.label_callbacks.remove(label_callback)
+
+    renpy.config.label_callbacks.append(label_callback)
+
     send({"type": "list_labels", "labels": list(renpy.exports.get_all_labels())})
 
 

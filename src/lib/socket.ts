@@ -38,6 +38,16 @@ export interface ListLabelsSocketMessage extends SocketMessage {
 	labels: string[]
 }
 
+export interface CurrentLabelSocketMessage extends SocketMessage {
+	type: 'current_label'
+	label: string
+}
+
+export type AnySocketMessage =
+	| CurrentLineSocketMessage
+	| ListLabelsSocketMessage
+	| CurrentLabelSocketMessage
+
 export type MessageHandler = (
 	process: AnyProcess,
 	data: SocketMessage
@@ -70,15 +80,10 @@ export function get_message_handler(follow_cursor: FollowCursorService) {
 					})
 				}
 			},
-			async list_labels() {
-				process.labels = message.labels as string[]
-			},
 		}
 
 		if (message.type in messsage_handler) {
 			await messsage_handler[message.type]()
-		} else {
-			logger.error('unhandled socket message:', message)
 		}
 	}
 }

@@ -12,6 +12,7 @@ import { FollowCursorService, sync_editor_with_renpy } from './follow_cursor'
 import { get_logger } from './logger'
 import { focus_window } from './window'
 import { homedir } from 'node:os'
+import { is_special_label } from './label'
 
 const logger = get_logger()
 
@@ -107,26 +108,18 @@ export function get_commands(
 				return
 			}
 
-			// https://www.renpy.org/doc/html/label.html#special-labels
-			const renpy_special_labels = [
-				// 'start',
-				'quit',
-				'after_load',
-				'splashscreen',
-				'before_main_menu',
-				// 'main_menu',
-				'after_warp',
-				'hide_windows',
-			]
-
 			const filtered_labels = process.labels
-				.filter(
-					(label) =>
-						!label.startsWith('_') &&
-						!label.endsWith('_screen') &&
-						!renpy_special_labels.includes(label)
-				)
+				.filter((label) => !is_special_label(label))
 				.sort()
+				.map(
+					(label): vscode.QuickPickItem => ({
+						label,
+						iconPath:
+							process.current_label === label
+								? new vscode.ThemeIcon('arrow-right')
+								: new vscode.ThemeIcon('blank'),
+					})
+				)
 
 			const selection = await vscode.window.showQuickPick(
 				filtered_labels,
@@ -139,7 +132,7 @@ export function get_commands(
 
 			if (selection === undefined) return
 
-			const promises = [process.jump_to_label(selection)]
+			const promises = [process.jump_to_label(selection.label)]
 
 			if (get_config('focusWindowOnWarp') && process.pid) {
 				promises.push(focus_window(process.pid))
@@ -148,7 +141,7 @@ export function get_commands(
 			await Promise.all(promises)
 
 			status_bar.notify(
-				`$(debug-line-by-line) Jumped to label '${selection}'`
+				`$(debug-line-by-line) Jumped to label '${selection.label}'`
 			)
 		},
 

@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+-   Show the current label in label picker menu
 -   Current line decoration is slightly larger
 -   Launch quick pick now matches on description too
 
