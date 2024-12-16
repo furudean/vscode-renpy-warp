@@ -2,13 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
-## 1.32.0 - 2024-12-16
+## 1.33.0 - 2024-12-16
 
 -   Show the current label in label picker menu
 -   Current line decoration is slightly larger
 -   Launch quick pick now matches on description too
 
-## 1.31.0 - 2024-12-11
+## 1.32.0 - 2024-12-11
 
 -   Improve the launch game picker to show a more grepable list of games
 
