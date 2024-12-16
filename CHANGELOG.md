@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## Unreleased
+## 1.32.0 - 2024-12-16
 
 -   Show the current label in label picker menu
 -   Current line decoration is slightly larger
