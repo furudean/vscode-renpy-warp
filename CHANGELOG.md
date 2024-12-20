@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## Unreleased
+
+-   Better align the current line decoration to text
+
 ## 1.33.0 - 2024-12-16
 
 -   Show the current label in label picker menu
