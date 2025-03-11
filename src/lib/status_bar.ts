@@ -170,7 +170,7 @@ export class StatusBar {
 			this.instance_bar.command = 'renpyWarp.killAll'
 			this.instance_bar.tooltip = "Kill all running Ren'Py instances"
 		} else {
-			this.instance_bar.text = `$(play) Launch Project`
+			this.instance_bar.text = `$(play) Launch Ren'Py Project`
 			this.instance_bar.command = 'renpyWarp.launch'
 			this.instance_bar.tooltip = "Launch new Ren'Py instance"
 		}

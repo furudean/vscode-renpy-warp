@@ -8,6 +8,7 @@ All notable changes to this project will be documented in this file.
 -   Adds a new command, `renpyWarp.launchSDK` which can be triggered to open the
     launcher for the configured Ren'Py SDK
 -   Renames "Start Ren'Py project" to "Launch Ren'Py project"
+-   Status bar text now says "Launch Ren'Py Project"
 
 ## 1.33.0 - 2024-12-16
 
