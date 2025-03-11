@@ -89,7 +89,7 @@
 		"commands": [
 			{
 				"command": "renpyWarp.launch",
-				"title": "Start Ren'Py project",
+				"title": "Launch Ren'Py project",
 				"category": "Ren'Py Launch",
 				"icon": "$(play)"
 			},
