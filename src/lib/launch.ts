@@ -2,7 +2,7 @@ import * as vscode from 'vscode'
 import path from 'upath'
 import child_process from 'child_process'
 
-import { ProcessManager, ManagedProcess, AnyProcess, logger } from './process'
+import { ProcessManager, ManagedProcess, AnyProcess } from './process'
 import { get_config } from './config'
 import { get_log_file, get_logger } from './log'
 import { get_editor_path, get_executable, find_project_root } from './sh'
@@ -14,7 +14,6 @@ import { focus_window } from './window'
 import { WarpSocketService } from './socket'
 import TailFile from '@logdna/tail-file/lib/tail-file'
 import split2 from 'split2'
-import * as vscode from 'vscode'
 
 export const logger = get_logger()
 
