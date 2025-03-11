@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## Unreleased
+## 1.34.0 - 2025-03-11
 
 -   Better align the current line decoration to text
 -   Adds a new command, `renpyWarp.launchSDK` which can be triggered to open the
