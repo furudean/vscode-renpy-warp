@@ -264,6 +264,19 @@ export async function launch_sdk({
 				const { file_handle, log_file } = await get_log_file(
 					`launcher-${new Date().toISOString()}.log`
 				)
+
+				const pp = child_process.spawn(executable[0], {
+					env: process_env,
+					detached: true,
+					stdio: ['ignore', file_handle.fd, file_handle.fd],
+				})
+				pp.on('error', (e) => {
+					logger.error('process error:', e)
+				})
+
+				// close the file handle for parent process, since the child has a copy
+				file_handle.close()
+
 				const output_channel = vscode.window.createOutputChannel(
 					`Ren'Py Launch and Sync - Launcher Output (${pp.pid})`
 				)
@@ -279,18 +292,6 @@ export async function launch_sdk({
 				tail.pipe(split2()).on('data', (line: string) => {
 					output_channel.appendLine(line)
 				})
-
-				const pp = child_process.spawn(executable[0], {
-					env: process_env,
-					detached: true,
-					stdio: ['ignore', file_handle.fd, file_handle.fd],
-				})
-				pp.on('error', (e) => {
-					logger.error('process error:', e)
-				})
-
-				// close the file handle for parent process, since the child has a copy
-				file_handle.close()
 
 				pp.on('close', async (code) => {
 					logger.info(
