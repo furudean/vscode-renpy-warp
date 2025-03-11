@@ -5,6 +5,8 @@ All notable changes to this project will be documented in this file.
 ## Unreleased
 
 -   Better align the current line decoration to text
+-   Adds a new command, `renpyWarp.launchSDK` which can be triggered to open the
+    launcher for the configured Ren'Py SDK
 
 ## 1.33.0 - 2024-12-16
 

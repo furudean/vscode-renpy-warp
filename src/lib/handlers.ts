@@ -1,6 +1,6 @@
 import * as vscode from 'vscode'
 import { get_config } from './config'
-import { get_logger } from './logger'
+import { get_logger } from './log'
 import { ProcessManager } from './process'
 import { WarpSocketService } from './socket'
 import { uninstall_rpes } from './rpe'

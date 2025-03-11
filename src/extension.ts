@@ -2,7 +2,7 @@ import * as vscode from 'vscode'
 
 import { ProcessManager } from './lib/process/manager'
 import { FollowCursorService } from './lib/follow_cursor'
-import { get_logger } from './lib/logger'
+import { get_logger } from './lib/log'
 import { get_config, get_configuration_object, set_config } from './lib/config'
 import { StatusBar } from './lib/status_bar'
 import { get_message_handler, WarpSocketService } from './lib/socket'

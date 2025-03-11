@@ -4,7 +4,7 @@ import path from 'upath'
 import { get_config } from './config'
 import { CurrentLineSocketMessage, SocketMessage } from './socket'
 import { realpath } from 'node:fs/promises'
-import { get_logger } from './logger'
+import { get_logger } from './log'
 
 const logger = get_logger()
 

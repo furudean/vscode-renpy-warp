@@ -1,7 +1,7 @@
 import * as vscode from 'vscode'
 import { get_config } from './config'
 import { AnyProcess } from './process'
-import { get_logger } from './logger'
+import { get_logger } from './log'
 import path from 'upath'
 import { find_project_root } from './sh'
 import { StatusBar } from './status_bar'

@@ -1,6 +1,6 @@
 import * as vscode from 'vscode'
 import { get_config, set_config } from './config'
-import { launch_renpy } from './launch'
+import { launch_renpy, launch_sdk } from './launch'
 import { prompt_configure_extensions } from './onboard'
 import { get_sdk_path, resolve_path, path_is_sdk } from './path'
 import { prompt_install_rpe, uninstall_rpes } from './rpe'
@@ -9,7 +9,7 @@ import { WarpSocketService } from './socket'
 import { ProcessManager } from './process'
 import { StatusBar } from './status_bar'
 import { FollowCursorService, sync_editor_with_renpy } from './follow_cursor'
-import { get_logger } from './logger'
+import { get_logger } from './log'
 import { focus_window } from './window'
 import { homedir } from 'node:os'
 import { is_special_label } from './label'
@@ -276,6 +276,16 @@ export function get_commands(
 		'renpyWarp.resetSupressedMessages': () => {
 			context.globalState.update('hideExternalProcessConnected', false)
 			context.globalState.update('hideRpeInstallUpdateMessage', false)
+		},
+
+		'renpyWarp.launchSDK': async () => {
+			const sdk_path = await get_sdk_path()
+			if (!sdk_path) return
+
+			const executable = await get_executable(sdk_path, true)
+			if (!executable) return
+
+			await launch_sdk({ sdk_path, executable })
 		},
 	}
 

@@ -1,6 +1,6 @@
 import * as vscode from 'vscode'
 
-import { get_logger } from './logger'
+import { get_logger } from './log'
 import WebSocket, { WebSocketServer } from 'ws'
 import {
 	AnyProcess,

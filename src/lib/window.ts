@@ -1,6 +1,6 @@
 import { windowManager } from 'node-window-manager'
 import pidtree from 'pidtree'
-import { get_logger } from './logger'
+import { get_logger } from './log'
 
 const logger = get_logger()
 

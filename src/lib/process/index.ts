@@ -1,7 +1,7 @@
 import * as vscode from 'vscode'
 import child_process, { ChildProcess } from 'node:child_process'
 import { WebSocket } from 'ws'
-import { get_logger } from '../logger'
+import { get_logger } from '../log'
 import { ProcessManager } from './manager'
 import { EventEmitter } from 'node:events'
 import tree_kill from 'tree-kill'
@@ -15,7 +15,7 @@ import TailFile from '@logdna/tail-file'
 import split2 from 'split2'
 import { is_special_label } from '../label'
 
-const logger = get_logger()
+export const logger = get_logger()
 
 interface UnmanagedProcessOptions {
 	pid: number

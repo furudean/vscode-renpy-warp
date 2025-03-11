@@ -2,19 +2,21 @@ import * as vscode from 'vscode'
 import path from 'upath'
 import child_process from 'child_process'
 
-import { ProcessManager, ManagedProcess, AnyProcess } from './process'
+import { ProcessManager, ManagedProcess, AnyProcess, logger } from './process'
 import { get_config } from './config'
-import { get_logger } from './logger'
+import { get_log_file, get_logger } from './log'
 import { get_editor_path, get_executable, find_project_root } from './sh'
 import { prompt_install_rpe } from './rpe'
 import { StatusBar } from './status_bar'
-import { get_sdk_path, paths, prompt_projects_in_workspaces } from './path'
+import { get_sdk_path, prompt_projects_in_workspaces } from './path'
 import { prompt_configure_extensions } from './onboard'
 import { focus_window } from './window'
 import { WarpSocketService } from './socket'
-import { mkdir, open } from 'fs/promises'
+import TailFile from '@logdna/tail-file/lib/tail-file'
+import split2 from 'split2'
+import * as vscode from 'vscode'
 
-const logger = get_logger()
+export const logger = get_logger()
 
 interface LaunchRenpyOptions {
 	intent?: string
@@ -169,13 +171,9 @@ export async function launch_renpy({
 						cmds.map((k) => `"${k}"`).join(' ')
 					)
 
-					const log_file = path.join(
-						paths.log,
+					const { log_file, file_handle } = await get_log_file(
 						`process-${nonce}.log`
 					)
-					await mkdir(paths.log, { recursive: true })
-					const file_handle = await open(log_file, 'w+')
-					logger.info('logging to', log_file)
 
 					const process = child_process.spawn(
 						cmds[0],
@@ -238,5 +236,76 @@ export async function launch_renpy({
 			status_bar.delete_process(nonce)
 			throw error
 		}
+	}
+}
+
+export async function launch_sdk({
+	sdk_path,
+	executable,
+}: {
+	sdk_path: string
+	executable: string[]
+}): Promise<void> {
+	{
+		return await vscode.window.withProgress(
+			{
+				title: "Opening Ren'Py launcher",
+				location: vscode.ProgressLocation.Notification,
+				cancellable: false,
+			},
+			async () => {
+				const process_env: Record<string, string | undefined> = {
+					...process.env,
+					...(get_config('processEnvironment') as object),
+					// see: https://www.renpy.org/doc/html/editor.html
+					RENPY_EDIT_PY: await get_editor_path(sdk_path),
+				}
+
+				const { file_handle, log_file } = await get_log_file(
+					`launcher-${new Date().toISOString()}.log`
+				)
+				const output_channel = vscode.window.createOutputChannel(
+					`Ren'Py Launch and Sync - Launcher Output (${pp.pid})`
+				)
+
+				output_channel.appendLine(`process ${pp.pid} started`)
+				logger.info(`logging process ${pp.pid} to ${log_file}`)
+
+				const tail = new TailFile(log_file, {
+					encoding: 'utf8',
+				})
+				tail.start()
+
+				tail.pipe(split2()).on('data', (line: string) => {
+					output_channel.appendLine(line)
+				})
+
+				const pp = child_process.spawn(executable[0], {
+					env: process_env,
+					detached: true,
+					stdio: ['ignore', file_handle.fd, file_handle.fd],
+				})
+				pp.on('error', (e) => {
+					logger.error('process error:', e)
+				})
+
+				// close the file handle for parent process, since the child has a copy
+				file_handle.close()
+
+				pp.on('close', async (code) => {
+					logger.info(
+						`launcher process ${pp.pid} exited with code ${code}`
+					)
+					await tail.quit()
+					output_channel?.appendLine(
+						`process exited with code ${code}`
+					)
+				})
+
+				if (!pp.pid) {
+					throw new Error('failed to start process')
+				}
+			}
+		)
 	}
 }

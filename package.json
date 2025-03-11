@@ -166,6 +166,11 @@
 				"command": "renpyWarp.resetSupressedMessages",
 				"title": "Reset supressed notifications",
 				"category": "Ren'Py Launch"
+			},
+			{
+				"command": "renpyWarp.launchSDK",
+				"title": "Open the Ren'Py launcher",
+				"category": "Ren'Py Launch"
 			}
 		],
 		"menus": {
