@@ -6,11 +6,11 @@ import { set_config, set_config_exclusive } from './config'
 /**
  * Prompts the user to configure RPE extensions preferences and sets it.
  *
- * Throws an error if the user cancels the prompt.
+ * Returns `false` if the user cancels the prompt.
  */
 export async function prompt_configure_extensions(
 	executable: string[]
-): Promise<void> {
+): Promise<boolean | void> {
 	const selection_map: Record<string, () => Promise<void>> = {
 		'Always use extensions (recommended)': async () => {
 			await set_config_exclusive('renpyExtensionsEnabled', 'Enabled')
@@ -37,19 +37,16 @@ export async function prompt_configure_extensions(
 	const renpy_version = get_version(executable)
 
 	if (semver.satisfies(renpy_version.semver, '>=8.2.0')) {
-		const supports_rpe_py = semver.gte(renpy_version.semver, '8.3.0')
-		const desination = supports_rpe_py ? 'SDK' : 'project'
-
 		const selection = await vscode.window.showQuickPick(
 			Object.keys(selection_map),
 			{
 				ignoreFocusOut: true,
-				title: `Ren'Py and VSCode can be synchronized by installing an extension in your Ren'Py ${desination}`,
+				title: "Ren'Py and VSCode can be synchronized by installing an extension in your Ren'Py project",
 				placeHolder: 'How should extensions be installed?',
 			}
 		)
 
-		if (!selection) return undefined
+		if (!selection) return false
 
 		await selection_map[selection]()
 	} else {

@@ -119,7 +119,11 @@ export async function launch_renpy({
 				return undefined
 			}
 			if (extensions_enabled === 'Not set') {
-				await prompt_configure_extensions(executable)
+				const success = await prompt_configure_extensions(executable)
+				if (success === false) {
+					status_bar.delete_process(nonce)
+					return undefined
+				}
 				extensions_enabled = get_config('renpyExtensionsEnabled')
 			}
 

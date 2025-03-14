@@ -5,6 +5,9 @@ All notable changes to this project will be documented in this file.
 ## Unreleased
 
 -   Some older versions of Ren'Py, ~7.4 are now supported
+-   Fix a bug where the extension would be stuck in a 'starting' state if you
+    cancel out of the extensions preference prompt
+-   Removes incorrect 'install in SDK' prompt
 
 ## 1.34.0 - 2025-03-11
 
