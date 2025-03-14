@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## Unreleased
+
+-   Some older versions of Ren'Py, ~7.4 are now supported
+
 ## 1.34.0 - 2025-03-11
 
 -   Better align the current line decoration to text

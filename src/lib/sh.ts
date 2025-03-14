@@ -164,6 +164,7 @@ export async function get_executable(
 		const candidate_paths = [
 			`lib/py3-windows-${machine_type}/python.exe`,
 			`lib/py2-windows-${machine_type}/python.exe`,
+			`lib/windows-${machine_type}/python.exe`,
 		]
 
 		const executable = await p_find(candidate_paths, async (candidate) =>
