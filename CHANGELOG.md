@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file.
 
 -   Adds two new commands, `renpyWarp.lint` and `renpyWarp.rmpersistent`, which
     allow you to run the Ren'Py linter and delete persistent data respectively
+    ([#87](https://github.com/furudean/vscode-renpy-warp/issues/87))
 -   Some older versions of Ren'Py, ~7.4 are now supported
 -   Fix a bug where the extension would be stuck in a 'starting' state if you
     cancel out of the extensions preference prompt
