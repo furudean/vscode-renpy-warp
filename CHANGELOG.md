@@ -8,6 +8,7 @@ All notable changes to this project will be documented in this file.
 -   Fix a bug where the extension would be stuck in a 'starting' state if you
     cancel out of the extensions preference prompt
 -   Removes incorrect 'install in SDK' prompt
+-   Bump dependencies
 
 ## 1.34.0 - 2025-03-11
 
