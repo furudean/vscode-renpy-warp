@@ -1,5 +1,5 @@
 import * as vscode from 'vscode'
-import { get_config, set_config } from './config'
+import { get_config, set_config, show_file } from './config'
 import { launch_renpy, launch_sdk } from './launch'
 import { prompt_configure_extensions } from './onboard'
 import { get_sdk_path, resolve_path, path_is_sdk } from './path'
@@ -13,6 +13,7 @@ import { get_logger } from './log'
 import { focus_window } from './window'
 import { homedir } from 'node:os'
 import { is_special_label } from './label'
+import path from 'upath'
 
 const logger = get_logger()
 
@@ -41,7 +42,7 @@ export function get_commands(
 
 			try {
 				await launch_renpy({
-					intent: 'at line',
+					intent: "Starting Ren'Py at line...",
 					file: editor?.document.uri.fsPath,
 					line: editor?.selection.active.line,
 					context,
@@ -62,7 +63,7 @@ export function get_commands(
 
 			try {
 				await launch_renpy({
-					intent: 'at file',
+					intent: "Starting Ren'Py at file...",
 					file: fs_path,
 					line: 0,
 					context,
@@ -286,6 +287,75 @@ export function get_commands(
 			if (!executable) return
 
 			await launch_sdk({ sdk_path, executable })
+		},
+
+		'renpyWarp.lint': async () => {
+			try {
+				const p = await launch_renpy({
+					intent: 'Linting project...',
+					command: 'lint',
+					context,
+					pm,
+					status_bar,
+					wss,
+				})
+
+				if (p?.project_root) {
+					// https://github.com/renpy/renpy/blob/8646cd3f39dd74a17d52d1b882697b24574078d9/launcher/game/distribute.rpy#L876-L878
+					const project_name = path.basename(p.project_root)
+					await show_file(
+						path.join(
+							await get_sdk_path(),
+							'tmp',
+							project_name,
+							'lint.txt'
+						)
+					)
+				}
+			} catch (error: unknown) {
+				logger.error(error as Error)
+				vscode.window
+					.showErrorMessage(
+						'Failed to lint project. Check the output for more details.',
+						'OK',
+						'Open Output'
+					)
+					.then((selection) => {
+						if (selection === 'Open Output') {
+							logger.show()
+						}
+					})
+			}
+		},
+
+		'renpyWarp.rmpersistent': async () => {
+			try {
+				await launch_renpy({
+					intent: 'Removing persistent data...',
+					command: 'rmpersistent',
+					context,
+					pm,
+					status_bar,
+					wss,
+				})
+				vscode.window.showInformationMessage(
+					'Persistent data was deleted',
+					'OK'
+				)
+			} catch (error: unknown) {
+				logger.error(error as Error)
+				vscode.window
+					.showErrorMessage(
+						'Failed to delete persistent data. Check the output for more details.',
+						'OK',
+						'Open Output'
+					)
+					.then((selection) => {
+						if (selection === 'Open Output') {
+							logger.show()
+						}
+					})
+			}
 		},
 	}
 

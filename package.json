@@ -170,6 +170,16 @@
 				"command": "renpyWarp.launchSDK",
 				"title": "Open the Ren'Py launcher",
 				"category": "Ren'Py Launch"
+			},
+			{
+				"command": "renpyWarp.lint",
+				"title": "Lint project",
+				"category": "Ren'Py Launch"
+			},
+			{
+				"command": "renpyWarp.rmpersistent",
+				"title": "Delete persistent data",
+				"category": "Ren'Py Launch"
 			}
 		],
 		"menus": {

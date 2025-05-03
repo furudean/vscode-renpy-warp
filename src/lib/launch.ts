@@ -31,6 +31,8 @@ interface LaunchRenpyOptions {
 	status_bar: StatusBar
 	wss: WarpSocketService
 	extra_environment?: Record<string, string | undefined>
+	/** optional command to pass to process */
+	command?: string
 }
 
 /**
@@ -52,6 +54,7 @@ export async function launch_renpy({
 	status_bar,
 	wss,
 	extra_environment,
+	command,
 }: LaunchRenpyOptions): Promise<ManagedProcess | undefined> {
 	logger.info('launch_renpy:', { file, line })
 
@@ -59,6 +62,7 @@ export async function launch_renpy({
 	let extensions_enabled = get_config('renpyExtensionsEnabled')
 
 	if (
+		!command &&
 		file &&
 		pm.length &&
 		line !== undefined &&
@@ -142,6 +146,10 @@ export async function launch_renpy({
 
 			let cmds = [...executable, project_root]
 
+			if (command) {
+				cmds.push(command)
+			}
+
 			if (file && line !== undefined) {
 				const filename_relative = path.relative(
 					path.join(project_root, 'game/'),
@@ -161,7 +169,7 @@ export async function launch_renpy({
 
 			return await vscode.window.withProgress(
 				{
-					title: "Starting Ren'Py" + (intent ? ' ' + intent : ''),
+					title: intent ?? "Starting Ren'Py...",
 					location: vscode.ProgressLocation.Notification,
 					cancellable: true,
 				},
@@ -213,6 +221,9 @@ export async function launch_renpy({
 					cancel.onCancellationRequested(() => {
 						rpp.kill()
 					})
+
+					if (command) return rpp // no need to wait for socket
+
 					pm.add(nonce, rpp)
 
 					if (extensions_enabled === 'Enabled') {
