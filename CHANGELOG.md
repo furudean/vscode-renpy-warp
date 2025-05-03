@@ -167,7 +167,7 @@ Fixes a failing test which prevented a release. No meaningful changes.
 ## 1.15.0 - 2024-08-17
 
 -   Add option to hide some notifications, which can be reset with the command
-    `renpyWarp.resetSupressedMessages`
+    `renpyWarp.resetSuppressedMessages`
 -   Consistency improvements to `renpyWarp.followCursorOnLaunch`
 -   Allow processes launched with the extension to stay open when Visual Studio
     Code is closed

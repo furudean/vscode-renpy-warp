@@ -273,7 +273,7 @@ export function get_commands(
 			wss.close()
 		},
 
-		'renpyWarp.resetSupressedMessages': () => {
+		'renpyWarp.resetSuppressedMessages': () => {
 			context.globalState.update('hideExternalProcessConnected', false)
 			context.globalState.update('hideRpeInstallUpdateMessage', false)
 		},
@@ -292,7 +292,7 @@ export function get_commands(
 	return commands
 }
 
-export function register_commmands(
+export function register_commands(
 	context: vscode.ExtensionContext,
 	pm: ProcessManager,
 	status_bar: StatusBar,

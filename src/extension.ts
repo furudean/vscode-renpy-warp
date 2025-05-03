@@ -6,7 +6,7 @@ import { get_logger } from './lib/log'
 import { get_config, get_configuration_object, set_config } from './lib/config'
 import { StatusBar } from './lib/status_bar'
 import { get_message_handler, WarpSocketService } from './lib/socket'
-import { register_commmands } from './lib/commands'
+import { register_commands } from './lib/commands'
 import { prompt_install_rpe } from './lib/rpe'
 import { register_handlers } from './lib/handlers'
 import { DecorationService } from './lib/decoration'
@@ -95,7 +95,7 @@ export function activate(context: vscode.ExtensionContext) {
 		pm_init = true
 	})
 
-	register_commmands(context, pm, status_bar, follow_cursor, wss)
+	register_commands(context, pm, status_bar, follow_cursor, wss)
 	register_handlers(context, pm, wss)
 
 	if (

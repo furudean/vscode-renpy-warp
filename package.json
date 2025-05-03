@@ -162,7 +162,7 @@
 				"enablement": "renpyWarp.socketServerRunning"
 			},
 			{
-				"command": "renpyWarp.resetSupressedMessages",
+				"command": "renpyWarp.resetSuppressedMessages",
 				"title": "Reset supressed notifications",
 				"category": "Ren'Py Launch"
 			},

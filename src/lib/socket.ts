@@ -58,7 +58,7 @@ export function get_message_handler(follow_cursor: FollowCursorService) {
 		process: AnyProcess,
 		message: SocketMessage
 	) {
-		const messsage_handler: Record<string, () => Promise<void> | void> = {
+		const message_handler: Record<string, () => Promise<void> | void> = {
 			async current_line() {
 				logger.debug(
 					`current line reported as ${message.relative_path}:${message.line}`
@@ -82,8 +82,8 @@ export function get_message_handler(follow_cursor: FollowCursorService) {
 			},
 		}
 
-		if (message.type in messsage_handler) {
-			await messsage_handler[message.type]()
+		if (message.type in message_handler) {
+			await message_handler[message.type]()
 		}
 	}
 }

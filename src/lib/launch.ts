@@ -198,7 +198,7 @@ export async function launch_renpy({
 						throw new Error('failed to start process')
 					}
 
-					logger.info('sucessfully spawned process', process.pid)
+					logger.info('successfully spawned process', process.pid)
 
 					const rpp = new ManagedProcess({
 						process,
