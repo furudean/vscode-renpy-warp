@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## Unreleased
+## 1.35.0 - 2025-05-03
 
 -   Adds two new commands, `renpyWarp.lint` and `renpyWarp.rmpersistent`, which
     allow you to run the Ren'Py linter and delete persistent data respectively
