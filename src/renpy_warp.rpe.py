@@ -2,6 +2,9 @@
 # extension. It can be safely be deleted if you do not want to use the features
 # provided by the extension.
 #
+# This script provides a mechanism for your Ren'Py game to connect to VS Code
+# via a websocket server. It is automatically excluded from builds of your game.
+#
 # This file should not be checked into source control.
 #
 
