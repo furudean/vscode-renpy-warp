@@ -5,11 +5,15 @@ import { get_executable, get_version } from './sh'
 import { version as pkg_version } from '../../package.json'
 import semver from 'semver'
 import { get_logger } from './log'
-import fs from 'node:fs/promises'
+import fs, { rm } from 'node:fs/promises'
 import AdmZip from 'adm-zip'
 import { glob } from 'glob'
 import { createHash } from 'node:crypto'
-import { find_projects_in_workspaces, get_sdk_path } from './path'
+import {
+	find_projects_in_workspaces,
+	get_sdk_path,
+	mkdir_exist_ok,
+} from './path'
 import { show_file } from './config'
 import { prompt_not_rpy8_invalid_configuration } from './onboard'
 import memoize from 'memoize'
@@ -45,7 +49,7 @@ export async function list_rpes(
 ): Promise<string[]> {
 	const pattern = new vscode.RelativePattern(
 		project_root,
-		'**/game/renpy_warp_*.{rpe,rpe.py}'
+		'**/game/**/renpy_warp_*.{rpe,rpe.py}'
 	)
 	return await Promise.all([
 		vscode.workspace
@@ -87,7 +91,22 @@ export async function install_rpe({
 	let file_path: string
 
 	if (supports_rpe_py) {
-		file_path = path.join(project_root, 'game/', `${file_base}.rpe.py`)
+		file_path = path.join(project_root, 'game/')
+
+		if (semver.gte(version.semver, '8.4.0')) {
+			file_path = path.join(file_path, 'libs/')
+			await mkdir_exist_ok(file_path)
+		}
+
+		file_path = path.join(file_path, `${file_base}.rpe.py`)
+
+		if (await is_path_ignored(file_path, context)) {
+			logger.info(
+				`skipping RPE installation in ignored directory: ${project_root}`
+			)
+			return undefined
+		}
+
 		await fs.writeFile(file_path, rpe_source)
 	} else {
 		file_path = path.join(project_root, 'game/', `${file_base}.rpe`)
@@ -134,16 +153,21 @@ export async function has_current_rpe({
 	if (semver.satisfies(renpy_version.semver, '<8.2.0')) return false
 
 	const supports_rpe_py = semver.gte(renpy_version.semver, '8.3.0')
+	const supports_libs = semver.gte(renpy_version.semver, '8.4.0')
 	logger.debug('supports rpe.py:', supports_rpe_py)
+	logger.debug('supports libs:', supports_libs)
 
 	for (const file of files) {
 		if (!file.includes(project_root)) continue
 		const basename = path.basename(file)
+		const dirname = path.dirname(file)
 		logger.debug('basename:', basename)
 
 		// find mismatched feature support
 		if (!supports_rpe_py && basename.endsWith('.rpe.py')) return false
 		if (supports_rpe_py && basename.endsWith('.rpe')) return false
+		if (!supports_libs && dirname.endsWith('libs')) return false
+		if (supports_libs && !dirname.endsWith('libs')) return false
 
 		const match = basename.match(RPE_FILE_PATTERN)?.groups
 		logger.debug('match:', match)
@@ -159,10 +183,10 @@ export async function has_current_rpe({
 
 export async function prompt_install_rpe(
 	context: vscode.ExtensionContext,
-	message = "Ren'Py extensions were {installed/updated} at {installed_path}",
+	message = "Ren'Py extensions were {installed/updated} in {installed_path}",
 	force = false
 ): Promise<string[] | undefined> {
-	const projects = await find_projects_in_workspaces()
+	const projects = await find_projects_in_workspaces(context)
 
 	if (!projects) {
 		vscode.window.showErrorMessage(
@@ -212,6 +236,10 @@ export async function prompt_install_rpe(
 
 		const any_rpe = (await list_rpes(sdk_path, project_root)).length === 0
 
+		const relative_root =
+			vscode.workspace.getWorkspaceFolder(vscode.Uri.file(installed_path))
+				?.uri.fsPath ?? project_root
+
 		const fmt_message = message
 			.replaceAll(
 				'{installed/updated}',
@@ -219,7 +247,7 @@ export async function prompt_install_rpe(
 			)
 			.replaceAll(
 				'{installed_path}',
-				path.relative(project_root, installed_path)
+				path.dirname(path.relative(relative_root, installed_path))
 			)
 
 		if (!context.globalState.get('hideRpeInstallUpdateMessage') || force) {
@@ -231,6 +259,8 @@ export async function prompt_install_rpe(
 				// .rpe.py files.
 				options.push('Reveal')
 			}
+
+			options.push("Don't install here")
 
 			if (!force) {
 				options.push("Don't show again")
@@ -248,9 +278,91 @@ export async function prompt_install_rpe(
 							true
 						)
 					}
+					if (selection === "Don't install here") {
+						const parent_dir = path.dirname(installed_path)
+
+						if (path.basename(parent_dir) === 'libs') {
+							// if we are in libs, we need to ignore the parent directory
+							// so that it doesn't get picked up by the next install
+							await ignore_directory(
+								// project/game/libs
+								path.resolve(installed_path, '../../../'),
+								context
+							)
+						} else {
+							// otherwise we ignore the current directory
+							await ignore_directory(
+								// project/game
+								path.resolve(installed_path, '../../'),
+								context
+							)
+						}
+
+						try {
+							await rm(installed_path)
+							// remove parent directory if empty
+							const files = await fs.readdir(parent_dir)
+							if (files.length === 0) {
+								await fs.rmdir(parent_dir)
+							}
+						} catch (error) {
+							vscode.window.showErrorMessage(
+								`Failed to remove ${installed_path}: ${error}`
+							)
+						}
+					}
 				})
 		}
 	}
 
 	return installed_paths.length ? installed_paths : undefined
+}
+
+export async function get_ignored_directories(
+	context: vscode.ExtensionContext
+): Promise<string[]> {
+	const ignored = context.workspaceState.get(
+		'renpyWarp.ignoredDirectories',
+		[] as string[]
+	)
+	logger.debug('ignored directories:', ignored)
+	return ignored
+}
+
+export async function is_path_ignored(
+	path: string,
+	context: vscode.ExtensionContext
+): Promise<boolean> {
+	const ignored_dirs = await get_ignored_directories(context)
+	return ignored_dirs.some((ignored_dir) => path.startsWith(ignored_dir))
+}
+
+export async function ignore_directory(
+	directory: string,
+	context: vscode.ExtensionContext
+): Promise<void> {
+	const ignored = await get_ignored_directories(context)
+	if (Array.isArray(ignored)) {
+		ignored.push(directory)
+		await context.workspaceState.update(
+			'renpyWarp.ignoredDirectories',
+			ignored
+		)
+	}
+}
+
+export async function allow_directory(
+	directory: string,
+	context: vscode.ExtensionContext
+): Promise<void> {
+	const ignored = await get_ignored_directories(context)
+
+	const index = ignored.indexOf(directory)
+	if (index !== -1) {
+		ignored.splice(index, 1)
+		await context.workspaceState.update(
+			'renpyWarp.ignoredDirectories',
+			ignored
+		)
+	}
 }

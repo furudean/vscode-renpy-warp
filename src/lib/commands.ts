@@ -357,6 +357,17 @@ export function get_commands(
 					})
 			}
 		},
+
+		'renpyWarp.resetIgnoredDirectories': async () => {
+			await context.workspaceState.update(
+				'renpyWarp.ignoredDirectories',
+				[]
+			)
+			vscode.window.showInformationMessage(
+				'Ignored directories have been reset',
+				'OK'
+			)
+		},
 	}
 
 	return commands

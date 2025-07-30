@@ -7,6 +7,7 @@ import { get_config } from './config'
 import env_paths from 'env-paths'
 import { name as pkg_name } from '../../package.json'
 import sortPaths from 'sort-paths'
+import { get_ignored_directories, is_path_ignored } from './rpe'
 
 const logger = get_logger()
 
@@ -26,6 +27,21 @@ export async function path_exists(path: string): Promise<boolean> {
 		return true
 	} catch {
 		return false
+	}
+}
+
+export async function mkdir_exist_ok(file_path: string): Promise<void> {
+	try {
+		await fs.mkdir(file_path)
+	} catch (e) {
+		if (
+			typeof e === 'object' &&
+			e !== null &&
+			'code' in e &&
+			e.code !== 'EEXIST'
+		) {
+			throw e
+		}
 	}
 }
 
@@ -59,14 +75,20 @@ export async function get_sdk_path(): Promise<string | undefined> {
 	return resolve_path(sdk_path_setting)
 }
 
-export async function find_projects_in_workspaces(): Promise<string[]>
 export async function find_projects_in_workspaces(
+	context: vscode.ExtensionContext
+): Promise<string[]>
+export async function find_projects_in_workspaces(
+	context: vscode.ExtensionContext,
 	groups: boolean
 ): Promise<Map<string, string[]>>
 export async function find_projects_in_workspaces(
+	context: vscode.ExtensionContext,
 	groups = false
 ): Promise<string[] | Map<string, string[]>> {
 	const workspace_games = new Map<string, string[]>()
+
+	const ignored_dirs = await get_ignored_directories(context)
 
 	for (const workspace of vscode.workspace.workspaceFolders ?? []) {
 		const pattern = new vscode.RelativePattern(
@@ -88,7 +110,12 @@ export async function find_projects_in_workspaces(
 						workspace.uri.fsPath,
 						...parts.slice(0, i)
 					)
-					games.add(full_path)
+
+					if (ignored_dirs.includes(full_path)) {
+						logger.debug('skipping ignored path:', full_path)
+					} else {
+						games.add(full_path)
+					}
 				}
 			}
 		}
@@ -113,9 +140,10 @@ interface WorkspaceQuickPick extends vscode.QuickPickItem {
 }
 
 export async function prompt_projects_in_workspaces(
+	context: vscode.ExtensionContext,
 	silent = false
 ): Promise<string | undefined> {
-	const workspaces = await find_projects_in_workspaces(true)
+	const workspaces = await find_projects_in_workspaces(context, true)
 
 	if (workspaces.size === 0) {
 		if (!silent)

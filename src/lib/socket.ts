@@ -309,7 +309,7 @@ export class WarpSocketService {
 
 		const [rpe_checksum, project_roots] = await Promise.all([
 			get_rpe_checksum(this.context.extensionPath),
-			find_projects_in_workspaces(),
+			find_projects_in_workspaces(this.context),
 		])
 
 		const matches_any_root = project_roots.some(

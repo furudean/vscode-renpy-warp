@@ -103,7 +103,7 @@ export async function launch_renpy({
 
 		const project_root = file
 			? find_project_root(file)
-			: await prompt_projects_in_workspaces()
+			: await prompt_projects_in_workspaces(context)
 
 		if (!project_root) {
 			status_bar.delete_process(nonce)

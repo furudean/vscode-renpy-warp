@@ -1,11 +1,14 @@
-# This file is created by the Ren'Py Launch and Sync Visual Studio Code
-# extension. It can be safely be deleted if you do not want to use the features
-# provided by the extension.
+# This file managed by the Ren'Py Launch and Sync Visual Studio Code extension.
 #
 # This script provides a mechanism for your Ren'Py game to connect to VS Code
 # via a websocket server. It is automatically excluded from builds of your game.
+# You can delete this file if you do not want to use the features provided by
+# the extension.
 #
-# This file should not be checked into source control.
+# This file should not be checked into source control. You can add it to your
+# `.gitignore` file by adding the following line:
+#
+# renpy_warp_*.rpe*
 #
 
 import renpy  # type: ignore
@@ -246,10 +249,15 @@ def start_renpy_warp_service():
 
 
 def declassify():
-    """removes `renpy_warp_*.rpe` from build"""
+    """
+    removes `renpy_warp_*.rpe{.py}` from build
+
+    on renpy 8.3 and later, this is automatically done by the renpy build system
+    """
 
     classify = renpy.python.store_dicts["store.build"]["classify"]
     classify("game/renpy_warp_*.rpe", None)
+    classify("game/renpy_warp_*.rpe.py", None)
 
 
 renpy.game.post_init.append(declassify)
