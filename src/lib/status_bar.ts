@@ -1,8 +1,8 @@
 import * as vscode from 'vscode'
 import { get_config } from './config'
 import { get_logger } from './log'
-import tildify from 'tildify'
 import { get_executable, get_version } from './sh'
+import tildify from 'tildify'
 
 const logger = get_logger()
 
@@ -36,7 +36,7 @@ export class StatusBar {
 
 		this.sdk_bar = vscode.window.createStatusBarItem(
 			vscode.StatusBarAlignment.Right,
-			9999
+			0
 		)
 		this.notification_bar = vscode.window.createStatusBarItem(
 			vscode.StatusBarAlignment.Right,
@@ -182,12 +182,16 @@ export class StatusBar {
 
 		const executable = await get_executable(sdk_path)
 
-		this.sdk_bar.text = executable
-			? `Ren'Py ${get_version(executable)?.semver}`
-			: "Ren'Py"
-		this.sdk_bar.command = 'renpyWarp.setSdkPath'
-		this.sdk_bar.tooltip = `Using Ren'Py SDK at ${sdk_path}`
-		this.sdk_bar.show()
+		if (executable) {
+			const version = get_version(executable)?.semver
+
+			this.sdk_bar.text = `$(warp-renpy) ${tildify(
+				sdk_path
+			)} (${version})`
+			this.sdk_bar.command = 'renpyWarp.setSdkPath'
+			this.sdk_bar.tooltip = `Using Ren'Py SDK at ${sdk_path}`
+			this.sdk_bar.show()
+		}
 	}
 
 	dispose() {

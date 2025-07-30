@@ -85,6 +85,15 @@
 		"ws": "^8.18.0"
 	},
 	"contributes": {
+		"icons": {
+			"warp-renpy": {
+				"description": "Ren'Py Icon",
+				"default": {
+					"fontPath": "src/warp.woff",
+					"fontCharacter": "\\ea01"
+				}
+			}
+		},
 		"commands": [
 			{
 				"command": "renpyWarp.launch",

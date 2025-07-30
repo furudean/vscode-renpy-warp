@@ -23,7 +23,7 @@ export async function find_user_sdks(): Promise<Record<string, string[]>> {
 
 	for (const dir of sdks_dirs) {
 		const found = (
-			await glob(`${untildify(dir)}/**/renpy.py`, { absolute: true })
+			await glob(`${untildify(dir)}/*/renpy.py`, { absolute: true })
 		).map(path.dirname)
 
 		groups[dir] = found
@@ -47,6 +47,21 @@ async function update_recent_sdks(
 	context.globalState.update('recentSdks', updated_sdks)
 }
 
+async function create_quick_pick_item(
+	sdk_path: string
+): Promise<SdkQuickPickItem | undefined> {
+	const executable = await get_executable(untildify(sdk_path))
+	if (!executable) return undefined
+
+	return {
+		label: get_version(executable)?.semver,
+		description: tildify(sdk_path),
+		// iconPath: new vscode.ThemeIcon('history'),
+		action: PathAction,
+		fs_path: sdk_path,
+	}
+}
+
 export async function prompt_sdk_quick_pick(
 	context: vscode.ExtensionContext
 ): Promise<string | void> {
@@ -62,15 +77,23 @@ export async function prompt_sdk_quick_pick(
 
 	if (current_sdk_path) {
 		options.push(
+			// {
+			// 	label: 'current',
+			// 	kind: vscode.QuickPickItemKind.Separator,
+			// },
+			// {
+			// 	label: current_sdk_path,
+			// 	iconPath: new vscode.ThemeIcon('star'),
+			// 	action: PathAction,
+			// 	fs_path: current_sdk_path,
+			// },
 			{
-				label: 'current',
+				label: '',
 				kind: vscode.QuickPickItemKind.Separator,
 			},
 			{
-				label: current_sdk_path,
-				iconPath: new vscode.ThemeIcon('star'),
-				action: PathAction,
-				fs_path: current_sdk_path,
+				label: '$(file-directory) Enter interpreter path...',
+				action: FilePickerAction,
 			}
 		)
 	}
@@ -78,53 +101,36 @@ export async function prompt_sdk_quick_pick(
 	const recent_sdks = get_recent_sdks(context)
 	if (recent_sdks && recent_sdks.length > 0) {
 		for (const path of recent_sdks) {
-			const item: SdkQuickPickItem = {
-				label: tildify(path),
-				iconPath: new vscode.ThemeIcon('history'),
-				action: PathAction,
-				fs_path: path,
-			}
+			const executable = await get_executable(path)
 
-			if (not_current_filter(item)) {
+			if (!executable) continue
+
+			const item = await create_quick_pick_item(path)
+
+			if (!item && not_current_filter(item)) {
 				options.push(item)
 			}
 		}
 	}
 
 	for (const [dir, paths] of Object.entries(sdks)) {
-		options.push({
-			label: `in ${dir}`,
-			kind: vscode.QuickPickItemKind.Separator,
-		})
+		// options.push({
+		// 	label: `in ${dir}`,
+		// 	kind: vscode.QuickPickItemKind.Separator,
+		// })
 
 		for (const p of paths) {
-			const item: SdkQuickPickItem = {
-				label: path.relative(resolve_path(dir), p),
-				iconPath: new vscode.ThemeIcon('file-directory'),
-				action: PathAction,
-				fs_path: p,
-			}
+			const item = await create_quick_pick_item(p)
 
-			if (not_current_filter(item)) {
+			if (item !== undefined && not_current_filter(item)) {
 				options.push(item)
 			}
 		}
 	}
 
-	options.push(
-		{
-			label: '',
-			kind: vscode.QuickPickItemKind.Separator,
-		},
-		{
-			label: '$(search) Select with system dialog',
-			action: FilePickerAction,
-		}
-	)
-
 	const selection = await vscode.window.showQuickPick(options, {
-		title: "Pick Ren'Py SDK",
-		placeHolder: "Select a Ren'Py SDK",
+		title: "Select Ren'Py SDK",
+		placeHolder: `Selected SDK: ${tildify(current_sdk_path)}`,
 		matchOnDescription: true,
 	})
 
