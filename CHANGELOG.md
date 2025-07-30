@@ -7,6 +7,7 @@ All notable changes to this project will be documented in this file.
 -   **Breaking**: RPEs in the SDK root are no longer monitored. This feature has
     been unused for some time, and the only code remaining was to find any
     that still existed in the SDK root.
+-   On Ren'Py 8.4.0 and higher, RPEs are now installed in `game/libs/`.
 -   A setting to ignore file patterns, `renpyWarp.exclude` has been introduced.
     This setting is used to exclude files from being watched or processed by the
     extension.
