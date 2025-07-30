@@ -1,10 +1,13 @@
 import * as vscode from 'vscode'
 import { get_config } from './config'
 import { get_logger } from './log'
+import tildify from 'tildify'
+import { get_executable, get_version } from './sh'
 
 const logger = get_logger()
 
 export class StatusBar {
+	private sdk_bar: vscode.StatusBarItem
 	private instance_bar: vscode.StatusBarItem
 	private follow_cursor_bar: vscode.StatusBarItem
 	private notification_bar: vscode.StatusBarItem
@@ -31,6 +34,10 @@ export class StatusBar {
 			0
 		)
 
+		this.sdk_bar = vscode.window.createStatusBarItem(
+			vscode.StatusBarAlignment.Right,
+			9999
+		)
 		this.notification_bar = vscode.window.createStatusBarItem(
 			vscode.StatusBarAlignment.Right,
 			10_000
@@ -101,7 +108,7 @@ export class StatusBar {
 		}
 	}
 
-	private update_status_bar() {
+	private async update_status_bar() {
 		if (this.state.message) {
 			this.notification_bar.text = this.state.message
 			this.notification_bar.show()
@@ -110,23 +117,6 @@ export class StatusBar {
 		}
 
 		this.instance_bar.show()
-
-		if (!get_config('sdkPath')) {
-			this.instance_bar.text = "$(gear) Set Ren'Py SDK path"
-			this.instance_bar.command = 'renpyWarp.setSdkPath'
-			this.instance_bar.tooltip = "Set path to Ren'Py SDK"
-			this.instance_bar.backgroundColor = new vscode.ThemeColor(
-				'statusBarItem.warningBackground'
-			)
-			this.instance_bar.color = new vscode.ThemeColor(
-				'statusBarItem.warningForeground'
-			)
-			this.follow_cursor_bar.hide()
-			return
-		} else {
-			this.instance_bar.backgroundColor = undefined
-			this.instance_bar.color = undefined
-		}
 
 		const extensions_enabled =
 			get_config('renpyExtensionsEnabled') === 'Enabled'
@@ -174,6 +164,30 @@ export class StatusBar {
 			this.instance_bar.command = 'renpyWarp.launch'
 			this.instance_bar.tooltip = "Launch new Ren'Py instance"
 		}
+
+		const sdk_path = get_config('sdkPath') as string
+
+		if (!sdk_path) {
+			this.sdk_bar.text = "$(gear) Set Ren'Py SDK path"
+			this.sdk_bar.backgroundColor = new vscode.ThemeColor(
+				'statusBarItem.warningBackground'
+			)
+			this.sdk_bar.color = new vscode.ThemeColor(
+				'statusBarItem.warningForeground'
+			)
+			this.instance_bar.hide()
+			this.follow_cursor_bar.hide()
+			return
+		}
+
+		const executable = await get_executable(sdk_path)
+
+		this.sdk_bar.text = executable
+			? `Ren'Py ${get_version(executable)?.semver}`
+			: "Ren'Py"
+		this.sdk_bar.command = 'renpyWarp.setSdkPath'
+		this.sdk_bar.tooltip = `Using Ren'Py SDK at ${sdk_path}`
+		this.sdk_bar.show()
 	}
 
 	dispose() {
