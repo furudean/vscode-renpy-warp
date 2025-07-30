@@ -43,3 +43,16 @@ export async function show_file(path: string): Promise<void> {
 	const doc = await vscode.workspace.openTextDocument(path)
 	await vscode.window.showTextDocument(doc)
 }
+
+export async function get_user_ignore_pattern(): Promise<string> {
+	const extension_ignores = get_config('exclude') as string[]
+	const vscode_ignores = Object.entries(
+		vscode.workspace.getConfiguration('files').get('exclude') as Record<
+			string,
+			boolean
+		>
+	)
+		.filter(([, value]) => value === true)
+		.map(([key]) => key)
+	return '{' + [...extension_ignores, ...vscode_ignores].join(',') + '}'
+}

@@ -3,11 +3,10 @@ import path from 'upath'
 import untildify from 'untildify'
 import fs from 'node:fs/promises'
 import { get_logger } from './log'
-import { get_config } from './config'
+import { get_config, get_user_ignore_pattern } from './config'
 import env_paths from 'env-paths'
 import { name as pkg_name } from '../../package.json'
 import sortPaths from 'sort-paths'
-import { get_ignored_directories, is_path_ignored } from './rpe'
 
 const logger = get_logger()
 
@@ -88,20 +87,22 @@ export async function find_projects_in_workspaces(
 ): Promise<string[] | Map<string, string[]>> {
 	const workspace_games = new Map<string, string[]>()
 
-	const ignored_dirs = await get_ignored_directories(context)
-
 	for (const workspace of vscode.workspace.workspaceFolders ?? []) {
 		const pattern = new vscode.RelativePattern(
 			workspace,
 			'**/game/**/*.rpy'
 		)
-		const files = await vscode.workspace.findFiles(pattern)
-		logger.trace(`files in workspace: ${files.map((file) => file.fsPath)}`)
+		const files = await vscode.workspace.findFiles(
+			pattern,
+			await get_user_ignore_pattern()
+		)
+		const dirs = new Set(files.map((file) => path.dirname(file.fsPath)))
+		logger.trace(`dirs in workspace: ${[...dirs.values()]}`)
 
 		const games = new Set<string>()
 
-		for (const file of files) {
-			const relative = path.relative(workspace.uri.fsPath, file.fsPath)
+		for (const dir of dirs) {
+			const relative = path.relative(workspace.uri.fsPath, dir)
 			const parts = relative.split(path.sep)
 
 			for (const [i, part] of Array.from(parts.entries()).reverse()) {
@@ -111,11 +112,7 @@ export async function find_projects_in_workspaces(
 						...parts.slice(0, i)
 					)
 
-					if (ignored_dirs.includes(full_path)) {
-						logger.debug('skipping ignored path:', full_path)
-					} else {
-						games.add(full_path)
-					}
+					games.add(full_path)
 				}
 			}
 		}

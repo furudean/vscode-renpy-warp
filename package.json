@@ -355,6 +355,20 @@
 					"order": 3,
 					"markdownDescription": "Show a decoration where the cursor is in the Ren'Py game"
 				},
+				"renpyWarp.exclude": {
+					"type": "array",
+					"markdownDescription": "Additional [VSCode glob patterns](https://code.visualstudio.com/docs/editor/glob-patterns) to exclude when searching for Ren'Py projects. These are relative to your workspace.\n\nAutomatically includes `#files.exclude#`.",
+					"default": [],
+					"items": {
+						"type": "string"
+					},
+					"examples": [
+						[
+							"out/**"
+						]
+					],
+					"order": 3
+				},
 				"renpyWarp.editor": {
 					"type": "string",
 					"default": "launcher/Visual Studio Code (System).edit.py",

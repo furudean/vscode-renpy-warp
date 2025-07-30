@@ -14,7 +14,7 @@ import {
 	get_sdk_path,
 	mkdir_exist_ok,
 } from './path'
-import { show_file } from './config'
+import { get_user_ignore_pattern, show_file } from './config'
 import { prompt_not_rpy8_invalid_configuration } from './onboard'
 import memoize from 'memoize'
 
@@ -51,15 +51,17 @@ export async function list_rpes(
 		project_root,
 		'**/game/**/renpy_warp_*.{rpe,rpe.py}'
 	)
-	return await Promise.all([
+	const files = await Promise.all([
 		vscode.workspace
-			.findFiles(pattern)
+			.findFiles(pattern, await get_user_ignore_pattern())
 			.then((files) => files.map((f) => f.fsPath)),
 		glob('renpy_warp_*.rpe.py', {
 			cwd: sdk_path,
 			absolute: true,
 		}),
-	]).then((result) => result.flat())
+	])
+
+	return files.flat()
 }
 
 export async function install_rpe({
@@ -99,13 +101,6 @@ export async function install_rpe({
 		}
 
 		file_path = path.join(file_path, `${file_base}.rpe.py`)
-
-		if (await is_path_ignored(file_path, context)) {
-			logger.info(
-				`skipping RPE installation in ignored directory: ${project_root}`
-			)
-			return undefined
-		}
 
 		await fs.writeFile(file_path, rpe_source)
 	} else {
@@ -260,8 +255,6 @@ export async function prompt_install_rpe(
 				options.push('Reveal')
 			}
 
-			options.push("Don't install here")
-
 			if (!force) {
 				options.push("Don't show again")
 			}
@@ -278,91 +271,9 @@ export async function prompt_install_rpe(
 							true
 						)
 					}
-					if (selection === "Don't install here") {
-						const parent_dir = path.dirname(installed_path)
-
-						if (path.basename(parent_dir) === 'libs') {
-							// if we are in libs, we need to ignore the parent directory
-							// so that it doesn't get picked up by the next install
-							await ignore_directory(
-								// project/game/libs
-								path.resolve(installed_path, '../../../'),
-								context
-							)
-						} else {
-							// otherwise we ignore the current directory
-							await ignore_directory(
-								// project/game
-								path.resolve(installed_path, '../../'),
-								context
-							)
-						}
-
-						try {
-							await rm(installed_path)
-							// remove parent directory if empty
-							const files = await fs.readdir(parent_dir)
-							if (files.length === 0) {
-								await fs.rmdir(parent_dir)
-							}
-						} catch (error) {
-							vscode.window.showErrorMessage(
-								`Failed to remove ${installed_path}: ${error}`
-							)
-						}
-					}
 				})
 		}
 	}
 
 	return installed_paths.length ? installed_paths : undefined
-}
-
-export async function get_ignored_directories(
-	context: vscode.ExtensionContext
-): Promise<string[]> {
-	const ignored = context.workspaceState.get(
-		'renpyWarp.ignoredDirectories',
-		[] as string[]
-	)
-	logger.debug('ignored directories:', ignored)
-	return ignored
-}
-
-export async function is_path_ignored(
-	path: string,
-	context: vscode.ExtensionContext
-): Promise<boolean> {
-	const ignored_dirs = await get_ignored_directories(context)
-	return ignored_dirs.some((ignored_dir) => path.startsWith(ignored_dir))
-}
-
-export async function ignore_directory(
-	directory: string,
-	context: vscode.ExtensionContext
-): Promise<void> {
-	const ignored = await get_ignored_directories(context)
-	if (Array.isArray(ignored)) {
-		ignored.push(directory)
-		await context.workspaceState.update(
-			'renpyWarp.ignoredDirectories',
-			ignored
-		)
-	}
-}
-
-export async function allow_directory(
-	directory: string,
-	context: vscode.ExtensionContext
-): Promise<void> {
-	const ignored = await get_ignored_directories(context)
-
-	const index = ignored.indexOf(directory)
-	if (index !== -1) {
-		ignored.splice(index, 1)
-		await context.workspaceState.update(
-			'renpyWarp.ignoredDirectories',
-			ignored
-		)
-	}
 }
