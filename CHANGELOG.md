@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## Unreleased
+
+-   A setting to ignore file patterns, `renpyWarp.exclude` has been introduced.
+    This setting is used to exclude files from being watched or processed by the
+    extension.
+-   Searching for RPEs has been optimized, now doing less redundant processing
+    than before.
+
 ## 1.35.0 - 2025-05-03
 
 -   Adds two new commands, `renpyWarp.lint` and `renpyWarp.rmpersistent`, which
