@@ -63,7 +63,7 @@ export function register_handlers(
 					if (sdk_path) {
 						for (const folder of vscode.workspace
 							.workspaceFolders ?? []) {
-							await uninstall_rpes(sdk_path, folder.uri)
+							await uninstall_rpes(folder.uri)
 						}
 					}
 				}

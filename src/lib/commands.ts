@@ -207,7 +207,7 @@ export function get_commands(
 			if (!sdk_path) return
 
 			for (const folder of vscode.workspace.workspaceFolders ?? []) {
-				await uninstall_rpes(sdk_path, folder.uri)
+				await uninstall_rpes(folder.uri)
 			}
 			vscode.window.showInformationMessage(
 				"Ren'Py extensions were successfully uninstalled from the project"
