@@ -132,7 +132,11 @@ export async function launch_renpy({
 			}
 
 			if (extensions_enabled === 'Enabled') {
-				const installed_path = await prompt_install_rpe(context)
+				const installed_path = await prompt_install_rpe({
+					project: project_root,
+					executable,
+					context,
+				})
 
 				if (!installed_path) {
 					status_bar.delete_process(nonce)

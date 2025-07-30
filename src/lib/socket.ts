@@ -14,8 +14,9 @@ import { prompt_install_rpe, get_rpe_checksum } from './rpe'
 import path from 'upath'
 import { get_config, set_config } from './config'
 import { createServer, IncomingMessage } from 'node:http'
-import { find_projects_in_workspaces } from './path'
+import { find_projects_in_workspaces, get_sdk_path } from './path'
 import { FollowCursorService, sync_editor_with_renpy } from './follow_cursor'
+import { get_executable } from './sh'
 
 const logger = get_logger()
 
@@ -347,11 +348,20 @@ export class WarpSocketService {
 				)
 
 				if (picked === 'Update') {
-					await prompt_install_rpe(
-						this.context,
-						"Ren'Py extensions were updated. Please restart the game to connect.",
-						true
-					)
+					const sdk_path = await get_sdk_path()
+					if (!sdk_path) return false
+
+					const executable = await get_executable(sdk_path)
+					if (!executable) return false
+
+					await prompt_install_rpe({
+						project: socket_project_root,
+						context: this.context,
+						executable,
+						message:
+							"Ren'Py extensions were updated. Please restart the game to connect.",
+						force: true,
+					})
 				}
 			}
 

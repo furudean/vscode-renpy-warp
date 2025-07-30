@@ -53,7 +53,7 @@ export async function list_rpes(
 		.findFiles(pattern, await get_user_ignore_pattern())
 		.then((files) => files.map((f) => f.fsPath))
 
-	return files.flat()
+	return files
 }
 
 export async function install_rpe({
@@ -103,6 +103,45 @@ export async function install_rpe({
 	logger.info('wrote rpe to', file_path)
 
 	return file_path
+}
+
+export async function update_existing_rpes(context: vscode.ExtensionContext) {
+	const projects = await find_projects_in_workspaces(context)
+
+	if (!projects) return
+
+	const sdk_path = await get_sdk_path()
+	if (!sdk_path) return
+
+	const executable = await get_executable(sdk_path)
+	if (!executable) return
+
+	for (const project of projects) {
+		const any_rpe = (await list_rpes(project)).length > 0
+
+		if (!any_rpe) {
+			logger.info('no rpe found in', project)
+			continue
+		}
+
+		const current_rpe = await has_current_rpe({
+			executable,
+			sdk_path,
+			context,
+			project_root: project,
+		})
+
+		if (!current_rpe) {
+			logger.info('updating existing rpe in', project)
+			await prompt_install_rpe({
+				executable,
+				project: project,
+				context,
+			})
+		} else {
+			logger.info(`rpe in ${project} is up to date`)
+		}
+	}
 }
 
 export async function uninstall_rpes(
@@ -164,27 +203,19 @@ export async function has_current_rpe({
 	return false
 }
 
-export async function prompt_install_rpe(
-	context: vscode.ExtensionContext,
+export async function prompt_install_rpe({
+	project,
+	executable,
+	context,
 	message = "Ren'Py extensions were {installed/updated} in {installed_path}",
-	force = false
-): Promise<string[] | undefined> {
-	const projects = await find_projects_in_workspaces(context)
-
-	if (!projects) {
-		vscode.window.showErrorMessage(
-			"Unable to find game in workspace. Not a Ren'Py project?",
-			'OK'
-		)
-		return
-	}
-
-	const sdk_path = await get_sdk_path()
-	if (!sdk_path) return
-
-	const executable = await get_executable(sdk_path, true)
-	if (!executable) return
-
+	force = false,
+}: {
+	project: string
+	executable: string[]
+	context: vscode.ExtensionContext
+	message?: string
+	force?: boolean
+}): Promise<string | undefined> {
 	const version = get_version(executable)
 
 	if (!semver.satisfies(version.semver, '>=8.2.0')) {
@@ -192,75 +223,54 @@ export async function prompt_install_rpe(
 		return
 	}
 
-	const installed_paths = []
+	const any_rpe = (await list_rpes(project)).length > 0
 
-	for (const project_root of projects) {
-		const current_rpe = await has_current_rpe({
-			executable,
-			sdk_path,
-			context,
-			project_root,
-		})
+	const installed_path = await install_rpe({
+		project_root: project,
+		context,
+		executable,
+	})
+	if (!installed_path) return
 
-		if (current_rpe && !force) {
-			installed_paths.push(current_rpe)
-			logger.info('rpe already up to date')
-			continue
+	const relative_root =
+		vscode.workspace.getWorkspaceFolder(vscode.Uri.file(installed_path))
+			?.uri.fsPath ?? project
+
+	const fmt_message = message
+		.replaceAll('{installed/updated}', any_rpe ? 'updated' : 'installed')
+		.replaceAll(
+			'{installed_path}',
+			path.dirname(path.relative(relative_root, installed_path))
+		)
+
+	if (!context.globalState.get('hideRpeInstallUpdateMessage') || force) {
+		const options = ['OK']
+
+		if (installed_path.endsWith('.rpe.py')) {
+			// since .rpe binaries are not human readable, vscode doesn't have
+			// a built-in way to view them. so we only offer this option for
+			// .rpe.py files.
+			options.push('Reveal')
 		}
 
-		const installed_path = await install_rpe({
-			project_root,
-			context,
-			executable,
-		})
-		if (!installed_path) return
-		installed_paths.push(installed_path)
-
-		const any_rpe = (await list_rpes(sdk_path)).length === 0
-
-		const relative_root =
-			vscode.workspace.getWorkspaceFolder(vscode.Uri.file(installed_path))
-				?.uri.fsPath ?? project_root
-
-		const fmt_message = message
-			.replaceAll(
-				'{installed/updated}',
-				any_rpe ? 'installed' : 'updated'
-			)
-			.replaceAll(
-				'{installed_path}',
-				path.dirname(path.relative(relative_root, installed_path))
-			)
-
-		if (!context.globalState.get('hideRpeInstallUpdateMessage') || force) {
-			const options = ['OK']
-
-			if (installed_path.endsWith('.rpe.py')) {
-				// since .rpe binaries are not human readable, vscode doesn't have
-				// a built-in way to view them. so we only offer this option for
-				// .rpe.py files.
-				options.push('Reveal')
-			}
-
-			if (!force) {
-				options.push("Don't show again")
-			}
-
-			vscode.window
-				.showInformationMessage(fmt_message, ...options)
-				.then(async (selection) => {
-					if (selection === 'Reveal') {
-						await show_file(installed_path)
-					}
-					if (selection === "Don't show again") {
-						await context.globalState.update(
-							'hideRpeInstallUpdateMessage',
-							true
-						)
-					}
-				})
+		if (!force) {
+			options.push("Don't show again")
 		}
+
+		vscode.window
+			.showInformationMessage(fmt_message, ...options)
+			.then(async (selection) => {
+				if (selection === 'Reveal') {
+					await show_file(installed_path)
+				}
+				if (selection === "Don't show again") {
+					await context.globalState.update(
+						'hideRpeInstallUpdateMessage',
+						true
+					)
+				}
+			})
 	}
 
-	return installed_paths.length ? installed_paths : undefined
+	return installed_path
 }

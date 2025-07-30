@@ -7,7 +7,7 @@ import { get_config, get_configuration_object, set_config } from './lib/config'
 import { StatusBar } from './lib/status_bar'
 import { get_message_handler, WarpSocketService } from './lib/socket'
 import { register_commands } from './lib/commands'
-import { prompt_install_rpe } from './lib/rpe'
+import { update_existing_rpes } from './lib/rpe'
 import { register_handlers } from './lib/handlers'
 import { DecorationService } from './lib/decoration'
 import { AnyProcess } from './lib/process'
@@ -102,10 +102,14 @@ export function activate(context: vscode.ExtensionContext) {
 		get_config('renpyExtensionsEnabled') === 'Enabled' &&
 		get_config('sdkPath')
 	) {
-		prompt_install_rpe(context).catch((error) => {
+		update_existing_rpes(context).catch((error) => {
 			logger.error(error)
 			vscode.window
-				.showErrorMessage('Failed to install RPE', 'Logs', 'OK')
+				.showErrorMessage(
+					'Failed to install/update RPE on startup',
+					'Logs',
+					'OK'
+				)
 				.then((selection) => {
 					if (selection === 'Logs') {
 						logger.show()

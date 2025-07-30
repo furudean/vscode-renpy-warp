@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+-   **Breaking**: RPEs will no longer proactively be installed on extension
+    launch. Instead, they will be installed when a game is launched or a command
+    is explicitly called to install them. If you only start games externally,
+    you will need to call the command `renpyWarp.installRPE` manually to first
+    install the RPE. Updates are still handled automatically.
 -   **Breaking**: RPEs in the SDK root are no longer monitored. This feature has
     been unused for some time, and the only code remaining was to find any
     that still existed in the SDK root.

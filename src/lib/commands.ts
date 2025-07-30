@@ -2,7 +2,12 @@ import * as vscode from 'vscode'
 import { get_config, set_config, show_file } from './config'
 import { launch_renpy, launch_sdk } from './launch'
 import { prompt_configure_extensions } from './onboard'
-import { get_sdk_path, resolve_path, path_is_sdk } from './path'
+import {
+	get_sdk_path,
+	resolve_path,
+	path_is_sdk,
+	find_projects_in_workspaces,
+} from './path'
 import { prompt_install_rpe, uninstall_rpes } from './rpe'
 import { get_executable } from './sh'
 import { WarpSocketService } from './socket'
@@ -199,7 +204,20 @@ export function get_commands(
 		'renpyWarp.killAll': () => pm.kill_all(),
 
 		'renpyWarp.installRpe': async () => {
-			await prompt_install_rpe(context, undefined, true)
+			const sdk_path = await get_sdk_path()
+			if (!sdk_path) return
+
+			const executable = await get_executable(sdk_path)
+			if (!executable) return
+
+			const projects = await find_projects_in_workspaces(context)
+			for (const project_root of projects) {
+				await prompt_install_rpe({
+					project: project_root,
+					executable,
+					context,
+				})
+			}
 		},
 
 		'renpyWarp.uninstallRpe': async () => {
