@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 ## Unreleased
 
 -   **Breaking**: RPEs in the SDK root are no longer monitored. This feature has
-    been deprecated for some time, and the only code remaining was to find any
+    been unused for some time, and the only code remaining was to find any
     that still existed in the SDK root.
 -   A setting to ignore file patterns, `renpyWarp.exclude` has been introduced.
     This setting is used to exclude files from being watched or processed by the
