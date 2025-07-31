@@ -6,14 +6,13 @@ import { glob } from 'glob'
 import path from 'upath'
 import untildify from 'untildify'
 import tildify from 'tildify'
-import { get_executable, get_version } from './sh'
 
 const PathAction = Symbol('PathAction')
 const FilePickerAction = Symbol('SystemFilePickerAction')
 
 interface SdkQuickPickItem extends vscode.QuickPickItem {
 	action?: typeof PathAction | typeof FilePickerAction
-	fs_path?: string
+	path?: string
 }
 
 export async function find_user_sdks(): Promise<Record<string, string[]>> {
@@ -70,7 +69,7 @@ export async function prompt_sdk_quick_pick(
 	const sdks = await find_user_sdks()
 
 	function not_current_filter(item: SdkQuickPickItem): boolean {
-		return item?.fs_path !== current_sdk_path
+		return item?.path !== current_sdk_path
 	}
 
 	const options: SdkQuickPickItem[] = []
@@ -140,15 +139,14 @@ export async function prompt_sdk_quick_pick(
 		return await prompt_sdk_file_picker()
 	}
 	if (selection.action === PathAction) {
-		if (selection.fs_path) {
-			const resolved_path = resolve_path(selection.fs_path)
-			if (await path_is_sdk(resolved_path)) {
-				await update_recent_sdks(resolved_path, context)
-				return selection.fs_path
+		if (selection.path) {
+			if (await path_is_sdk(selection.path)) {
+				await update_recent_sdks(selection.path, context)
+				return selection.path
 			}
 		}
 		vscode.window.showErrorMessage(
-			`Path "${selection.fs_path}" is not a valid Ren'Py SDK`
+			`Path "${selection.path}" is not a valid Ren'Py SDK`
 		)
 		return
 	}
