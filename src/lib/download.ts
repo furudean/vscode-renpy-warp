@@ -6,8 +6,9 @@ import { parse as semver_parse } from 'semver'
 import { get_logger } from './log'
 import p_filter from 'p-filter'
 import { path_is_sdk } from './sdk'
-import { cp, readdir, rm } from 'node:fs/promises'
+import { cp, readdir, rm, rmdir } from 'node:fs/promises'
 import path from 'upath'
+import { basename } from 'node:path'
 
 const logger = get_logger()
 
@@ -128,7 +129,7 @@ export async function download_sdk(
 	try {
 		return vscode.window.withProgress(
 			{
-				title: 'Downloading SDK',
+				title: `Downloading and installing Ren'Py ${name}`,
 				location: vscode.ProgressLocation.Notification,
 				cancellable: true,
 			},
@@ -176,6 +177,35 @@ export async function list_downloaded_sdks(
 	const sdk_paths = sdk_uris.map((uri) => uri.fsPath)
 
 	return p_filter(sdk_paths, path_is_sdk)
+}
+
+export async function uninstall_sdk(
+	sdk_path: string,
+	context: ExtensionContext
+): Promise<void> {
+	const file_downloader: FileDownloader = await getApi()
+	const sdk_uris = await file_downloader.listDownloadedItems(context)
+	const sdk_uri = sdk_uris.find((uri) => uri.fsPath === sdk_path)
+
+	if (!sdk_uri) {
+		throw new Error(`SDK not found at path: ${sdk_path}`)
+	}
+
+	try {
+		await rmdir(sdk_uri.fsPath, { recursive: true })
+		vscode.window.showInformationMessage(
+			`Ren'Py SDK at ${basename(
+				sdk_path
+			)} has been uninstalled successfully.`
+		)
+	} catch (error) {
+		logger.error(`Failed to uninstall SDK at ${sdk_path}:`, error)
+		vscode.window.showErrorMessage(
+			`Failed to uninstall SDK at ${sdk_path}: ${
+				error instanceof Error ? error.message : 'Unknown error'
+			}`
+		)
+	}
 }
 
 export async function downloads_location(

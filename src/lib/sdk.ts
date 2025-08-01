@@ -1,5 +1,5 @@
 import { homedir } from 'node:os'
-import { get_config, set_config } from './config'
+import { get_config, set_config, set_config_exclusive } from './config'
 import { path_exists, resolve_path } from './path'
 import * as vscode from 'vscode'
 import path, { basename } from 'upath'
@@ -11,6 +11,7 @@ import {
 	list_downloaded_sdks,
 	list_remote_sdks,
 	semver_compare,
+	uninstall_sdk,
 } from './download'
 import { SemVer } from 'semver'
 
@@ -73,7 +74,7 @@ export async function prompt_sdk_quick_pick(
 			label: basename(sdk_path),
 			// description: tildify(sdk_path),
 			iconPath:
-				current_sdk_path && current_sdk_path in downloaded_sdks
+				sdk_path === current_sdk_path
 					? new vscode.ThemeIcon('check')
 					: new vscode.ThemeIcon('blank'),
 			action: SdkAction.Path,
@@ -105,12 +106,37 @@ export async function prompt_sdk_quick_pick(
 		},
 	]
 
-	const selection = await vscode.window.showQuickPick(options, {
-		title: "Select Ren'Py SDK",
-		placeHolder: `Selected SDK: ${
-			current_sdk_path ? tildify(current_sdk_path) : 'None'
-		}`,
+	const quick_pick = vscode.window.createQuickPick<SdkQuickPickItem>()
+	quick_pick.title = "Select Ren'Py SDK"
+	quick_pick.placeholder = `Selected SDK: ${
+		current_sdk_path ? tildify(current_sdk_path) : 'None'
+	}`
+	quick_pick.items = options
+
+	quick_pick.onDidTriggerItemButton(async ({ item }) => {
+		if (!item?.path) throw new Error('item path is undefined')
+
+		await uninstall_sdk(item.path, context)
+		if (item.path === current_sdk_path) {
+			set_config_exclusive('sdkPath', undefined, true)
+		}
+		quick_pick.items = quick_pick.items.filter((i) => i.path !== item.path)
 	})
+
+	quick_pick.show()
+
+	const selection = await new Promise<SdkQuickPickItem | undefined>(
+		(resolve) => {
+			quick_pick.onDidAccept(() => {
+				resolve(quick_pick.selectedItems[0])
+				quick_pick.hide()
+			})
+
+			quick_pick.onDidHide(() => {
+				resolve(undefined)
+			})
+		}
+	)
 
 	if (!selection) return
 
