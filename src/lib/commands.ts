@@ -231,7 +231,7 @@ export function get_commands(
 			const fs_path = await prompt_sdk_quick_pick(context)
 
 			if (!fs_path) return
-			await set_config('sdkPath', fs_path)
+			await set_config('sdkPath', fs_path, true)
 
 			return fs_path
 		},
