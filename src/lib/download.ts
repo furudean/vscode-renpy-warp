@@ -8,7 +8,8 @@ import p_filter from 'p-filter'
 import { path_is_sdk } from './sdk'
 import { cp, readdir, rm, rmdir } from 'node:fs/promises'
 import path from 'upath'
-import { basename } from 'node:path'
+import { basename, dirname } from 'node:path'
+import AdmZip from 'adm-zip'
 
 const logger = get_logger()
 
@@ -145,8 +146,9 @@ export async function download_sdk(
 							increment: (downloaded / total) * 100,
 						})
 					},
-					{ shouldUnzip: true }
+					{ timeoutInMs: 5 * 60 * 1000, shouldUnzip: true }
 				)
+				progress.report({ message: 'Finalizing...', increment: -1 })
 				await shallow(file.fsPath)
 				return file
 			}

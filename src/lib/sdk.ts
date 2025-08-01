@@ -89,6 +89,10 @@ export async function prompt_sdk_quick_pick(
 	}
 
 	const options: SdkQuickPickItem[] = [
+		{
+			label: 'Installed SDKs',
+			kind: vscode.QuickPickItemKind.Separator,
+		},
 		...downloaded_sdks
 			.sort((a, b) => semver_compare(basename(a), basename(b)))
 			.map(create_quick_pick_item),
@@ -97,7 +101,7 @@ export async function prompt_sdk_quick_pick(
 			kind: vscode.QuickPickItemKind.Separator,
 		},
 		{
-			label: "$(plus) Download new Ren'Py SDK...",
+			label: '$(plus) Download new SDK version...',
 			action: SdkAction.InstallSdk,
 		},
 		{
@@ -271,7 +275,7 @@ async function prompt_install_sdk_picker(
 
 				if (!file) return resolve(undefined)
 
-				set_config('sdkPath', file.fsPath, true)
+				await set_config('sdkPath', file.fsPath, true)
 
 				vscode.window.showInformationMessage(
 					`Ren'Py ${selection.label} installed and set as current SDK`
