@@ -185,11 +185,9 @@ export class StatusBar {
 		if (executable) {
 			const version = get_version(executable)?.semver
 
-			this.sdk_bar.text = `$(warp-renpy) ${tildify(
-				sdk_path
-			)} (${version})`
+			this.sdk_bar.text = `$(warp-renpy) ${version}`
 			this.sdk_bar.command = 'renpyWarp.setSdkPath'
-			this.sdk_bar.tooltip = `Using Ren'Py SDK at ${sdk_path}`
+			this.sdk_bar.tooltip = `Using Ren'Py SDK at ${tildify(sdk_path)}`
 			this.sdk_bar.show()
 		}
 	}

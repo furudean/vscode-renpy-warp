@@ -25,7 +25,9 @@
 	],
 	"type": "commonjs",
 	"main": "./dist/extension.js",
-	"extensionDependencies": [],
+	"extensionDependencies": [
+		"mindaro-dev.file-downloader"
+	],
 	"scripts": {
 		"vscode:prepublish": "npm run check-types && npm run lint && node esbuild.js --production",
 		"publish": "echo 'use `npm run publish:vsce` or `npm run publish:ovsx` instead'",
@@ -46,6 +48,7 @@
 	"devDependencies": {
 		"@eslint/js": "^9.9.0",
 		"@types/adm-zip": "^0.5.5",
+		"@types/jsdom": "^21.1.7",
 		"@types/mocha": "^10.0.7",
 		"@types/node": "^20.14.13",
 		"@types/semver": "^7.5.8",
@@ -68,13 +71,17 @@
 	},
 	"dependencies": {
 		"@logdna/tail-file": "^4.0.2",
+		"@microsoft/vscode-file-downloader-api": "^1.0.1",
 		"adm-zip": "^0.5.14",
 		"env-paths": "^3.0.0",
 		"find-process": "^1.4.7",
 		"get-port": "^7.1.0",
+		"jsdom": "^26.1.0",
 		"memoize": "^10.0.0",
 		"node-window-manager": "^2.2.4",
+		"p-filter": "^4.1.0",
 		"p-locate": "^6.0.0",
+		"p-map": "^7.0.3",
 		"pidtree": "^0.6.0",
 		"semver": "^7.6.3",
 		"sort-paths": "^1.1.1",

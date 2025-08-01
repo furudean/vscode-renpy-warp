@@ -106,7 +106,7 @@ export async function prompt_projects_in_workspaces(
 	context: vscode.ExtensionContext,
 	silent = false
 ): Promise<string | undefined> {
-	const workspaces = await find_projects_in_workspaces(context, true)
+	const workspaces = await find_projects_in_workspaces(true)
 
 	if (workspaces.size === 0) {
 		if (!silent)
