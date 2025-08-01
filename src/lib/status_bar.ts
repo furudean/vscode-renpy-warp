@@ -3,6 +3,7 @@ import { get_config } from './config'
 import { get_logger } from './log'
 import { get_executable, get_version } from './sh'
 import tildify from 'tildify'
+import { get_sdk_path } from './sdk'
 
 const logger = get_logger()
 
@@ -165,7 +166,7 @@ export class StatusBar {
 			this.instance_bar.tooltip = "Launch new Ren'Py instance"
 		}
 
-		const sdk_path = get_config('sdkPath') as string
+		const sdk_path = await get_sdk_path()
 
 		if (!sdk_path) {
 			this.sdk_bar.text = "$(gear) Set Ren'Py SDK path"
@@ -175,9 +176,14 @@ export class StatusBar {
 			this.sdk_bar.color = new vscode.ThemeColor(
 				'statusBarItem.warningForeground'
 			)
+			this.sdk_bar.command = 'renpyWarp.setSdkPath'
 			this.instance_bar.hide()
 			this.follow_cursor_bar.hide()
+			this.sdk_bar.show()
 			return
+		} else {
+			this.sdk_bar.backgroundColor = undefined
+			this.sdk_bar.color = undefined
 		}
 
 		const executable = await get_executable(sdk_path)
@@ -185,7 +191,16 @@ export class StatusBar {
 		if (executable) {
 			const version = get_version(executable)?.semver
 
-			this.sdk_bar.text = `$(warp-renpy) ${version}`
+			if (
+				sdk_path.includes('/globalStorage/paisleysoftworks.renpywarp/')
+			) {
+				this.sdk_bar.text = `$(warp-renpy) v${version}`
+			} else {
+				this.sdk_bar.text = `$(warp-renpy) ${tildify(
+					sdk_path
+				)} (v${version})`
+			}
+
 			this.sdk_bar.command = 'renpyWarp.setSdkPath'
 			this.sdk_bar.tooltip = `Using Ren'Py SDK at ${tildify(sdk_path)}`
 			this.sdk_bar.show()

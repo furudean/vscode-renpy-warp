@@ -1,11 +1,9 @@
 import { homedir } from 'node:os'
-import { get_config } from './config'
+import { get_config, set_config } from './config'
 import { path_exists, resolve_path } from './path'
 import * as vscode from 'vscode'
-import path, { basename, dirname } from 'upath'
-import untildify from 'untildify'
+import path, { basename } from 'upath'
 import tildify from 'tildify'
-import { get_executable, get_version } from './sh'
 import { get_logger } from './log'
 import {
 	download_sdk,
@@ -15,6 +13,7 @@ import {
 	semver_compare,
 } from './download'
 import p_map from 'p-map'
+import { SemVer } from 'semver'
 
 export const logger = get_logger()
 
@@ -65,27 +64,30 @@ export async function get_sdk_path(): Promise<string | undefined> {
 	return resolve_path(sdk_path_setting)
 }
 
-function create_quick_pick_item(sdk_path: string): SdkQuickPickItem {
-	return {
-		label: basename(sdk_path),
-		// description: tildify(sdk_path),
-		iconPath: new vscode.ThemeIcon('cloud-download'),
-		action: PathAction,
-		path: sdk_path,
-		buttons: [
-			{
-				iconPath: new vscode.ThemeIcon('trash'),
-				tooltip: 'Uninstall SDK',
-			},
-		],
-	}
-}
-
 export async function prompt_sdk_quick_pick(
 	context: vscode.ExtensionContext
 ): Promise<string | void> {
-	const current_sdk_path = get_config('sdkPath') as string | undefined
+	const current_sdk_path = await get_sdk_path()
 	const downloaded_sdks = await list_downloaded_sdks(context)
+
+	function create_quick_pick_item(sdk_path: string): SdkQuickPickItem {
+		return {
+			label: basename(sdk_path),
+			// description: tildify(sdk_path),
+			iconPath:
+				current_sdk_path && current_sdk_path in downloaded_sdks
+					? new vscode.ThemeIcon('check')
+					: new vscode.ThemeIcon('blank'),
+			action: PathAction,
+			path: sdk_path,
+			buttons: [
+				{
+					iconPath: new vscode.ThemeIcon('trash'),
+					tooltip: 'Uninstall SDK',
+				},
+			],
+		}
+	}
 
 	const options: SdkQuickPickItem[] = [
 		...downloaded_sdks
@@ -110,7 +112,6 @@ export async function prompt_sdk_quick_pick(
 		placeHolder: `Selected SDK: ${
 			current_sdk_path ? tildify(current_sdk_path) : 'None'
 		}`,
-		matchOnDescription: true,
 	})
 
 	if (!selection) return
@@ -171,7 +172,7 @@ async function prompt_install_sdk_picker(
 ): Promise<string | void> {
 	const quick_pick = vscode.window.createQuickPick<DownloadSdkQuickPickItem>()
 	quick_pick.title = "Install Ren'Py SDK"
-	quick_pick.placeholder = 'Loading available SDK versions...'
+	quick_pick.placeholder = 'Loading remote SDK versions...'
 	quick_pick.busy = true
 
 	quick_pick.show()
@@ -186,24 +187,43 @@ async function prompt_install_sdk_picker(
 		return
 	}
 
-	const mapped_sdks = remote_sdks.map((sdk, n) => ({
-		label: sdk.name,
-		description: sdk.url,
-		url: sdk.url,
-		detail: n === 0 ? 'Newest version' : undefined,
-		iconPath: n === 0 ? new vscode.ThemeIcon('star') : undefined,
-	}))
-
-	const quick_pick_items: DownloadSdkQuickPickItem[] = [
-		mapped_sdks[0],
-		{
-			label: '',
-			kind: vscode.QuickPickItemKind.Separator,
-		},
-		...mapped_sdks.slice(1),
+	const newest_major = new SemVer(remote_sdks[0].name).major
+	const last_major = newest_major - 1
+	const recommended_sdks = [
+		remote_sdks[0],
+		remote_sdks.find((sdk) => sdk.name.startsWith(last_major.toString())),
 	]
 
-	quick_pick.items = quick_pick_items
+	const downloaded = (await list_downloaded_sdks(context)).map((sdk) =>
+		basename(sdk)
+	)
+
+	quick_pick.items = [
+		{
+			label: 'Recommended for new projects',
+			kind: vscode.QuickPickItemKind.Separator,
+		},
+		...recommended_sdks.filter(Boolean).map((sdk) => ({
+			label: sdk.name,
+			description: sdk.url.hostname + sdk.url.pathname,
+			url: sdk.url,
+			iconPath: downloaded.includes(sdk.name)
+				? new vscode.ThemeIcon('check')
+				: new vscode.ThemeIcon('blank'),
+		})),
+		{
+			label: 'All versions',
+			kind: vscode.QuickPickItemKind.Separator,
+		},
+		...remote_sdks.map((sdk, n) => ({
+			label: sdk.name,
+			description: sdk.url.hostname + sdk.url.pathname,
+			url: sdk.url,
+			iconPath: downloaded.includes(sdk.name)
+				? new vscode.ThemeIcon('check')
+				: new vscode.ThemeIcon('blank'),
+		})),
+	]
 	quick_pick.placeholder = 'Select an SDK version to install'
 	quick_pick.busy = false
 
@@ -226,6 +246,12 @@ async function prompt_install_sdk_picker(
 				)
 
 				if (!file) return resolve(undefined)
+
+				set_config('sdkPath', file.fsPath, true)
+
+				vscode.window.showInformationMessage(
+					`Ren'Py ${selection.label} installed and set as current SDK`
+				)
 
 				return prompt_sdk_quick_pick(context)
 			} catch (error) {

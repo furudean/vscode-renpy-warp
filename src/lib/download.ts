@@ -33,8 +33,15 @@ function fix_broken_semver(name: string): string {
 		return `${name}.0` // add patch version if missing
 	}
 	// 5.1.4a
-	if (name.match(/^\d+\.\d+(\.\d+)?[a-z]$/)) {
-		return `${name.slice(0, -1)}.0--${name.slice(-1)}` // 5.1.4--a
+	if (name.match(/^\d+\.\d+\.\d+[a-z]$/)) {
+		return `${name.slice(0, -1)}--${name.slice(-1)}` // convert 5.1.4a to 5.1.4-a
+	}
+	// 6.99.14.1 6.99.14.2 etc
+	if (name.match(/^\d+\.\d+\.\d+(\.\d+)?$/)) {
+		return `${name.split('.').slice(0, 3).join('.')}--${name
+			.split('.')
+			.slice(3)
+			.join('.')}` // 6.99.14--1
 	}
 
 	return name
@@ -169,4 +176,15 @@ export async function list_downloaded_sdks(
 	const sdk_paths = sdk_uris.map((uri) => uri.fsPath)
 
 	return p_filter(sdk_paths, path_is_sdk)
+}
+
+export async function downloads_location(
+	context: ExtensionContext
+): Promise<string> {
+	const file_downloader: FileDownloader = await getApi()
+	const downloads_dir = await file_downloader.listDownloadedItems(context)
+	if (downloads_dir.length === 0) {
+		throw new Error('No downloaded items found in the context.')
+	}
+	return path.resolve(downloads_dir[0].fsPath, '..')
 }
