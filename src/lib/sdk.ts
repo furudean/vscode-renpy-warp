@@ -12,20 +12,18 @@ import {
 	list_remote_sdks,
 	semver_compare,
 } from './download'
-import p_map from 'p-map'
 import { SemVer } from 'semver'
 
 export const logger = get_logger()
 
-const PathAction = Symbol('PathAction')
-const FilePickerAction = Symbol('SystemFilePickerAction')
-const InstallSdkAction = Symbol('InstallSdkAction')
+enum SdkAction {
+	Path = 'Path',
+	FilePicker = 'SystemFilePicker',
+	InstallSdk = 'InstallSdk',
+}
 
 interface SdkQuickPickItem extends vscode.QuickPickItem {
-	action?:
-		| typeof PathAction
-		| typeof FilePickerAction
-		| typeof InstallSdkAction
+	action?: SdkAction
 	path?: string
 }
 
@@ -78,7 +76,7 @@ export async function prompt_sdk_quick_pick(
 				current_sdk_path && current_sdk_path in downloaded_sdks
 					? new vscode.ThemeIcon('check')
 					: new vscode.ThemeIcon('blank'),
-			action: PathAction,
+			action: SdkAction.Path,
 			path: sdk_path,
 			buttons: [
 				{
@@ -98,12 +96,12 @@ export async function prompt_sdk_quick_pick(
 			kind: vscode.QuickPickItemKind.Separator,
 		},
 		{
-			label: '$(plus) Download new SDK...',
-			action: InstallSdkAction,
+			label: "$(plus) Download new Ren'Py SDK...",
+			action: SdkAction.InstallSdk,
 		},
 		{
 			label: '$(file-directory) Enter SDK path...',
-			action: FilePickerAction,
+			action: SdkAction.FilePicker,
 		},
 	]
 
@@ -117,13 +115,13 @@ export async function prompt_sdk_quick_pick(
 	if (!selection) return
 
 	switch (selection.action) {
-		case InstallSdkAction:
+		case SdkAction.InstallSdk:
 			return await prompt_install_sdk_picker(context)
 
-		case FilePickerAction:
+		case SdkAction.FilePicker:
 			return await prompt_sdk_file_picker()
 
-		case PathAction:
+		case SdkAction.Path:
 			if (selection.path) {
 				if (await path_is_sdk(selection.path)) {
 					return selection.path

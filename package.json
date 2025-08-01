@@ -81,7 +81,6 @@
 		"node-window-manager": "^2.2.4",
 		"p-filter": "^4.1.0",
 		"p-locate": "^6.0.0",
-		"p-map": "^7.0.3",
 		"pidtree": "^0.6.0",
 		"semver": "^7.6.3",
 		"sort-paths": "^1.1.1",
