@@ -1,49 +1,55 @@
 import { homedir } from 'node:os'
 import { get_config } from './config'
-import { path_is_sdk, resolve_path } from './path'
+import { path_exists, resolve_path } from './path'
 import * as vscode from 'vscode'
-import { glob } from 'glob'
 import path from 'upath'
 import untildify from 'untildify'
 import tildify from 'tildify'
+import { get_executable, get_version } from './sh'
+import { get_logger } from './log'
+
+export const logger = get_logger()
 
 const PathAction = Symbol('PathAction')
 const FilePickerAction = Symbol('SystemFilePickerAction')
+const InstallSdkAction = Symbol('InstallSdkAction')
 
 interface SdkQuickPickItem extends vscode.QuickPickItem {
-	action?: typeof PathAction | typeof FilePickerAction
+	action?:
+		| typeof PathAction
+		| typeof FilePickerAction
+		| typeof InstallSdkAction
 	path?: string
 }
 
-export async function find_user_sdks(): Promise<Record<string, string[]>> {
-	const sdks_dirs = get_config('sdksDirectories') as string[]
+export async function path_is_sdk(sdk_path: string): Promise<boolean> {
+	return await path_exists(path.join(sdk_path, 'renpy.py'))
+}
 
-	const groups: Record<string, string[]> = {}
+/**
+ * Returns the path to the Ren'Py SDK as specified in the settings. Prompts the
+ * user to set the path if it is not set.
+ */
+export async function get_sdk_path(): Promise<string | undefined> {
+	let sdk_path_setting = get_config('sdkPath') as string
 
-	for (const dir of sdks_dirs) {
-		const found = (
-			await glob(`${untildify(dir)}/*/renpy.py`, { absolute: true })
-		).map(path.dirname)
+	logger.debug('raw sdk path:', sdk_path_setting)
 
-		groups[dir] = found
+	if (!sdk_path_setting.trim()) {
+		const selection = await vscode.window.showInformationMessage(
+			"Please set a Ren'Py SDK path to continue",
+			'Set SDK Path',
+			'Cancel'
+		)
+		if (selection === 'Set SDK Path') {
+			sdk_path_setting = await vscode.commands.executeCommand(
+				'renpyWarp.setSdkPath'
+			)
+		}
+		if (!sdk_path_setting) return
 	}
 
-	return groups
-}
-
-function get_recent_sdks(context: vscode.ExtensionContext): string[] {
-	return context.globalState.get('recentSdks') ?? []
-}
-
-async function update_recent_sdks(
-	sdk_path: string,
-	context: vscode.ExtensionContext
-): Promise<void> {
-	const recent_sdks = get_recent_sdks(context).filter(
-		(path) => path !== sdk_path
-	)
-	const updated_sdks = [sdk_path, ...recent_sdks].slice(0, 5)
-	context.globalState.update('recentSdks', updated_sdks)
+	return resolve_path(sdk_path_setting)
 }
 
 async function create_quick_pick_item(
@@ -57,7 +63,7 @@ async function create_quick_pick_item(
 		description: tildify(sdk_path),
 		// iconPath: new vscode.ThemeIcon('history'),
 		action: PathAction,
-		fs_path: sdk_path,
+		path: sdk_path,
 	}
 }
 
@@ -66,70 +72,30 @@ export async function prompt_sdk_quick_pick(
 ): Promise<string | void> {
 	const current_sdk_path = get_config('sdkPath') as string | undefined
 
-	const sdks = await find_user_sdks()
-
 	function not_current_filter(item: SdkQuickPickItem): boolean {
 		return item?.path !== current_sdk_path
 	}
 
-	const options: SdkQuickPickItem[] = []
-
-	if (current_sdk_path) {
-		options.push(
-			// {
-			// 	label: 'current',
-			// 	kind: vscode.QuickPickItemKind.Separator,
-			// },
-			// {
-			// 	label: current_sdk_path,
-			// 	iconPath: new vscode.ThemeIcon('star'),
-			// 	action: PathAction,
-			// 	fs_path: current_sdk_path,
-			// },
-			{
-				label: '',
-				kind: vscode.QuickPickItemKind.Separator,
-			},
-			{
-				label: '$(file-directory) Enter interpreter path...',
-				action: FilePickerAction,
-			}
-		)
-	}
-
-	const recent_sdks = get_recent_sdks(context)
-	if (recent_sdks && recent_sdks.length > 0) {
-		for (const path of recent_sdks) {
-			const executable = await get_executable(path)
-
-			if (!executable) continue
-
-			const item = await create_quick_pick_item(path)
-
-			if (!item && not_current_filter(item)) {
-				options.push(item)
-			}
-		}
-	}
-
-	for (const [dir, paths] of Object.entries(sdks)) {
-		// options.push({
-		// 	label: `in ${dir}`,
+	const options: SdkQuickPickItem[] = [
+		{
+			label: '$(plus) Install new SDK...',
+			action: InstallSdkAction,
+		},
+		// {
+		// 	label: '',
 		// 	kind: vscode.QuickPickItemKind.Separator,
-		// })
-
-		for (const p of paths) {
-			const item = await create_quick_pick_item(p)
-
-			if (item !== undefined && not_current_filter(item)) {
-				options.push(item)
-			}
-		}
-	}
+		// },
+		{
+			label: '$(file-directory) Enter SDK path...',
+			action: FilePickerAction,
+		},
+	]
 
 	const selection = await vscode.window.showQuickPick(options, {
 		title: "Select Ren'Py SDK",
-		placeHolder: `Selected SDK: ${tildify(current_sdk_path)}`,
+		placeHolder: `Selected SDK: ${
+			current_sdk_path ? tildify(current_sdk_path) : 'None'
+		}`,
 		matchOnDescription: true,
 	})
 
@@ -141,7 +107,6 @@ export async function prompt_sdk_quick_pick(
 	if (selection.action === PathAction) {
 		if (selection.path) {
 			if (await path_is_sdk(selection.path)) {
-				await update_recent_sdks(selection.path, context)
 				return selection.path
 			}
 		}

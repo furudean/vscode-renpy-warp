@@ -8,14 +8,11 @@ import { get_logger } from './log'
 import fs from 'node:fs/promises'
 import AdmZip from 'adm-zip'
 import { createHash } from 'node:crypto'
-import {
-	find_projects_in_workspaces,
-	get_sdk_path,
-	mkdir_exist_ok,
-} from './path'
+import { find_projects_in_workspaces, mkdir_exist_ok } from './path'
 import { get_user_ignore_pattern, show_file } from './config'
 import { prompt_not_rpy8_invalid_configuration } from './onboard'
 import memoize from 'memoize'
+import { get_sdk_path } from './sdk'
 
 const RPE_FILE_PATTERN =
 	/renpy_warp_(?<version>\d+\.\d+\.\d+)(?:_(?<checksum>[a-z0-9]+))?\.rpe(?:\.py)?/
@@ -106,7 +103,7 @@ export async function install_rpe({
 }
 
 export async function update_existing_rpes(context: vscode.ExtensionContext) {
-	const projects = await find_projects_in_workspaces(context)
+	const projects = await find_projects_in_workspaces()
 
 	if (!projects) return
 

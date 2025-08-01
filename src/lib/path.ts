@@ -3,7 +3,7 @@ import path from 'upath'
 import untildify from 'untildify'
 import fs from 'node:fs/promises'
 import { get_logger } from './log'
-import { get_config, get_user_ignore_pattern } from './config'
+import { get_user_ignore_pattern } from './config'
 import env_paths from 'env-paths'
 import { name as pkg_name } from '../../package.json'
 import sortPaths from 'sort-paths'
@@ -44,45 +44,11 @@ export async function mkdir_exist_ok(file_path: string): Promise<void> {
 	}
 }
 
-export async function path_is_sdk(absolute_path: string): Promise<boolean> {
-	return await path_exists(path.join(absolute_path, 'renpy.py'))
-}
-
-/**
- * Returns the path to the Ren'Py SDK as specified in the settings. Prompts the
- * user to set the path if it is not set.
- */
-export async function get_sdk_path(): Promise<string | undefined> {
-	let sdk_path_setting = get_config('sdkPath') as string
-
-	logger.debug('raw sdk path:', sdk_path_setting)
-
-	if (!sdk_path_setting.trim()) {
-		const selection = await vscode.window.showInformationMessage(
-			"Please set a Ren'Py SDK path to continue",
-			'Set SDK Path',
-			'Cancel'
-		)
-		if (selection === 'Set SDK Path') {
-			sdk_path_setting = await vscode.commands.executeCommand(
-				'renpyWarp.setSdkPath'
-			)
-		}
-		if (!sdk_path_setting) return
-	}
-
-	return resolve_path(sdk_path_setting)
-}
-
+export async function find_projects_in_workspaces(): Promise<string[]>
 export async function find_projects_in_workspaces(
-	context: vscode.ExtensionContext
-): Promise<string[]>
-export async function find_projects_in_workspaces(
-	context: vscode.ExtensionContext,
 	groups: boolean
 ): Promise<Map<string, string[]>>
 export async function find_projects_in_workspaces(
-	context: vscode.ExtensionContext,
 	groups = false
 ): Promise<string[] | Map<string, string[]>> {
 	const workspace_games = new Map<string, string[]>()
