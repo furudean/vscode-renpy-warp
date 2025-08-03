@@ -192,6 +192,7 @@ export class StatusBar {
 			const version = get_version(executable)?.semver
 
 			if (
+				// if is managed by the extension
 				sdk_path.includes('/globalStorage/paisleysoftworks.renpywarp/')
 			) {
 				this.sdk_bar.text = `$(warp-renpy) ${version}`
