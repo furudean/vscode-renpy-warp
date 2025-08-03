@@ -85,7 +85,7 @@ export async function prompt_sdk_quick_pick(
 		if (!label) {
 			buttons.push({
 				iconPath: new vscode.ThemeIcon('trash'),
-				tooltip: 'Uninstall SDK',
+				tooltip: 'Delete',
 			})
 		}
 
@@ -129,7 +129,7 @@ export async function prompt_sdk_quick_pick(
 				await open(e.item.path)
 				break
 			}
-			case 'Uninstall SDK':
+			case 'Delete':
 				await uninstall_sdk(e.item.path, context)
 				if (e.item.path === current_sdk_path) {
 					await set_config_exclusive('sdkPath', undefined, true)
@@ -161,12 +161,11 @@ export async function prompt_sdk_quick_pick(
 	)
 
 	const downloaded_sdks = await list_downloaded_sdks(context)
+	const current_sdk_is_managed_by_extension = current_sdk_path
+		? downloaded_sdks.includes(current_sdk_path)
+		: false
 
 	quick_pick.items = [
-		{
-			label: 'Visual Studio Code',
-			kind: vscode.QuickPickItemKind.Separator,
-		},
 		...downloaded_sdks
 			.sort((a, b) => {
 				if (a === current_sdk_path) return -1
@@ -181,9 +180,13 @@ export async function prompt_sdk_quick_pick(
 		...quick_pick.items,
 	]
 
-	if (current_sdk_path && !downloaded_sdks.includes(current_sdk_path)) {
+	if (current_sdk_path && !current_sdk_is_managed_by_extension) {
 		quick_pick.items = [
 			create_quick_pick_item(current_sdk_path, tildify(current_sdk_path)),
+			{
+				label: 'Visual Studio Code',
+				kind: vscode.QuickPickItemKind.Separator,
+			},
 			...quick_pick.items,
 		]
 	}
