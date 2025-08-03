@@ -8,12 +8,11 @@ import p_filter from 'p-filter'
 import { path_is_sdk } from './sdk'
 import { cp, readdir, rm, rmdir } from 'node:fs/promises'
 import path from 'upath'
-import { basename, dirname } from 'node:path'
-import AdmZip from 'adm-zip'
+import { basename } from 'node:path'
 
 const logger = get_logger()
 
-interface RemoteSdk {
+export interface RemoteSdk {
 	name: string
 	url: URL
 }

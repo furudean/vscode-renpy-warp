@@ -194,11 +194,11 @@ export class StatusBar {
 			if (
 				sdk_path.includes('/globalStorage/paisleysoftworks.renpywarp/')
 			) {
-				this.sdk_bar.text = `$(warp-renpy) v${version}`
+				this.sdk_bar.text = `$(warp-renpy) ${version}`
 			} else {
 				this.sdk_bar.text = `$(warp-renpy) ${tildify(
 					sdk_path
-				)} (v${version})`
+				)} (${version})`
 			}
 
 			this.sdk_bar.command = 'renpyWarp.setSdkPath'

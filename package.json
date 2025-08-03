@@ -160,6 +160,11 @@
 				"category": "Ren'Py Launch"
 			},
 			{
+				"command": "renpyWarp.downloadSdk",
+				"title": "Download new Ren'Py SDK",
+				"category": "Ren'Py Launch"
+			},
+			{
 				"command": "renpyWarp.setExtensionsPreference",
 				"title": "Set Ren'Py extensions preference",
 				"category": "Ren'Py Launch"

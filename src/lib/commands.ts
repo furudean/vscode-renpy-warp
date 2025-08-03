@@ -3,7 +3,11 @@ import { get_config, set_config, show_file } from './config'
 import { launch_renpy, launch_sdk } from './launch'
 import { prompt_configure_extensions } from './onboard'
 import { find_projects_in_workspaces } from './path'
-import { get_sdk_path, prompt_sdk_quick_pick } from './sdk'
+import {
+	get_sdk_path,
+	prompt_sdk_quick_pick,
+	prompt_install_sdk_picker,
+} from './sdk'
 import { prompt_install_rpe, uninstall_rpes } from './rpe'
 import { get_executable } from './sh'
 import { WarpSocketService } from './socket'
@@ -234,6 +238,10 @@ export function get_commands(
 			await set_config('sdkPath', fs_path, true)
 
 			return fs_path
+		},
+
+		'renpyWarp.downloadSdk': async () => {
+			await prompt_install_sdk_picker(context)
 		},
 
 		'renpyWarp.setExtensionsPreference': async () => {

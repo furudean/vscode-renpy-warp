@@ -12,6 +12,7 @@ import {
 	list_remote_sdks,
 	semver_compare,
 	uninstall_sdk,
+	RemoteSdk,
 } from './download'
 import { SemVer } from 'semver'
 
@@ -29,7 +30,7 @@ interface SdkQuickPickItem extends vscode.QuickPickItem {
 }
 
 interface DownloadSdkQuickPickItem extends vscode.QuickPickItem {
-	url: URL
+	url?: URL
 	installed_uri?: vscode.Uri
 }
 
@@ -89,10 +90,6 @@ export async function prompt_sdk_quick_pick(
 	}
 
 	const options: SdkQuickPickItem[] = [
-		{
-			label: 'Installed SDKs',
-			kind: vscode.QuickPickItemKind.Separator,
-		},
 		...downloaded_sdks
 			.sort((a, b) => semver_compare(basename(a), basename(b)))
 			.map(create_quick_pick_item),
@@ -195,7 +192,8 @@ export async function prompt_sdk_file_picker(): Promise<string | undefined> {
 
 	return tildify(fs_path)
 }
-async function prompt_install_sdk_picker(
+
+export async function prompt_install_sdk_picker(
 	context: vscode.ExtensionContext
 ): Promise<string | void> {
 	const quick_pick = vscode.window.createQuickPick<DownloadSdkQuickPickItem>()
@@ -220,7 +218,7 @@ async function prompt_install_sdk_picker(
 	const recommended_sdks = [
 		remote_sdks[0],
 		remote_sdks.find((sdk) => sdk.name.startsWith(last_major.toString())),
-	]
+	].filter((sdk) => sdk !== undefined) as RemoteSdk[]
 
 	const downloaded = (await list_downloaded_sdks(context)).map((sdk) =>
 		basename(sdk)
@@ -231,7 +229,7 @@ async function prompt_install_sdk_picker(
 			label: 'Recommended for new projects',
 			kind: vscode.QuickPickItemKind.Separator,
 		},
-		...recommended_sdks.filter(Boolean).map((sdk) => ({
+		...recommended_sdks.map((sdk) => ({
 			label: sdk.name,
 			description: sdk.url.hostname + sdk.url.pathname,
 			url: sdk.url,
@@ -243,7 +241,7 @@ async function prompt_install_sdk_picker(
 			label: 'All versions',
 			kind: vscode.QuickPickItemKind.Separator,
 		},
-		...remote_sdks.map((sdk, n) => ({
+		...remote_sdks.map((sdk) => ({
 			label: sdk.name,
 			description: sdk.url.hostname + sdk.url.pathname,
 			url: sdk.url,
@@ -261,7 +259,7 @@ async function prompt_install_sdk_picker(
 				const selection = quick_pick.selectedItems[0]
 				quick_pick.hide()
 
-				if (!selection) {
+				if (!selection || !selection.url) {
 					resolve(undefined)
 					return
 				}
