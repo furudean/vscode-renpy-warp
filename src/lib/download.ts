@@ -127,7 +127,7 @@ export async function download_sdk(
 	}
 
 	try {
-		return vscode.window.withProgress(
+		return await vscode.window.withProgress(
 			{
 				title: `Downloading and installing Ren'Py ${name}`,
 				location: vscode.ProgressLocation.Notification,
@@ -147,7 +147,7 @@ export async function download_sdk(
 					},
 					{ timeoutInMs: 5 * 60 * 1000, shouldUnzip: true }
 				)
-				progress.report({ message: 'Finalizing...', increment: -1 })
+				progress.report({ message: 'Finalizing...', increment: -1000 })
 				await shallow(file.fsPath)
 				return file
 			}
