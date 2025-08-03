@@ -68,7 +68,6 @@ export async function prompt_sdk_quick_pick(
 	context: vscode.ExtensionContext
 ): Promise<string | void> {
 	const current_sdk_path = await get_sdk_path()
-	const downloaded_sdks = await list_downloaded_sdks(context)
 
 	function create_quick_pick_item(sdk_path: string): SdkQuickPickItem {
 		return {
@@ -90,17 +89,6 @@ export async function prompt_sdk_quick_pick(
 	}
 
 	const options: SdkQuickPickItem[] = [
-		...downloaded_sdks
-			.sort((a, b) => {
-				if (a === current_sdk_path) return -1
-				if (b === current_sdk_path) return 1
-				return semver_compare(basename(a), basename(b))
-			})
-			.map(create_quick_pick_item),
-		{
-			label: '',
-			kind: vscode.QuickPickItemKind.Separator,
-		},
 		{
 			label: '$(plus) Download new SDK version...',
 			action: SdkAction.InstallSdk,
@@ -117,6 +105,8 @@ export async function prompt_sdk_quick_pick(
 		current_sdk_path ? tildify(current_sdk_path) : 'None'
 	}`
 	quick_pick.items = options
+	quick_pick.ignoreFocusOut = true
+	quick_pick.busy = true
 
 	quick_pick.onDidTriggerItemButton(async ({ item }) => {
 		if (!item?.path) throw new Error('item path is undefined')
@@ -130,7 +120,7 @@ export async function prompt_sdk_quick_pick(
 
 	quick_pick.show()
 
-	const selection = await new Promise<SdkQuickPickItem | undefined>(
+	const selection_promise = new Promise<SdkQuickPickItem | undefined>(
 		(resolve) => {
 			quick_pick.onDidAccept(() => {
 				resolve(quick_pick.selectedItems[0])
@@ -142,6 +132,26 @@ export async function prompt_sdk_quick_pick(
 			})
 		}
 	)
+
+	const downloaded_sdks = await list_downloaded_sdks(context)
+
+	quick_pick.items = [
+		...downloaded_sdks
+			.sort((a, b) => {
+				if (a === current_sdk_path) return -1
+				if (b === current_sdk_path) return 1
+				return semver_compare(basename(a), basename(b))
+			})
+			.map(create_quick_pick_item),
+		{
+			label: '',
+			kind: vscode.QuickPickItemKind.Separator,
+		},
+		...quick_pick.items,
+	]
+	quick_pick.busy = false
+
+	const selection = await selection_promise
 
 	if (!selection) return
 
