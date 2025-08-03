@@ -91,7 +91,11 @@ export async function prompt_sdk_quick_pick(
 
 	const options: SdkQuickPickItem[] = [
 		...downloaded_sdks
-			.sort((a, b) => semver_compare(basename(a), basename(b)))
+			.sort((a, b) => {
+				if (a === current_sdk_path) return -1
+				if (b === current_sdk_path) return 1
+				return semver_compare(basename(a), basename(b))
+			})
 			.map(create_quick_pick_item),
 		{
 			label: '',
