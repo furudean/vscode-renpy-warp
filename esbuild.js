@@ -39,6 +39,7 @@ async function main() {
 			'node-window-manager',
 			'extract-file-icon',
 			'jsdom',
+			'open',
 		],
 		logLevel: 'silent',
 		plugins: [

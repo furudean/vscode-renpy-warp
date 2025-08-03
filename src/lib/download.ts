@@ -195,9 +195,7 @@ export async function uninstall_sdk(
 	try {
 		await rmdir(sdk_uri.fsPath, { recursive: true })
 		vscode.window.showInformationMessage(
-			`Ren'Py SDK at ${basename(
-				sdk_path
-			)} has been uninstalled successfully.`
+			`Ren'Py SDK at ${basename(sdk_path)} uninstalled`
 		)
 	} catch (error) {
 		logger.error(`Failed to uninstall SDK at ${sdk_path}:`, error)

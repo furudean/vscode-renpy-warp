@@ -15,11 +15,13 @@ import {
 	RemoteSdk,
 } from './download'
 import { SemVer } from 'semver'
+import open from 'open'
 
 export const logger = get_logger()
 
 enum SdkAction {
 	Path = 'Path',
+	ShowDirectory = 'ShowDirectory',
 	FilePicker = 'SystemFilePicker',
 	InstallSdk = 'InstallSdk',
 }
@@ -69,9 +71,26 @@ export async function prompt_sdk_quick_pick(
 ): Promise<string | void> {
 	const current_sdk_path = await get_sdk_path()
 
-	function create_quick_pick_item(sdk_path: string): SdkQuickPickItem {
+	function create_quick_pick_item(
+		sdk_path: string,
+		label?: string
+	): SdkQuickPickItem {
+		const buttons: vscode.QuickInputButton[] = [
+			{
+				iconPath: new vscode.ThemeIcon('folder'),
+				tooltip: 'Show directory',
+			},
+		]
+
+		if (!label) {
+			buttons.push({
+				iconPath: new vscode.ThemeIcon('trash'),
+				tooltip: 'Uninstall SDK',
+			})
+		}
+
 		return {
-			label: basename(sdk_path),
+			label: label ?? basename(sdk_path),
 			// description: tildify(sdk_path),
 			iconPath:
 				sdk_path === current_sdk_path
@@ -79,18 +98,15 @@ export async function prompt_sdk_quick_pick(
 					: new vscode.ThemeIcon('blank'),
 			action: SdkAction.Path,
 			path: sdk_path,
-			buttons: [
-				{
-					iconPath: new vscode.ThemeIcon('trash'),
-					tooltip: 'Uninstall SDK',
-				},
-			],
+			description:
+				sdk_path === current_sdk_path ? '(selected)' : undefined,
+			buttons,
 		}
 	}
 
 	const options: SdkQuickPickItem[] = [
 		{
-			label: '$(plus) Download new SDK version...',
+			label: '$(plus) Download SDK version...',
 			action: SdkAction.InstallSdk,
 		},
 		{
@@ -101,21 +117,32 @@ export async function prompt_sdk_quick_pick(
 
 	const quick_pick = vscode.window.createQuickPick<SdkQuickPickItem>()
 	quick_pick.title = "Select Ren'Py SDK"
-	quick_pick.placeholder = `Selected SDK: ${
-		current_sdk_path ? tildify(current_sdk_path) : 'None'
-	}`
+	quick_pick.placeholder = "Select a Ren'Py SDK to use"
 	quick_pick.items = options
 	quick_pick.ignoreFocusOut = true
 	quick_pick.busy = true
 
-	quick_pick.onDidTriggerItemButton(async ({ item }) => {
-		if (!item?.path) throw new Error('item path is undefined')
-
-		await uninstall_sdk(item.path, context)
-		if (item.path === current_sdk_path) {
-			set_config_exclusive('sdkPath', undefined, true)
+	quick_pick.onDidTriggerItemButton(async (e) => {
+		if (!e.item.path) throw new Error('item path is undefined')
+		switch (e.button.tooltip) {
+			case 'Show directory': {
+				await open(e.item.path)
+				break
+			}
+			case 'Uninstall SDK':
+				await uninstall_sdk(e.item.path, context)
+				if (e.item.path === current_sdk_path) {
+					await set_config_exclusive('sdkPath', undefined, true)
+				}
+				quick_pick.items = quick_pick.items.filter(
+					(i) => i.path !== e.item.path
+				)
+				break
+			default:
+				throw new Error(
+					`unexpected button tooltip: ${e.button.tooltip}`
+				)
 		}
-		quick_pick.items = quick_pick.items.filter((i) => i.path !== item.path)
 	})
 
 	quick_pick.show()
@@ -136,19 +163,31 @@ export async function prompt_sdk_quick_pick(
 	const downloaded_sdks = await list_downloaded_sdks(context)
 
 	quick_pick.items = [
+		{
+			label: 'Visual Studio Code',
+			kind: vscode.QuickPickItemKind.Separator,
+		},
 		...downloaded_sdks
 			.sort((a, b) => {
 				if (a === current_sdk_path) return -1
 				if (b === current_sdk_path) return 1
 				return semver_compare(basename(a), basename(b))
 			})
-			.map(create_quick_pick_item),
+			.map((sdk_path) => create_quick_pick_item(sdk_path)),
 		{
 			label: '',
 			kind: vscode.QuickPickItemKind.Separator,
 		},
 		...quick_pick.items,
 	]
+
+	if (current_sdk_path && !downloaded_sdks.includes(current_sdk_path)) {
+		quick_pick.items = [
+			create_quick_pick_item(current_sdk_path, tildify(current_sdk_path)),
+			...quick_pick.items,
+		]
+	}
+
 	quick_pick.busy = false
 
 	const selection = await selection_promise

@@ -79,6 +79,7 @@
 		"jsdom": "^26.1.0",
 		"memoize": "^10.0.0",
 		"node-window-manager": "^2.2.4",
+		"open": "^10.2.0",
 		"p-filter": "^4.1.0",
 		"p-locate": "^6.0.0",
 		"pidtree": "^0.6.0",
