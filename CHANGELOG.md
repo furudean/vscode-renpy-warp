@@ -27,6 +27,7 @@ All notable changes to this project will be documented in this file.
     extension.
 -   Searching for RPEs has been optimized, now doing less redundant processing
     than before.
+-   Update dependencies to the latest versions
 
 ## 1.35.0 - 2025-05-03
 
