@@ -4,9 +4,10 @@ import { get_logger } from './log'
 import { get_config } from './config'
 import os from 'node:os'
 import child_process from 'node:child_process'
-import { path_exists, path_is_sdk, resolve_path } from './path'
+import { path_exists, resolve_path } from './path'
 import find_process from 'find-process'
 import p_find from 'p-locate'
+import { path_is_sdk } from './sdk'
 
 const logger = get_logger()
 const IS_WINDOWS = os.platform() === 'win32'

@@ -14,9 +14,10 @@ import { prompt_install_rpe, get_rpe_checksum } from './rpe'
 import path from 'upath'
 import { get_config, set_config } from './config'
 import { createServer, IncomingMessage } from 'node:http'
-import { find_projects_in_workspaces, get_sdk_path } from './path'
+import { find_projects_in_workspaces } from './path'
 import { FollowCursorService, sync_editor_with_renpy } from './follow_cursor'
 import { get_executable } from './sh'
+import { get_sdk_path } from './sdk'
 
 const logger = get_logger()
 
@@ -310,7 +311,7 @@ export class WarpSocketService {
 
 		const [rpe_checksum, project_roots] = await Promise.all([
 			get_rpe_checksum(this.context.extensionPath),
-			find_projects_in_workspaces(this.context),
+			find_projects_in_workspaces(),
 		])
 
 		const matches_any_root = project_roots.some(

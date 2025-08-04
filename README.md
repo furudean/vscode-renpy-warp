@@ -14,6 +14,7 @@ Studio Code.
 -   Automatically enable autoreload when files change (with a setting)
 -   Can discover and bind to games that were started outside of Visual Studio
     Code
+-   Can manage installs of the Ren'Py SDK directly from Visual Studio Code
 
 ## Commands
 

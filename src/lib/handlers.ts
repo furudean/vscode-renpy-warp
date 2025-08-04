@@ -3,7 +3,8 @@ import { get_config } from './config'
 import { get_logger } from './log'
 import { ProcessManager } from './process'
 import { WarpSocketService } from './socket'
-import { uninstall_rpes } from './rpe'
+import { uninstall_rpes, update_existing_rpes } from './rpe'
+import { get_sdk_path } from './sdk'
 
 const logger = get_logger()
 
@@ -50,6 +51,8 @@ export function register_handlers(
 				e.affectsConfiguration('renpyWarp.renpyExtensionsEnabled') ||
 				e.affectsConfiguration('renpyWarp.sdkPath')
 			) {
+				await update_existing_rpes(context)
+
 				logger.info('server settings changed')
 				if (
 					get_config('autoStartSocketServer') &&
@@ -58,8 +61,7 @@ export function register_handlers(
 					wss.start()
 				} else {
 					wss.close()
-					const sdk_path = get_config('sdkPath') as string
-
+					const sdk_path = await get_sdk_path()
 					if (sdk_path) {
 						for (const folder of vscode.workspace
 							.workspaceFolders ?? []) {

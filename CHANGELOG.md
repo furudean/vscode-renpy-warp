@@ -12,6 +12,14 @@ All notable changes to this project will be documented in this file.
 -   **Breaking**: RPEs in the SDK root are no longer monitored. This feature has
     been unused for some time, and the only code remaining was to find any
     that still existed in the SDK root.
+-   SDKs can now be downloaded and managed directly inside Visual Studio Code,
+    using the command `renpyWarp.downloadSdk`. The SDK picker has been updated
+    to guide users through this feature.
+-   A status bar item has been added to aid with discovery on this feature (and
+    to highlight the used Ren'Py version).
+-   SDKs are now configured on a per-workspace basis when using the UI. If you
+    want to set the SDK path for all workspaces, you can still do so by setting
+    the `renpyWarp.sdkPath` setting in your user settings.
 -   On Ren'Py 8.4.0 and higher, RPEs are now installed in `game/libs/`.
 -   A setting to ignore file patterns, `renpyWarp.exclude` has been introduced.
     This setting is used to exclude files from being watched or processed by the

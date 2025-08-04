@@ -25,7 +25,9 @@
 	],
 	"type": "commonjs",
 	"main": "./dist/extension.js",
-	"extensionDependencies": [],
+	"extensionDependencies": [
+		"mindaro-dev.file-downloader"
+	],
 	"scripts": {
 		"vscode:prepublish": "npm run check-types && npm run lint && node esbuild.js --production",
 		"publish": "echo 'use `npm run publish:vsce` or `npm run publish:ovsx` instead'",
@@ -46,6 +48,7 @@
 	"devDependencies": {
 		"@eslint/js": "^9.9.0",
 		"@types/adm-zip": "^0.5.5",
+		"@types/jsdom": "^21.1.7",
 		"@types/mocha": "^10.0.7",
 		"@types/node": "^20.14.13",
 		"@types/semver": "^7.5.8",
@@ -68,22 +71,36 @@
 	},
 	"dependencies": {
 		"@logdna/tail-file": "^4.0.2",
+		"@microsoft/vscode-file-downloader-api": "^1.0.1",
 		"adm-zip": "^0.5.14",
 		"env-paths": "^3.0.0",
 		"find-process": "^1.4.7",
 		"get-port": "^7.1.0",
+		"jsdom": "^26.1.0",
 		"memoize": "^10.0.0",
 		"node-window-manager": "^2.2.4",
+		"open": "^10.2.0",
+		"p-filter": "^4.1.0",
 		"p-locate": "^6.0.0",
 		"pidtree": "^0.6.0",
 		"semver": "^7.6.3",
 		"sort-paths": "^1.1.1",
+		"tildify": "^3.0.0",
 		"tree-kill": "^1.2.2",
 		"untildify": "^5.0.0",
 		"upath": "^2.0.1",
 		"ws": "^8.18.0"
 	},
 	"contributes": {
+		"icons": {
+			"warp-renpy": {
+				"description": "Ren'Py Icon",
+				"default": {
+					"fontPath": "src/warp.woff",
+					"fontCharacter": "\\ea01"
+				}
+			}
+		},
 		"commands": [
 			{
 				"command": "renpyWarp.launch",
@@ -141,6 +158,11 @@
 			{
 				"command": "renpyWarp.setSdkPath",
 				"title": "Set Ren'Py SDK path",
+				"category": "Ren'Py Launch"
+			},
+			{
+				"command": "renpyWarp.downloadSdk",
+				"title": "Download new Ren'Py SDK",
 				"category": "Ren'Py Launch"
 			},
 			{
@@ -367,6 +389,18 @@
 						]
 					],
 					"order": 3
+				},
+				"renpyWarp.sdksDirectories": {
+					"type": "array",
+					"default": [
+						"~/.renutil"
+					],
+					"items": {
+						"type": "string"
+					},
+					"markdownDescription": "Directories to search for Ren'Py SDKs. This is used when searching for an SDK to use when setting the SDK path.\n\nThis should be an absolute path, or a path starting with `~` to indicate the home directory.",
+					"order": 3,
+					"scope": "machine-overridable"
 				},
 				"renpyWarp.editor": {
 					"type": "string",

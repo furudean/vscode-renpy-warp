@@ -8,12 +8,13 @@ import { get_log_file, get_logger } from './log'
 import { get_editor_path, get_executable, find_project_root } from './sh'
 import { prompt_install_rpe } from './rpe'
 import { StatusBar } from './status_bar'
-import { get_sdk_path, prompt_projects_in_workspaces } from './path'
+import { prompt_projects_in_workspaces } from './path'
 import { prompt_configure_extensions } from './onboard'
 import { focus_window } from './window'
 import { WarpSocketService } from './socket'
 import TailFile from '@logdna/tail-file/lib/tail-file'
 import split2 from 'split2'
+import { get_sdk_path } from './sdk'
 
 export const logger = get_logger()
 

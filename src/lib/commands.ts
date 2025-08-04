@@ -2,12 +2,12 @@ import * as vscode from 'vscode'
 import { get_config, set_config, show_file } from './config'
 import { launch_renpy, launch_sdk } from './launch'
 import { prompt_configure_extensions } from './onboard'
+import { find_projects_in_workspaces } from './path'
 import {
 	get_sdk_path,
-	resolve_path,
-	path_is_sdk,
-	find_projects_in_workspaces,
-} from './path'
+	prompt_sdk_quick_pick,
+	prompt_install_sdk_picker,
+} from './sdk'
 import { prompt_install_rpe, uninstall_rpes } from './rpe'
 import { get_executable } from './sh'
 import { WarpSocketService } from './socket'
@@ -16,7 +16,6 @@ import { StatusBar } from './status_bar'
 import { FollowCursorService, sync_editor_with_renpy } from './follow_cursor'
 import { get_logger } from './log'
 import { focus_window } from './window'
-import { homedir } from 'node:os'
 import { is_special_label } from './label'
 import path from 'upath'
 
@@ -210,7 +209,7 @@ export function get_commands(
 			const executable = await get_executable(sdk_path)
 			if (!executable) return
 
-			const projects = await find_projects_in_workspaces(context)
+			const projects = await find_projects_in_workspaces()
 			for (const project_root of projects) {
 				await prompt_install_rpe({
 					project: project_root,
@@ -233,38 +232,16 @@ export function get_commands(
 		},
 
 		'renpyWarp.setSdkPath': async () => {
-			const input_path = await vscode.window.showOpenDialog({
-				title: "Set Ren'Py SDK directory",
-				openLabel: 'Select SDK',
-				defaultUri: vscode.Uri.file(
-					resolve_path((get_config('sdkPath') as string) || homedir())
-				),
-				canSelectFolders: true,
-				canSelectFiles: false,
-				canSelectMany: false,
-			})
-			if (typeof input_path === 'undefined' || input_path.length === 0)
-				return
+			const fs_path = await prompt_sdk_quick_pick(context)
 
-			const fs_path = input_path[0].fsPath
-			const is_sdk = await path_is_sdk(fs_path)
-
-			if (!is_sdk) {
-				const err_selection = await vscode.window.showErrorMessage(
-					"Path is not a Ren'Py SDK",
-					'Reselect'
-				)
-				if (err_selection)
-					return vscode.commands.executeCommand(
-						'renpyWarp.setSdkPath'
-					)
-
-				return
-			}
-
-			await set_config('sdkPath', fs_path)
+			if (!fs_path) return
+			await set_config('sdkPath', fs_path, true)
 
 			return fs_path
+		},
+
+		'renpyWarp.downloadSdk': async () => {
+			await prompt_install_sdk_picker(context)
 		},
 
 		'renpyWarp.setExtensionsPreference': async () => {
