@@ -118,6 +118,7 @@ export class StatusBar {
 		}
 
 		this.instance_bar.show()
+		this.sdk_bar.show()
 
 		const extensions_enabled =
 			get_config('renpyExtensionsEnabled') === 'Enabled'
@@ -167,8 +168,18 @@ export class StatusBar {
 		}
 
 		const sdk_path = await get_sdk_path()
+		let executable: string[] | undefined
+		let version: string | undefined
 
-		if (!sdk_path) {
+		if (sdk_path) {
+			executable = await get_executable(sdk_path)
+		}
+
+		if (executable) {
+			version = get_version(executable)?.semver
+		}
+
+		if (!sdk_path || !executable || !version) {
 			this.sdk_bar.text = "$(gear) Set Ren'Py SDK path"
 			this.sdk_bar.backgroundColor = new vscode.ThemeColor(
 				'statusBarItem.warningBackground'
@@ -179,33 +190,25 @@ export class StatusBar {
 			this.sdk_bar.command = 'renpyWarp.setSdkPath'
 			this.instance_bar.hide()
 			this.follow_cursor_bar.hide()
-			this.sdk_bar.show()
 			return
 		} else {
 			this.sdk_bar.backgroundColor = undefined
 			this.sdk_bar.color = undefined
 		}
 
-		const executable = await get_executable(sdk_path)
-
-		if (executable) {
-			const version = get_version(executable)?.semver
-
-			if (
-				// if is managed by the extension
-				sdk_path.includes('/globalStorage/paisleysoftworks.renpywarp/')
-			) {
-				this.sdk_bar.text = `$(warp-renpy) ${version}`
-			} else {
-				this.sdk_bar.text = `$(warp-renpy) ${tildify(
-					sdk_path
-				)} (${version})`
-			}
-
-			this.sdk_bar.command = 'renpyWarp.setSdkPath'
-			this.sdk_bar.tooltip = `Using Ren'Py SDK at ${tildify(sdk_path)}`
-			this.sdk_bar.show()
+		if (
+			// if is managed by the extension
+			sdk_path.includes('/globalStorage/paisleysoftworks.renpywarp/')
+		) {
+			this.sdk_bar.text = `$(warp-renpy) ${version}`
+		} else {
+			this.sdk_bar.text = `$(warp-renpy) ${tildify(
+				sdk_path
+			)} (${version})`
 		}
+
+		this.sdk_bar.command = 'renpyWarp.setSdkPath'
+		this.sdk_bar.tooltip = `Using Ren'Py SDK at ${tildify(sdk_path)}`
 	}
 
 	dispose() {

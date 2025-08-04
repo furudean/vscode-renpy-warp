@@ -16,6 +16,7 @@ import {
 } from './download'
 import { SemVer } from 'semver'
 import open from 'open'
+import { get_executable, get_version } from './sh'
 
 export const logger = get_logger()
 
@@ -181,8 +182,19 @@ export async function prompt_sdk_quick_pick(
 	]
 
 	if (current_sdk_path && !current_sdk_is_managed_by_extension) {
+		let label = tildify(current_sdk_path)
+		const executable = await get_executable(current_sdk_path)
+
+		if (executable) {
+			const version = get_version(executable)?.semver
+
+			if (version) {
+				label += ` (${version})`
+			}
+		}
+
 		quick_pick.items = [
-			create_quick_pick_item(current_sdk_path, tildify(current_sdk_path)),
+			create_quick_pick_item(current_sdk_path, label),
 			{
 				label: 'Visual Studio Code',
 				kind: vscode.QuickPickItemKind.Separator,
