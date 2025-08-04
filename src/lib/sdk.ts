@@ -12,9 +12,7 @@ import {
 	list_remote_sdks,
 	semver_compare,
 	uninstall_sdk,
-	RemoteSdk,
 } from './download'
-import { SemVer } from 'semver'
 import open from 'open'
 import { get_executable, get_version } from './sh'
 
