@@ -196,7 +196,7 @@ export async function prompt_sdk_quick_pick(
 		quick_pick.items = [
 			create_quick_pick_item(current_sdk_path, label),
 			{
-				label: 'Visual Studio Code',
+				label: '',
 				kind: vscode.QuickPickItemKind.Separator,
 			},
 			...quick_pick.items,
@@ -281,13 +281,7 @@ export async function prompt_install_sdk_picker(
 		return
 	}
 
-	const newest_major = new SemVer(remote_sdks[0].name).major
-	const last_major = newest_major - 1
-	const recommended_sdks = [
-		remote_sdks[0],
-		remote_sdks.find((sdk) => sdk.name.startsWith(last_major.toString())),
-	].filter((sdk) => sdk !== undefined) as RemoteSdk[]
-
+	const recommended_sdks = [remote_sdks[0]]
 	const downloaded = (await list_downloaded_sdks(context)).map((sdk) =>
 		basename(sdk)
 	)
@@ -309,14 +303,16 @@ export async function prompt_install_sdk_picker(
 			label: 'All versions',
 			kind: vscode.QuickPickItemKind.Separator,
 		},
-		...remote_sdks.map((sdk) => ({
-			label: sdk.name,
-			description: sdk.url.hostname + sdk.url.pathname,
-			url: sdk.url,
-			iconPath: downloaded.includes(sdk.name)
-				? new vscode.ThemeIcon('check')
-				: new vscode.ThemeIcon('blank'),
-		})),
+		...remote_sdks
+			.filter((sdk) => !recommended_sdks.includes(sdk))
+			.map((sdk) => ({
+				label: sdk.name,
+				description: sdk.url.hostname + sdk.url.pathname,
+				url: sdk.url,
+				iconPath: downloaded.includes(sdk.name)
+					? new vscode.ThemeIcon('check')
+					: new vscode.ThemeIcon('blank'),
+			})),
 	]
 	quick_pick.placeholder = 'Select an SDK version to install'
 	quick_pick.busy = false
