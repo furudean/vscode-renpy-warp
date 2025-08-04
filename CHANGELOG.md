@@ -15,6 +15,8 @@ All notable changes to this project will be documented in this file.
 -   SDKs can now be downloaded and managed directly inside Visual Studio Code,
     using the command `renpyWarp.downloadSdk`. The SDK picker has been updated
     to guide users through this feature.
+-   A status bar item has been added to aid with discovery on this feature (and
+    to highlight the used Ren'Py version).
 -   SDKs are now configured on a per-workspace basis when using the UI. If you
     want to set the SDK path for all workspaces, you can still do so by setting
     the `renpyWarp.sdkPath` setting in your user settings.
