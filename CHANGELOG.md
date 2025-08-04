@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+-   **Breaking**: Minimum supported Visual Studio Code version is now 1.101.0.
 -   **Breaking**: RPEs will no longer proactively be installed on extension
     launch. Instead, they will be installed when a game is launched or a command
     is explicitly called to install them. If you only start games externally,
