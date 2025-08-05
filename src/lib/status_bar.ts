@@ -39,6 +39,7 @@ export class StatusBar {
 			vscode.StatusBarAlignment.Right,
 			0
 		)
+
 		this.notification_bar = vscode.window.createStatusBarItem(
 			vscode.StatusBarAlignment.Right,
 			10_000
@@ -117,9 +118,6 @@ export class StatusBar {
 			this.notification_bar.hide()
 		}
 
-		this.instance_bar.show()
-		this.sdk_bar.show()
-
 		const extensions_enabled =
 			get_config('renpyExtensionsEnabled') === 'Enabled'
 
@@ -167,6 +165,8 @@ export class StatusBar {
 			this.instance_bar.tooltip = "Launch new Ren'Py instance"
 		}
 
+		this.instance_bar.show()
+
 		const sdk_path = await get_sdk_path()
 		let executable: string[] | undefined
 		let version: string | undefined
@@ -180,35 +180,33 @@ export class StatusBar {
 		}
 
 		if (!sdk_path || !executable || !version) {
-			this.sdk_bar.text = "$(gear) Set Ren'Py SDK path"
+			this.sdk_bar.text = "$(warp-renpy) Set Ren'Py SDK"
 			this.sdk_bar.backgroundColor = new vscode.ThemeColor(
 				'statusBarItem.warningBackground'
 			)
 			this.sdk_bar.color = new vscode.ThemeColor(
 				'statusBarItem.warningForeground'
 			)
-			this.sdk_bar.command = 'renpyWarp.setSdkPath'
-			this.instance_bar.hide()
-			this.follow_cursor_bar.hide()
-			return
+			this.sdk_bar.tooltip = ''
 		} else {
 			this.sdk_bar.backgroundColor = undefined
 			this.sdk_bar.color = undefined
-		}
 
-		if (
-			// if is managed by the extension
-			sdk_path.includes('/globalStorage/paisleysoftworks.renpywarp/')
-		) {
-			this.sdk_bar.text = `$(warp-renpy) ${version}`
-		} else {
-			this.sdk_bar.text = `$(warp-renpy) ${tildify(
-				sdk_path
-			)} (${version})`
-		}
+			if (
+				// if is managed by the extension
+				sdk_path.includes('/globalStorage/paisleysoftworks.renpywarp/')
+			) {
+				this.sdk_bar.text = `$(warp-renpy) ${version}`
+			} else {
+				this.sdk_bar.text = `$(warp-renpy) ${tildify(
+					sdk_path
+				)} (${version})`
+			}
 
+			this.sdk_bar.tooltip = `Using Ren'Py SDK at ${tildify(sdk_path)}`
+		}
 		this.sdk_bar.command = 'renpyWarp.setSdkPath'
-		this.sdk_bar.tooltip = `Using Ren'Py SDK at ${tildify(sdk_path)}`
+		this.sdk_bar.show()
 	}
 
 	dispose() {
