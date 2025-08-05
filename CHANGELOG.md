@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## Unreleased
+
+-   Fix icon font not being copied to the built extension
+
 ## 2.0.0 - 2025-05-05
 
 -   **Breaking**: Minimum supported Visual Studio Code version is now 1.101.0.
