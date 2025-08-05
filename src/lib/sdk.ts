@@ -43,12 +43,14 @@ export async function path_is_sdk(sdk_path: string): Promise<boolean> {
  * Returns the path to the Ren'Py SDK as specified in the settings. Prompts the
  * user to set the path if it is not set.
  */
-export async function get_sdk_path(): Promise<string | undefined> {
+export async function get_sdk_path(prompt = true): Promise<string | undefined> {
 	let sdk_path_setting = get_config('sdkPath') as string
 
 	logger.debug('raw sdk path:', sdk_path_setting)
 
 	if (!sdk_path_setting.trim()) {
+		if (!prompt) return undefined
+
 		const selection = await vscode.window.showInformationMessage(
 			"Please set a Ren'Py SDK path to continue",
 			'Set SDK Path',
@@ -68,7 +70,7 @@ export async function get_sdk_path(): Promise<string | undefined> {
 export async function prompt_sdk_quick_pick(
 	context: vscode.ExtensionContext
 ): Promise<string | void> {
-	const current_sdk_path = await get_sdk_path()
+	const current_sdk_path = await get_sdk_path(false)
 
 	function create_quick_pick_item(
 		sdk_path: string,

@@ -107,7 +107,7 @@ export async function update_existing_rpes(context: vscode.ExtensionContext) {
 
 	if (!projects) return
 
-	const sdk_path = await get_sdk_path()
+	const sdk_path = await get_sdk_path(false)
 	if (!sdk_path) return
 
 	const executable = await get_executable(sdk_path)

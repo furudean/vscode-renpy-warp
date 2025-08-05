@@ -231,10 +231,10 @@ export function get_commands(
 			)
 		},
 
-		'renpyWarp.setSdkPath': async () => {
+		'renpyWarp.setSdkPath': async (): Promise<string | undefined> => {
 			const fs_path = await prompt_sdk_quick_pick(context)
 
-			if (!fs_path) return
+			if (!fs_path) return undefined
 			await set_config('sdkPath', fs_path, true)
 
 			return fs_path

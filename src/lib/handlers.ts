@@ -61,7 +61,7 @@ export function register_handlers(
 					wss.start()
 				} else {
 					wss.close()
-					const sdk_path = await get_sdk_path()
+					const sdk_path = await get_sdk_path(false)
 					if (sdk_path) {
 						for (const folder of vscode.workspace
 							.workspaceFolders ?? []) {
