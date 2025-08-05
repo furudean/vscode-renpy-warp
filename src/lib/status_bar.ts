@@ -118,10 +118,11 @@ export class StatusBar {
 			this.notification_bar.hide()
 		}
 
+		const sdk_path = await get_sdk_path(false)
 		const extensions_enabled =
 			get_config('renpyExtensionsEnabled') === 'Enabled'
 
-		if (this.idle_processes > 0 && extensions_enabled) {
+		if (sdk_path && this.idle_processes > 0 && extensions_enabled) {
 			this.follow_cursor_bar.show()
 		} else {
 			this.follow_cursor_bar.hide()
@@ -145,6 +146,7 @@ export class StatusBar {
 		}
 
 		if (
+			sdk_path &&
 			this.state.socket_server_status === 'stopped' &&
 			extensions_enabled
 		) {
@@ -167,7 +169,6 @@ export class StatusBar {
 
 		this.instance_bar.show()
 
-		const sdk_path = await get_sdk_path(false)
 		let executable: string[] | undefined
 		let version: string | undefined
 
@@ -188,8 +189,6 @@ export class StatusBar {
 				'statusBarItem.warningForeground'
 			)
 			this.sdk_bar.tooltip = ''
-			this.instance_bar.hide()
-			this.follow_cursor_bar.hide()
 		} else {
 			this.sdk_bar.backgroundColor = undefined
 			this.sdk_bar.color = undefined

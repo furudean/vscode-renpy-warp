@@ -6,7 +6,7 @@ import { ProcessManager, ManagedProcess, AnyProcess } from './process'
 import { get_config } from './config'
 import { get_log_file, get_logger } from './log'
 import { get_editor_path, get_executable, find_project_root } from './sh'
-import { prompt_install_rpe } from './rpe'
+import { has_current_rpe, prompt_install_rpe } from './rpe'
 import { StatusBar } from './status_bar'
 import { prompt_projects_in_workspaces } from './path'
 import { prompt_configure_extensions } from './onboard'
@@ -133,15 +133,24 @@ export async function launch_renpy({
 			}
 
 			if (extensions_enabled === 'Enabled') {
-				const installed_path = await prompt_install_rpe({
-					project: project_root,
+				const has_current = await has_current_rpe({
 					executable,
+					sdk_path,
 					context,
+					project_root,
 				})
 
-				if (!installed_path) {
-					status_bar.delete_process(nonce)
-					return undefined
+				if (!has_current) {
+					const installed_path = await prompt_install_rpe({
+						project: project_root,
+						executable,
+						context,
+					})
+
+					if (!installed_path) {
+						status_bar.delete_process(nonce)
+						return undefined
+					}
 				}
 
 				await wss.start()
