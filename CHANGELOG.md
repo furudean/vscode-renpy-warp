@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## 2.0.1 - 2025-05-05
+## 2.0.2 - 2025-05-05
 
 -   Fix assets handling (again)
 
