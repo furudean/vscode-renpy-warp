@@ -26,10 +26,12 @@ export class DecorationService {
 		this.enabled = get_config('showEditorDecorations') as boolean
 
 		this.decoration = vscode.window.createTextEditorDecorationType({
-			gutterIconPath: context.asAbsolutePath('dist/arrow-right.svg'),
+			gutterIconPath: context.asAbsolutePath(
+				'dist/assets/arrow-right.svg'
+			),
 			dark: {
 				gutterIconPath: context.asAbsolutePath(
-					'dist/arrow-right-white.svg'
+					'dist/assets/arrow-right-white.svg'
 				),
 			},
 			overviewRulerColor: new vscode.ThemeColor(

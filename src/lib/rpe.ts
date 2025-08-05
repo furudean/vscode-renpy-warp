@@ -21,7 +21,7 @@ const logger = get_logger()
 async function _get_rpe_source(extensionPath: string): Promise<Buffer> {
 	const rpe_source_path = path.join(
 		extensionPath,
-		'dist/',
+		'dist/assets/',
 		'renpy_warp.rpe.py'
 	)
 	return await fs.readFile(rpe_source_path)

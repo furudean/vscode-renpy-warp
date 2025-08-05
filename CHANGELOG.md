@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## Unreleased
+
+-   Fix assets handling (again)
+
 ## 2.0.1 - 2025-05-05
 
 -   Fix icon font not being copied to the built extension

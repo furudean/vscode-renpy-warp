@@ -96,7 +96,7 @@
 			"warp-renpy": {
 				"description": "Ren'Py Icon",
 				"default": {
-					"fontPath": "src/warp.woff",
+					"fontPath": "assets/warp.woff",
 					"fontCharacter": "\\ea01"
 				}
 			}
