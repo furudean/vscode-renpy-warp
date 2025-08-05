@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## Unreleased
+## 2.0.3 - 2025-05-05
 
 -   Somehow I got this wrong three times. But it should work now.
 
