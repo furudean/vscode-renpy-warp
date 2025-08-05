@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## Unreleased
+
+-   Somehow I got this wrong three times. But it should work now.
+
 ## 2.0.2 - 2025-05-05
 
 -   Fix assets handling (again)

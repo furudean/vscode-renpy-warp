@@ -46,8 +46,8 @@ async function main() {
 			copy({
 				resolveFrom: 'cwd',
 				assets: {
-					from: ['./assets/**/*'],
-					to: ['./dist/'],
+					from: ['./assets/**'],
+					to: ['./dist/assets'],
 				},
 				watch,
 			}),
