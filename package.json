@@ -74,6 +74,7 @@
 		"@microsoft/vscode-file-downloader-api": "^1.0.1",
 		"adm-zip": "^0.5.14",
 		"env-paths": "^3.0.0",
+		"extract-zip": "^2.0.1",
 		"find-process": "^2.0.0",
 		"get-port": "^7.1.0",
 		"jsdom": "^26.1.0",

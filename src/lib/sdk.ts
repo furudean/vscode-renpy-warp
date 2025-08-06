@@ -348,7 +348,7 @@ export async function prompt_install_sdk_picker(
 
 				if (!file) return resolve(undefined)
 
-				await set_config('sdkPath', file.fsPath, true)
+				await set_config('sdkPath', file, true)
 
 				vscode.window.showInformationMessage(
 					`Ren'Py ${selection.label} installed and set as current SDK`

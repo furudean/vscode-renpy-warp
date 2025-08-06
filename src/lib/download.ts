@@ -6,9 +6,12 @@ import { parse as semver_parse } from 'semver'
 import { get_logger } from './log'
 import p_filter from 'p-filter'
 import { path_is_sdk } from './sdk'
-import { cp, readdir, rm, rmdir } from 'node:fs/promises'
+import { cp, mkdir, readdir, rm, rmdir } from 'node:fs/promises'
 import path from 'upath'
 import { basename } from 'node:path'
+import { createHash } from 'node:crypto'
+import { createReadStream } from 'node:fs'
+import extract from 'extract-zip'
 
 const logger = get_logger()
 
@@ -97,46 +100,68 @@ export async function find_sdk_in_directory(
 	return sdk
 }
 
-async function shallow(p: string): Promise<void> {
-	const files = await readdir(p, { withFileTypes: true })
+export async function get_sum_for_sdk(url: URL): Promise<string | undefined> {
+	const sums_url = new URL('./checksums.txt', url.href)
 
-	if (files.length !== 1 || !files[0].isDirectory()) {
+	const head = await fetch(sums_url, { method: 'HEAD' })
+
+	if (head.status === 404) return undefined
+
+	if (!head.ok) {
 		throw new Error(
-			`expected single directory in ${p}, found ${files.length}`
+			`failed to fetch sums.txt from ${sums_url}: ${
+				head.status
+			} ${await head.text()}`
 		)
 	}
 
-	const file = files[0]
-	const dir = path.join(file.parentPath, file.name)
-	await cp(dir, p, {
-		recursive: true,
-		force: true,
+	const response = await fetch(sums_url)
+	const file_text = await response.text()
+
+	const md5_section = file_text.split('# md5')[1]?.split('# sha1')[0]
+	if (!md5_section) throw new Error(`no md5 section found in ${sums_url}`)
+
+	const checksum_pattern = /^([a-fA-F0-9]+)\s+renpy-[\d.]+-sdk\.zip$/m
+	const match = md5_section.match(checksum_pattern)
+	if (!match)
+		throw new Error(`no checksum found for renpy-sdk in ${sums_url}`)
+
+	return match[1]
+}
+
+function get_md5_hash(path: string): Promise<string> {
+	return new Promise((resolve, reject) => {
+		const hash = createHash('md5')
+		const stream = createReadStream(path)
+		stream.on('error', reject)
+		stream.on('data', (chunk) => hash.update(chunk))
+		stream.on('end', () => resolve(hash.digest('hex')))
 	})
-	await rm(dir, { recursive: true })
 }
 
 export async function download_sdk(
-	url: string | URL,
-	name: string,
-	context: ExtensionContext
-): Promise<vscode.Uri | undefined> {
+	sdk_url: string | URL,
+	sdk_name: string,
+	context: ExtensionContext,
+	validate = true
+): Promise<string | undefined> {
 	const file_downloader: FileDownloader = await getApi()
 
-	if (typeof url === 'string') {
-		url = new URL(url)
+	if (typeof sdk_url === 'string') {
+		sdk_url = new URL(sdk_url)
 	}
 
 	try {
 		return await vscode.window.withProgress(
 			{
-				title: `Downloading and installing Ren'Py ${name}`,
+				title: `Downloading and installing Ren'Py ${sdk_name}`,
 				location: vscode.ProgressLocation.Notification,
 				cancellable: true,
 			},
 			async (progress, cancelation_token) => {
 				const file = await file_downloader.downloadFile(
-					vscode.Uri.parse(url.href),
-					name,
+					vscode.Uri.parse(sdk_url.href),
+					sdk_name + '.zip',
 					context,
 					cancelation_token,
 					(downloaded, total) => {
@@ -145,11 +170,35 @@ export async function download_sdk(
 							increment: (downloaded / total) * 100,
 						})
 					},
-					{ timeoutInMs: 5 * 60 * 1000, shouldUnzip: true }
+					{ timeoutInMs: 5 * 60 * 1000 }
 				)
-				progress.report({ message: 'Finalizing...', increment: -1000 })
-				await shallow(file.fsPath)
-				return file
+
+				if (validate) {
+					progress.report({
+						message: 'Validating checksum',
+						increment: -1000,
+					})
+					const sum = await get_sum_for_sdk(sdk_url)
+
+					if (sum) {
+						const hash = await get_md5_hash(file.fsPath)
+
+						if (hash !== sum)
+							throw new Error(
+								`checksum mismatch for ${file.fsPath}: expected ${sum}, got ${hash}`
+							)
+					} else {
+						logger.warn('no checksum found, skipping validation')
+					}
+				}
+
+				progress.report({
+					message: 'Extracting archive',
+					increment: -1000,
+				})
+				const sdk_path = await unpack_sdk_archive(file.fsPath, sdk_name)
+
+				return sdk_path
 			}
 		)
 	} catch (error) {
@@ -157,10 +206,10 @@ export async function download_sdk(
 			return undefined
 		}
 
-		logger.error(`failed to download SDK from ${url.href}:`, error)
+		logger.error(`failed to download SDK from ${sdk_url.href}:`, error)
 		vscode.window
 			.showErrorMessage(
-				`Failed to download SDK from ${url.href}`,
+				`Failed to download SDK from ${sdk_url.href}`,
 				'OK',
 				'See logs'
 			)
@@ -168,6 +217,35 @@ export async function download_sdk(
 				if (selection === 'See logs') logger.show()
 			})
 	}
+}
+
+async function unpack_sdk_archive(archive_path: string, sdk_name: string) {
+	const root = path.dirname(archive_path)
+	const zip_path = path.join(root, sdk_name + '_tmp')
+
+	// clean up any previous incomplete extraction
+	await rm(zip_path, { recursive: true, force: true })
+	await mkdir(zip_path, { recursive: true })
+
+	await extract(archive_path, { dir: zip_path, defaultFileMode: 0o744 })
+
+	const files = await readdir(zip_path, { withFileTypes: true })
+	if (files.length !== 1 || !files[0].isDirectory()) {
+		throw new Error(
+			`expected single directory in ${zip_path}, found ${files.length}`
+		)
+	}
+
+	const sdk_folder_path = path.join(zip_path, files[0].name)
+	const final_path = path.join(root, sdk_name)
+	await rm(final_path, { recursive: true, force: true })
+	await cp(sdk_folder_path, final_path, {
+		recursive: true,
+		force: true,
+	})
+	await rm(zip_path, { recursive: true, force: true })
+	await rm(archive_path)
+	return final_path
 }
 
 export async function list_downloaded_sdks(
@@ -205,15 +283,4 @@ export async function uninstall_sdk(
 			}`
 		)
 	}
-}
-
-export async function downloads_location(
-	context: ExtensionContext
-): Promise<string> {
-	const file_downloader: FileDownloader = await getApi()
-	const downloads_dir = await file_downloader.listDownloadedItems(context)
-	if (downloads_dir.length === 0) {
-		throw new Error('No downloaded items found in the context.')
-	}
-	return path.resolve(downloads_dir[0].fsPath, '..')
 }
