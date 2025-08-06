@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+# 2.1.1 - 2025-05-06
+
+-   Last version had improper version tag
+
 ## 2.1.0 - 2025-05-06
 
 -   Validate checksums of downloaded SDKs
