@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+# 2.1.2 - 2025-05-06
+
+-   Try to fix broken windows build
+
 # 2.1.1 - 2025-05-06
 
 -   Last version had improper version tag
