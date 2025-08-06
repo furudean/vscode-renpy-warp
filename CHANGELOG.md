@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## Unreleased
+## 2.1.0 - 2025-05-06
 
 -   Validate checksums of downloaded SDKs
 -   Log errors when status bar item cannot be created
