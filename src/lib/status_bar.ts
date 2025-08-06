@@ -47,7 +47,9 @@ export class StatusBar {
 
 		const update_status_bar_on_config_update =
 			vscode.workspace.onDidChangeConfiguration(() => {
-				this.update_status_bar()
+				this.update_status_bar().catch((err) =>
+					logger.error('failed to update status bar:', err)
+				)
 			})
 
 		this.subscriptions.push(
@@ -57,17 +59,23 @@ export class StatusBar {
 			update_status_bar_on_config_update
 		)
 
-		this.update_status_bar()
+		this.update_status_bar().catch((err) =>
+			logger.error('failed to update status bar:', err)
+		)
 	}
 
 	set_process(id: unknown, state: 'starting' | 'idle'): void {
 		this.state.processes.set(id, state)
-		this.update_status_bar()
+		this.update_status_bar().catch((err) =>
+			logger.error('failed to update status bar:', err)
+		)
 	}
 
 	delete_process(id: unknown): void {
 		this.state.processes.delete(id)
-		this.update_status_bar()
+		this.update_status_bar().catch((err) =>
+			logger.error('failed to update status bar:', err)
+		)
 	}
 
 	private get starting_processes(): number {
@@ -101,7 +109,9 @@ export class StatusBar {
 			idle_processes: this.idle_processes,
 		})
 
-		this.update_status_bar()
+		this.update_status_bar().catch((err) =>
+			logger.error('failed to update status bar:', err)
+		)
 	}
 
 	notify(message: string, level = 0) {
