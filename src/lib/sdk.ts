@@ -159,6 +159,7 @@ export async function prompt_sdk_quick_pick(
 
 			quick_pick.onDidHide(() => {
 				resolve(undefined)
+				quick_pick.dispose()
 			})
 		}
 	)
@@ -366,6 +367,7 @@ export async function prompt_install_sdk_picker(
 		})
 
 		quick_pick.onDidHide(() => {
+			quick_pick.dispose()
 			resolve(undefined)
 		})
 	})
