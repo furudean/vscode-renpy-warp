@@ -10,6 +10,7 @@ import {
 	find_sdk_in_directory,
 	list_downloaded_sdks,
 	list_remote_sdks,
+	RemoteSdk,
 	semver_compare,
 	uninstall_sdk,
 } from './download'
@@ -118,8 +119,9 @@ export async function prompt_sdk_quick_pick(
 
 	const quick_pick = vscode.window.createQuickPick<SdkQuickPickItem>()
 	quick_pick.title = "Select Ren'Py SDK"
-	quick_pick.placeholder = "Select a Ren'Py SDK to use"
+	quick_pick.placeholder = "Select Ren'Py SDK to use"
 	quick_pick.items = options
+	quick_pick.keepScrollPosition = true
 	quick_pick.ignoreFocusOut = true
 	quick_pick.busy = true
 
@@ -265,10 +267,10 @@ export async function prompt_install_sdk_picker(
 	context: vscode.ExtensionContext
 ): Promise<string | void> {
 	const quick_pick = vscode.window.createQuickPick<DownloadSdkQuickPickItem>()
-	quick_pick.title = "Install Ren'Py SDK"
-	quick_pick.placeholder = 'Loading remote SDK versions...'
+	quick_pick.title = "Select Ren'Py SDK"
+	quick_pick.placeholder = 'Select SDK version to download'
+	quick_pick.ignoreFocusOut = true
 	quick_pick.busy = true
-
 	quick_pick.show()
 
 	// Load remote SDKs in the background
@@ -286,36 +288,44 @@ export async function prompt_install_sdk_picker(
 		basename(sdk)
 	)
 
-	quick_pick.items = [
-		{
-			label: 'Recommended for new projects',
-			kind: vscode.QuickPickItemKind.Separator,
-		},
-		...recommended_sdks.map((sdk) => ({
+	function map_sdk(sdk: RemoteSdk) {
+		return {
 			label: sdk.name,
 			description: sdk.url.hostname + sdk.url.pathname,
 			url: sdk.url,
 			iconPath: downloaded.includes(sdk.name)
 				? new vscode.ThemeIcon('check')
 				: new vscode.ThemeIcon('blank'),
-		})),
+			buttons: [
+				{
+					iconPath: new vscode.ThemeIcon('globe'),
+					tooltip: 'Show',
+				},
+			],
+		}
+	}
+
+	quick_pick.items = [
+		{
+			label: 'Recommended for new projects',
+			kind: vscode.QuickPickItemKind.Separator,
+		},
+		...recommended_sdks.map(map_sdk),
 		{
 			label: 'All versions',
 			kind: vscode.QuickPickItemKind.Separator,
 		},
 		...remote_sdks
 			.filter((sdk) => !recommended_sdks.includes(sdk))
-			.map((sdk) => ({
-				label: sdk.name,
-				description: sdk.url.hostname + sdk.url.pathname,
-				url: sdk.url,
-				iconPath: downloaded.includes(sdk.name)
-					? new vscode.ThemeIcon('check')
-					: new vscode.ThemeIcon('blank'),
-			})),
+			.map(map_sdk),
 	]
-	quick_pick.placeholder = 'Select an SDK version to install'
 	quick_pick.busy = false
+
+	quick_pick.onDidTriggerItemButton(async (e) => {
+		if (!e.item.url) throw new Error('item url is undefined')
+
+		await open(e.item.url.toString())
+	})
 
 	return new Promise<string | void>((resolve, reject) => {
 		quick_pick.onDidAccept(async () => {

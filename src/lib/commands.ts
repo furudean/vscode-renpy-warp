@@ -131,7 +131,6 @@ export function get_commands(
 				{
 					placeHolder: 'Select a label to jump to',
 					title: "Jump to Ren'Py label",
-					ignoreFocusOut: true,
 				}
 			)
 
