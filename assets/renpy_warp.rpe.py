@@ -52,7 +52,7 @@ def get_meta():
     return d["version"], d["checksum"]
 
 
-def py_exec(text: str):
+def py_exec(text):
     while renpy.exports.is_init_phase():
         logger.debug("in init phase, waiting...")
         sleep(0.2)
