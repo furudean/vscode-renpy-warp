@@ -10,7 +10,6 @@ import { has_current_rpe, prompt_install_rpe } from './rpe'
 import { StatusBar } from './status_bar'
 import { prompt_projects_in_workspaces } from './path'
 import { prompt_configure_extensions } from './onboard'
-import { focus_window } from './window'
 import { WarpSocketService } from './socket'
 import TailFile from '@logdna/tail-file/lib/tail-file'
 import split2 from 'split2'
@@ -83,13 +82,7 @@ export async function launch_renpy({
 
 		const rpp = pm.at(-1) as AnyProcess
 
-		const promises = [rpp.warp_to_line(filename_relative, line + 1)]
-
-		if (get_config('focusWindowOnWarp') && rpp.pid) {
-			promises.push(focus_window(rpp.pid))
-		}
-
-		await Promise.all(promises)
+		await rpp.warp_to_line(filename_relative, line + 1)
 
 		status_bar.notify(
 			`$(debug-line-by-line) Warped to ${filename_relative}:${line + 1}`

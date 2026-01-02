@@ -53,16 +53,16 @@ will appear to inform you to set it.
 You may want to customize what to do with an open Ren'Py instance when a new
 command is issued. In Renpy Launch and Sync, this is called a "strategy".
 
-The strategy is controlled with the setting
-<code codesetting="renpyWarp.strategy">renpyWarp.strategy</code>, which can be
-set to one of the following values:
+The strategy is controlled with the setting <code
+codesetting="renpyWarp.strategy">renpyWarp.strategy</code>, which can be set to
+one of the following values:
 
 <dl>
    <dt><strong>Update Window</strong></dt>
    <dd>
       <p>
          When a command is issued, replace an open editor by sending a
-         <code>renpy.warp_to_line()</code> command to the currently running 
+         <code>renpy.warp_to_line()</code> command to the currently running
          Ren'Py instance
       </p>
    </dd>
@@ -72,7 +72,7 @@ set to one of the following values:
    </dd>
    <dt><strong>Replace window</strong></dt>
    <dd>
-      Kill the currently running Ren'Py instance and open a new one when a 
+      Kill the currently running Ren'Py instance and open a new one when a
       command is issued
    </dd>
 </dl>
@@ -80,13 +80,13 @@ set to one of the following values:
 ### Follow Cursor
 
 Renpy Launch and Sync can keep its cursor in sync with the Ren'Py game. The
-direction of this sync can be controlled with the setting
-<code codesetting="renpyWarp.followCursorMode">renpyWarp.followCursorMode</code>
+direction of this sync can be controlled with the setting <code
+codesetting="renpyWarp.followCursorMode">renpyWarp.followCursorMode</code>
 
 <dl>
    <dt><strong>Ren'Py updates Visual Studio Code</strong></dt>
    <dd>
-      The editor will move its cursor to match the current line of dialogue in 
+      The editor will move its cursor to match the current line of dialogue in
       the game.
    </dd>
    <dt><strong>Visual Studio Code updates Ren'Py</strong></dt>
@@ -96,24 +96,14 @@ direction of this sync can be controlled with the setting
    </dd>
    <dt><strong>Update both</strong></dt>
    <dd>
-      Try and keep both in sync with each other. Because of how warping works, 
+      Try and keep both in sync with each other. Because of how warping works,
       this can be a bit janky, causing a feedback loop.
    </dd>
 </dl>
 
-Cursor syncing can be turned on by default with the setting <code codesetting="renpyWarp.followCursorOnLaunch">renpyWarp.followCursorOnLaunch</code>.
+Cursor syncing can be turned on by default with the setting <code
+codesetting="renpyWarp.followCursorOnLaunch">renpyWarp.followCursorOnLaunch</code>.
 
-### Focus Window on Warp
-
-When a warp occurs, you may want the Ren'Py window to be focused. This can be
-configured with the setting
-<code codesetting="renpyWarp.focusWindowOnWarp">renpyWarp.focusWindowOnWarp</code>.
-
-You might be prompted to allow Visual Studio Code to control other applications
-when this setting is enabled. After allowing this, restart Visual Studio Code to
-apply the changes.
-
-![The accessibility prompt on macOs](images/accessibility.png)
 
 ## Version support
 

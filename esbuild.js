@@ -34,13 +34,7 @@ async function main() {
 		sourcesContent: false,
 		platform: 'node',
 		outfile: 'dist/extension.js',
-		external: [
-			'vscode',
-			'node-window-manager',
-			'extract-file-icon',
-			'jsdom',
-			'open',
-		],
+		external: ['vscode', 'extract-file-icon', 'jsdom', 'open'],
 		logLevel: 'silent',
 		plugins: [
 			copy({

@@ -2,11 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
-# 2.1.2 - 2025-05-06
+## Unreleased
+
+-   **Remove `focusWindowOnWarp` feature.** This feature relied on the
+    dependency `node-window-manager` which is unmaintained and has stopped
+    working on my system due to
+    [a bug which has not been fixed](https://github.com/sentialx/node-window-manager/issues/68).
+    It was also a very technically complicated solution that I was never happy
+    with.
+
+## 2.1.2 - 2025-05-06
 
 -   Try to fix broken windows build
 
-# 2.1.1 - 2025-05-06
+## 2.1.1 - 2025-05-06
 
 -   Last version had improper version tag
 
@@ -36,8 +45,8 @@ All notable changes to this project will be documented in this file.
     you will need to call the command `renpyWarp.installRPE` manually to first
     install the RPE. Updates are still handled automatically.
 -   **Breaking**: RPEs in the SDK root are no longer monitored. This feature has
-    been unused for some time, and the only code remaining was to find any
-    that still existed in the SDK root.
+    been unused for some time, and the only code remaining was to find any that
+    still existed in the SDK root.
 -   SDKs can now be downloaded and managed directly inside Visual Studio Code,
     using the command `renpyWarp.downloadSdk`. The SDK picker has been updated
     to guide users through this feature.
@@ -99,11 +108,13 @@ All notable changes to this project will be documented in this file.
 
 ## 1.28.0 - 2024-11-24
 
--   `renpyWarp.setSdkPath` utilizes the vscode file picker instead of asking for a string for the SDK path
+-   `renpyWarp.setSdkPath` utilizes the vscode file picker instead of asking for
+    a string for the SDK path
 
 ## 1.27.2 - 2024-11-24
 
--   `renpyWarp.syncCursorPosition` will now reveal the cursor even if the position has not changed
+-   `renpyWarp.syncCursorPosition` will now reveal the cursor even if the
+    position has not changed
 
 ## 1.27.1 - 2024-11-24
 
@@ -118,10 +129,13 @@ All notable changes to this project will be documented in this file.
 ## 1.27.0 - 2024-11-23
 
 -   Allow toggling follow cursor even if no game is running
--   Fix websockets detection on older versions ([#47](https://github.com/furudean/vscode-renpy-warp/issues/70))
--   Redo sockets implementation, now doing a handshake before connecting properly
+-   Fix websockets detection on older versions
+    ([#47](https://github.com/furudean/vscode-renpy-warp/issues/70))
+-   Redo sockets implementation, now doing a handshake before connecting
+    properly
 -   Fix a bug where decorations were repeatedly being repainted
--   Ask what `game` folder to use when launching if multiple are found ([#71](https://github.com/furudean/vscode-renpy-warp/issues/71))
+-   Ask what `game` folder to use when launching if multiple are found
+    ([#71](https://github.com/furudean/vscode-renpy-warp/issues/71))
 
 ## 1.26.1 - 2024-11-04
 
@@ -268,20 +282,23 @@ Fixes a failing test which prevented a release. No meaningful changes.
 ## 1.13.0 - 2024-08-06
 
 -   Renpy Launch and Sync RPE files in the game directory will now be excluded
-    from the build using `build.classify` (Thanks to @brunoais for figuring
-    out how to do this)
+    from the build using `build.classify` (Thanks to @brunoais for figuring out
+    how to do this)
 
 ## 1.12.0 - 2024-08-05
 
--   The option `renpyWarp.followCursorExecInterval` has been removed. The operation is now instantaneous.
--   Removes dependency on the deprecated `LuqueDaniel.languague-renpy` and refactor features that depended on it.
+-   The option `renpyWarp.followCursorExecInterval` has been removed. The
+    operation is now instantaneous.
+-   Removes dependency on the deprecated `LuqueDaniel.languague-renpy` and
+    refactor features that depended on it.
 
 ## 1.11.0 - 2024-07-28
 
--   A less intrusive notification will now be shown when a warp occurs in an open window
--   Now relies on a random number to identify the process calling back to the extension than using a pid.
-    This is necessary in case renpy was not opened through forking (E.g. editor in flatpak)
-    by @brunoais
+-   A less intrusive notification will now be shown when a warp occurs in an
+    open window
+-   Now relies on a random number to identify the process calling back to the
+    extension than using a pid. This is necessary in case renpy was not opened
+    through forking (E.g. editor in flatpak) by @brunoais
 -   Split different process outputs into different output channels
 
 ## 1.10.0 - 2024-07-24
@@ -293,7 +310,8 @@ Fixes a failing test which prevented a release. No meaningful changes.
 ## 1.9.0 - 2024-07-23
 
 -   The RPE would be installed every time a process was launched, even if it was
-    already installed because of an oversight in the expression that captures the version.
+    already installed because of an oversight in the expression that captures
+    the version.
 
 ## 1.8.13~14 - 2024-07-23
 
@@ -402,13 +420,13 @@ release. Yay!
     Ren'Py, which uses a WebSocket server in Ren'Py to communicate with the
     extension. The largest motivation for this change is that the `exec.py`
     feature was canned on grounds of being a footgun.
-    -   The new protocol supports a wider variety of Ren'Py versions. Let me know
-        if you find a version that doesn't work!
-    -   Adds a new setting, `renpyWarp.websocketPort`, to control the port the
-        websockets server should listen on.
-    -   A new setting, `renpyWarp.renpyExtensionsEnabled` has been added to
-        control whether or not the extension should attempt to communicate with
-        Ren'Py.
+    - The new protocol supports a wider variety of Ren'Py versions. Let me know
+      if you find a version that doesn't work!
+    - Adds a new setting, `renpyWarp.websocketPort`, to control the port the
+      websockets server should listen on.
+    - A new setting, `renpyWarp.renpyExtensionsEnabled` has been added to
+      control whether or not the extension should attempt to communicate with
+      Ren'Py.
 -   Removes the 'Auto' strategy for `renpyWarp.strategy`, as it is no longer
     necessary with the new protocol. The new default is 'Update Window'.
 -   Launch scripts have been removed. Use a `.rpe` file in your project to get
@@ -529,8 +547,8 @@ release. Yay!
 -   The extension is now called Ren'Py Launch and Sync
 -   `renpyWarp.strategy` has had its values updated for clarity. The new values
     are `Auto`, `New Window`, `Replace Window`, and `Update Window`.
-    `Replace Window` is new, allowing you to choose whether or
-    not to kill the process when a new command is issued.
+    `Replace Window` is new, allowing you to choose whether or not to kill the
+    process when a new command is issued.
 -   Test for `exec.py` support no longer cleans up the file it creates if it
     doesn't exist. Only Ren'Py should consume this file, otherwise the extension
     can confuse itself.
@@ -577,10 +595,10 @@ release. Yay!
     `launchOrQuit`, which is not meant to be called directly.
 -   To commands that aren't associated with the status bar, a notification will
     show until the process is launched
--   Adds an experimental setting, `renpyWarp.advancedProgressBars` which
-    will enhance notifications when Ren'Py is starting. It waits for your game
-    to output something to stdout when it's considered "ready". Ren'Py does not
-    do this by default, so this feature will be opt-in for now.
+-   Adds an experimental setting, `renpyWarp.advancedProgressBars` which will
+    enhance notifications when Ren'Py is starting. It waits for your game to
+    output something to stdout when it's considered "ready". Ren'Py does not do
+    this by default, so this feature will be opt-in for now.
 -   Deletes the old extension icon from the repository
 
 ## 0.7.0 - 2024-03-29
@@ -597,8 +615,8 @@ release. Yay!
 
 ## 0.5.0 - 2024-03-28
 
--   Using commands will update the spinner in the status bar to indicate that the
-    command is running. (Though it's slightly faked)
+-   Using commands will update the spinner in the status bar to indicate that
+    the command is running. (Though it's slightly faked)
 
 ## 0.4.1 - 2024-03-27
 

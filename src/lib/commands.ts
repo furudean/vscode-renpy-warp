@@ -15,7 +15,6 @@ import { ProcessManager } from './process'
 import { StatusBar } from './status_bar'
 import { FollowCursorService, sync_editor_with_renpy } from './follow_cursor'
 import { get_logger } from './log'
-import { focus_window } from './window'
 import { is_special_label } from './label'
 import path from 'upath'
 
@@ -136,13 +135,7 @@ export function get_commands(
 
 			if (selection === undefined) return
 
-			const promises = [process.jump_to_label(selection.label)]
-
-			if (get_config('focusWindowOnWarp') && process.pid) {
-				promises.push(focus_window(process.pid))
-			}
-
-			await Promise.all(promises)
+			await process.jump_to_label(selection.label)
 
 			status_bar.notify(
 				`$(debug-line-by-line) Jumped to label '${selection.label}'`
