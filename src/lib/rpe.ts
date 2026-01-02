@@ -15,14 +15,14 @@ import memoize from 'memoize'
 import { get_sdk_path } from './sdk'
 
 const RPE_FILE_PATTERN =
-	/renpy_warp_(?<version>\d+\.\d+\.\d+)(?:_(?<checksum>[a-z0-9]+))?\.rpe(?:\.py)?/
+	/(vscode_)?renpy_warp_(?<version>\d+\.\d+\.\d+)(?:_(?<checksum>[a-z0-9]+))?\.rpe(?:\.py)?/
 const logger = get_logger()
 
 async function _get_rpe_source(extensionPath: string): Promise<Buffer> {
 	const rpe_source_path = path.join(
 		extensionPath,
 		'dist/assets/',
-		'renpy_warp.rpe.py'
+		'vscode_renpy_warp.rpe.py'
 	)
 	return await fs.readFile(rpe_source_path)
 }
@@ -44,7 +44,7 @@ export async function list_rpes(
 ): Promise<string[]> {
 	const pattern = new vscode.RelativePattern(
 		project_root,
-		'**/game/**/renpy_warp_*.{rpe,rpe.py}'
+		'**/game/**/(vscode_)?renpy_warp_*.{rpe,rpe.py}'
 	)
 	const files = await vscode.workspace
 		.findFiles(pattern, await get_user_ignore_pattern())
@@ -74,7 +74,9 @@ export async function install_rpe({
 	await uninstall_rpes(project_root)
 
 	const rpe_source = await get_rpe_source(context.extensionPath)
-	const file_base = `renpy_warp_${pkg_version}_${get_checksum(rpe_source)}`
+	const file_base = `vscode_renpy_warp_${pkg_version}_${get_checksum(
+		rpe_source
+	)}`
 
 	const supports_rpe_py = semver.gte(version.semver, '8.3.0')
 	let file_path: string
