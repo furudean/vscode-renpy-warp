@@ -5,17 +5,17 @@ import * as vscode from 'vscode'
 import path, { basename } from 'upath'
 import tildify from 'tildify'
 import { get_logger } from './log'
+import { download_sdk, list_downloaded_sdks, uninstall_sdk } from './download'
+import open from 'open'
+import { get_executable, get_version } from './sh'
 import {
-	download_sdk,
+	fetch_sdk_channels,
 	find_sdk_in_directory,
-	list_downloaded_sdks,
 	list_remote_sdks,
 	RemoteSdk,
 	semver_compare,
-	uninstall_sdk,
-} from './download'
-import open from 'open'
-import { get_executable, get_version } from './sh'
+	sort_remote_sdks,
+} from './api'
 
 export const logger = get_logger()
 
@@ -110,10 +110,12 @@ export async function prompt_sdk_quick_pick(
 		{
 			label: '$(plus) Download SDK version...',
 			action: SdkAction.InstallSdk,
+			alwaysShow: true,
 		},
 		{
 			label: '$(file-directory) Enter SDK path...',
 			action: SdkAction.FilePicker,
+			alwaysShow: true,
 		},
 	]
 
@@ -274,8 +276,11 @@ export async function prompt_install_sdk_picker(
 	quick_pick.busy = true
 	quick_pick.show()
 
-	// Load remote SDKs in the background
-	const remote_sdks = await list_remote_sdks()
+	// Load remote SDKs and SDK channels in parallel
+	const [remote_sdks, sdk_channels] = await Promise.all([
+		list_remote_sdks(),
+		fetch_sdk_channels('https://renpy.org/channels.json'),
+	])
 
 	if (remote_sdks.length === 0) {
 		vscode.window.showErrorMessage(
@@ -283,61 +288,131 @@ export async function prompt_install_sdk_picker(
 		)
 		return
 	}
+	const version_channel = new Map(
+		Object.values(sdk_channels.releases).map((c) => [
+			c.split_version.slice(0, 3).join('.'),
+			c.channel,
+		])
+	)
+	const highest_stable_version = Array.from(version_channel.keys())[0] // assume first is stable
 
-	const recommended_sdks = [remote_sdks[0]]
-	const downloaded = (await list_downloaded_sdks(context)).map((sdk) =>
+	const recommended_sdks = remote_sdks.filter(
+		(sdk) =>
+			version_channel.has(sdk.name) &&
+			!version_channel.get(sdk.name)?.startsWith('Nightly')
+	)
+
+	const downloaded_sdks = (await list_downloaded_sdks(context)).map((sdk) =>
 		basename(sdk)
 	)
 
-	function map_sdk(sdk: RemoteSdk) {
+	const all_valid_sdks = remote_sdks.filter(
+		(sdk) => semver_compare(sdk.name, highest_stable_version) >= 0
+	) // filter out versions that exceed highest stable. likely in development
+
+	const filtered_sdks = Array.from(
+		all_valid_sdks
+			// don't include unsupported versions
+			.filter((sdk) => semver_compare(sdk.name, '7.0.0') <= 0)
+			// only include highest patch for each minor
+			.reduce((map, sdk) => {
+				const minor = `${sdk.semver!.major}.${sdk.semver!.minor}`
+				const existing = map.get(minor)
+
+				if (
+					!existing ||
+					(sdk.semver &&
+						existing.semver &&
+						sdk.semver.compare(existing.semver) > 0)
+				) {
+					map.set(minor, sdk)
+				}
+				return map
+			}, new Map<string, RemoteSdk>())
+			.values()
+	)
+		// add any downloaded sdks to the list
+		.concat(remote_sdks.filter((sdk) => downloaded_sdks.includes(sdk.name)))
+		// keep only unique
+		.reduce((unique: RemoteSdk[], sdk) => {
+			if (!unique.some((item) => item.name === sdk.name)) {
+				unique.push(sdk)
+			}
+			return unique
+		}, [])
+		.sort(sort_remote_sdks)
+
+	function map_sdk(sdk: RemoteSdk): DownloadSdkQuickPickItem {
+		const buttons: vscode.QuickInputButton[] = [
+			{
+				iconPath: new vscode.ThemeIcon('globe'),
+				tooltip: 'Show download in browser',
+			},
+		]
+
+		// if (downloaded_sdks.includes(sdk.name)) {
+		// 	buttons.push({
+		// 		iconPath: new vscode.ThemeIcon('folder'),
+		// 		tooltip: 'Reveal in files',
+		// 	})
+		// }
+
 		return {
 			label: sdk.name,
 			description: sdk.url.hostname + sdk.url.pathname,
 			url: sdk.url,
-			iconPath: downloaded.includes(sdk.name)
+			iconPath: downloaded_sdks.includes(sdk.name)
 				? new vscode.ThemeIcon('check')
 				: new vscode.ThemeIcon('blank'),
-			buttons: [
-				{
-					iconPath: new vscode.ThemeIcon('globe'),
-					tooltip: 'Show',
-				},
-			],
+			buttons,
 		}
 	}
 
 	quick_pick.items = [
 		{
-			label: 'Recommended for new projects',
+			label: 'Current',
 			kind: vscode.QuickPickItemKind.Separator,
 		},
 		...recommended_sdks.map(map_sdk),
 		{
-			label: 'All versions',
+			label: '',
 			kind: vscode.QuickPickItemKind.Separator,
 		},
-		...remote_sdks
-			.filter((sdk) => !recommended_sdks.includes(sdk))
-			.map(map_sdk),
+		...filtered_sdks.map(map_sdk),
+		{
+			label: '',
+			kind: vscode.QuickPickItemKind.Separator,
+		},
+		{
+			label: 'Show all',
+			iconPath: new vscode.ThemeIcon('more'),
+		},
 	]
 	quick_pick.busy = false
 
 	quick_pick.onDidTriggerItemButton(async (e) => {
-		if (!e.item.url) throw new Error('item url is undefined')
-
-		await open(e.item.url.toString())
+		if (e.button.tooltip === 'Show download in browser') {
+			if (!e.item.url) throw new Error('item url is undefined')
+			await open(e.item.url.toString())
+		}
 	})
 
 	return new Promise<string | void>((resolve, reject) => {
 		quick_pick.onDidAccept(async () => {
 			try {
 				const selection = quick_pick.selectedItems[0]
-				quick_pick.hide()
+
+				if (selection.label === 'Show all') {
+					quick_pick.items = all_valid_sdks.map(map_sdk)
+					return
+				}
 
 				if (!selection || !selection.url) {
 					resolve(undefined)
 					return
 				}
+
+				quick_pick.hide()
 
 				const sdk_url = await find_sdk_in_directory(selection.url)
 				const file = await download_sdk(

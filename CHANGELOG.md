@@ -10,6 +10,8 @@ All notable changes to this project will be documented in this file.
     [a bug which has not been fixed](https://github.com/sentialx/node-window-manager/issues/68).
     It was also a very technically complicated solution that I was never happy
     with.
+-   SDK downloads now determine what is the current version by utilizing the
+    [/channels.json](https://www.renpy.org/channels.json) endpoint.
 -   RPE name pattern changed from `renpy_warp_*.rpe.py` to
     `vscode_renpy_warp_*.rpe.py` for additional clarity.
 -   Bump dependencies
