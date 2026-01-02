@@ -202,7 +202,7 @@ def socket_service(port, version, checksum):
         logger.info(f"socket service on :{port} was terminated by server")
         pass
 
-    except ConnectionClosedError as e:
+    except ConnectionClosedError:
         logger.info("connection replaced, service exiting")
         return True
 
