@@ -15,7 +15,7 @@ import memoize from 'memoize'
 import { get_sdk_path } from './sdk'
 
 const RPE_FILE_PATTERN =
-	/(vscode_)?renpy_warp_(?<version>\d+\.\d+\.\d+)(?:_(?<checksum>[a-z0-9]+))?\.rpe(?:\.py)?/
+	/(?:vscode_)?renpy_warp_(?<version>\d+\.\d+\.\d+)(?:_(?<checksum>[a-z0-9]+))?\.rpe(?:\.py)?/
 const logger = get_logger()
 
 async function _get_rpe_source(extensionPath: string): Promise<Buffer> {
@@ -44,7 +44,7 @@ export async function list_rpes(
 ): Promise<string[]> {
 	const pattern = new vscode.RelativePattern(
 		project_root,
-		'**/game/**/(vscode_)?renpy_warp_*.{rpe,rpe.py}'
+		'**/game/**/{vscode_renpy_warp,renpy_warp}_*.{rpe,rpe.py}'
 	)
 	const files = await vscode.workspace
 		.findFiles(pattern, await get_user_ignore_pattern())

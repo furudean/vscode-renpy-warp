@@ -34,7 +34,7 @@ except ValueError:
 
 def get_meta():
     RPE_FILE_PATTERN = re.compile(
-        r"(vscode_)?renpy_warp_(?P<version>\d+\.\d+\.\d+)(?:_(?P<checksum>[a-z0-9]+))?\.rpe(?:\.py)?")
+        r"(?:vscode_)?renpy_warp_(?P<version>\d+\.\d+\.\d+)(?:_(?P<checksum>[a-z0-9]+))?\.rpe(?:\.py)?")
 
     file = Path(__file__) if __file__.endswith(
         '.rpe.py') else Path(__file__).parent
