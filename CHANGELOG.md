@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## Unreleased
+## 3.0.0 - 2026-01-02
 
 -   **Remove `focusWindowOnWarp` feature.** This feature relied on the
     dependency `node-window-manager` which is unmaintained and has stopped
