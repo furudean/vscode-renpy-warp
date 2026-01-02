@@ -12,6 +12,7 @@ All notable changes to this project will be documented in this file.
     with.
 -   RPE name pattern changed from `renpy_warp_*.rpe.py` to
     `vscode_renpy_warp_*.rpe.py` for additional clarity.
+-   Bump dependencies
 
 ## 2.1.2 - 2025-05-06
 
