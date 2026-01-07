@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## Unreleased
+
+-   Don't show the picker again after SDK version is installed
+-   Update documentation in `vscode_renpy_warp.rpe.py`
+-   Adjust some text strings in the SDK downloader
+
 ## 3.0.0 - 2026-01-02
 
 -   **Remove `focusWindowOnWarp` feature.** This feature relied on the

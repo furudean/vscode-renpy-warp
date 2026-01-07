@@ -370,7 +370,7 @@ export async function prompt_install_sdk_picker(
 
 	quick_pick.items = [
 		{
-			label: 'Current',
+			label: 'Recommended',
 			kind: vscode.QuickPickItemKind.Separator,
 		},
 		...recommended_sdks.map(map_sdk),
@@ -384,7 +384,7 @@ export async function prompt_install_sdk_picker(
 			kind: vscode.QuickPickItemKind.Separator,
 		},
 		{
-			label: 'Show all',
+			label: 'Show all versions',
 			iconPath: new vscode.ThemeIcon('more'),
 		},
 	]
@@ -397,20 +397,18 @@ export async function prompt_install_sdk_picker(
 		}
 	})
 
-	return new Promise<string | void>((resolve, reject) => {
+	const promise = new Promise<string | void>((resolve, reject) => {
 		quick_pick.onDidAccept(async () => {
 			try {
 				const selection = quick_pick.selectedItems[0]
 
-				if (selection.label === 'Show all') {
+				if (selection.label === 'Show all versions') {
 					quick_pick.items = all_valid_sdks.map(map_sdk)
 					return
 				}
 
-				if (!selection || !selection.url) {
-					resolve(undefined)
-					return
-				}
+				if (!selection || !selection.url)
+					return reject('invalid selection state')
 
 				quick_pick.hide()
 
@@ -421,7 +419,7 @@ export async function prompt_install_sdk_picker(
 					context
 				)
 
-				if (!file) return resolve(undefined)
+				if (!file) return reject('missing file after download')
 
 				await set_config('sdkPath', file, true)
 
@@ -429,7 +427,7 @@ export async function prompt_install_sdk_picker(
 					`Ren'Py ${selection.label} installed and set as current SDK`
 				)
 
-				return prompt_sdk_quick_pick(context)
+				return resolve(undefined)
 			} catch (error) {
 				logger.error('Error during SDK installation:', error)
 				vscode.window.showErrorMessage(
@@ -442,8 +440,13 @@ export async function prompt_install_sdk_picker(
 		})
 
 		quick_pick.onDidHide(() => {
-			quick_pick.dispose()
 			resolve(undefined)
 		})
 	})
+
+	promise.finally(() => {
+		quick_pick.dispose()
+	})
+
+	return promise
 }
