@@ -3,6 +3,7 @@
 	// for the documentation about the extensions.json format
 	"recommendations": [
 		"dbaeumer.vscode-eslint",
-		"ms-python.autopep8"
+		"ms-python.autopep8",
+		"esbenp.prettier-vscode"
 	]
 }
