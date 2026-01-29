@@ -7,6 +7,7 @@ All notable changes to this project will be documented in this file.
 -   Don't show the picker again after SDK version is installed
 -   Update documentation in `vscode_renpy_warp.rpe.py`
 -   Adjust some text strings in the SDK downloader
+-   If game starts or ends, reset the decoration
 
 ## 3.0.0 - 2026-01-02
 

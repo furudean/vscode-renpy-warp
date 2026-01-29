@@ -2,7 +2,7 @@ import * as vscode from 'vscode'
 import { AnyProcess } from './process'
 import path from 'upath'
 import { get_config } from './config'
-import { CurrentLineSocketMessage, SocketMessage } from './socket'
+import { AnySocketMessage, CurrentLineSocketMessage } from './socket'
 import { realpath } from 'node:fs/promises'
 import { get_logger } from './log'
 
@@ -90,11 +90,18 @@ export class DecorationService {
 	}
 
 	track(process: AnyProcess) {
-		process.on('socketMessage', (message: SocketMessage) => {
-			if (message.type !== 'current_line') return
-
-			this.state.set(process.pid, message as CurrentLineSocketMessage)
-			this.update_decorations().catch(logger.error)
+		process.on('socketMessage', (message: AnySocketMessage) => {
+			if (message.type === 'current_line') {
+				this.state.set(process.pid, message)
+				this.update_decorations().catch(logger.error)
+			}
+			if (message.type === 'current_label') {
+				if (['start', 'main_menu_screen'].includes(message.label)) {
+					// if game starts, ends or is loaded from save
+					this.state.delete(process.pid)
+					this.update_decorations().catch(logger.error)
+				}
+			}
 		})
 		process.on('exit', () => {
 			this.state.delete(process.pid)
