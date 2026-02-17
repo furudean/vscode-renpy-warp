@@ -1,9 +1,9 @@
-import * as vscode from 'vscode'
-import { get_config } from './config'
-import { get_logger } from './log'
-import { get_executable, get_version } from './sh'
-import tildify from 'tildify'
-import { get_sdk_path } from './sdk'
+import * as vscode from "vscode"
+import { get_config } from "./config"
+import { get_logger } from "./log"
+import { get_executable, get_version } from "./sh"
+import tildify from "tildify"
+import { get_sdk_path } from "./sdk"
 
 const logger = get_logger()
 
@@ -17,11 +17,11 @@ export class StatusBar {
 	private message_timeout: NodeJS.Timeout | undefined
 
 	private state = {
-		socket_server_status: 'stopped' as 'running' | 'stopped',
-		processes: new Map<unknown, 'starting' | 'idle'>(),
+		socket_server_status: "stopped" as "running" | "stopped",
+		processes: new Map<unknown, "starting" | "idle">(),
 		is_follow_cursor: false,
 		message: undefined as string | undefined,
-		message_level: undefined as number | undefined,
+		message_level: undefined as number | undefined
 	}
 
 	constructor() {
@@ -48,7 +48,7 @@ export class StatusBar {
 		const update_status_bar_on_config_update =
 			vscode.workspace.onDidChangeConfiguration(() => {
 				this.update_status_bar().catch((err) =>
-					logger.error('failed to update status bar:', err)
+					logger.error("failed to update status bar:", err)
 				)
 			})
 
@@ -60,34 +60,33 @@ export class StatusBar {
 		)
 
 		this.update_status_bar().catch((err) =>
-			logger.error('failed to update status bar:', err)
+			logger.error("failed to update status bar:", err)
 		)
 	}
 
-	set_process(id: unknown, state: 'starting' | 'idle'): void {
+	set_process(id: unknown, state: "starting" | "idle"): void {
 		this.state.processes.set(id, state)
 		this.update_status_bar().catch((err) =>
-			logger.error('failed to update status bar:', err)
+			logger.error("failed to update status bar:", err)
 		)
 	}
 
 	delete_process(id: unknown): void {
 		this.state.processes.delete(id)
 		this.update_status_bar().catch((err) =>
-			logger.error('failed to update status bar:', err)
+			logger.error("failed to update status bar:", err)
 		)
 	}
 
 	private get starting_processes(): number {
 		return Array.from(this.state.processes.values()).filter(
-			(v) => v === 'starting'
+			(v) => v === "starting"
 		).length
 	}
 
 	private get idle_processes(): number {
-		return Array.from(this.state.processes.values()).filter(
-			(v) => v === 'idle'
-		).length
+		return Array.from(this.state.processes.values()).filter((v) => v === "idle")
+			.length
 	}
 
 	update(fn: (state: typeof this.state) => Partial<typeof this.state>) {
@@ -102,15 +101,15 @@ export class StatusBar {
 			}, 5000)
 		}
 
-		logger.debug('status bar state:', {
+		logger.debug("status bar state:", {
 			...this.state,
 			processes: undefined,
 			starting_processes: this.starting_processes,
-			idle_processes: this.idle_processes,
+			idle_processes: this.idle_processes
 		})
 
 		this.update_status_bar().catch((err) =>
-			logger.error('failed to update status bar:', err)
+			logger.error("failed to update status bar:", err)
 		)
 	}
 
@@ -130,7 +129,7 @@ export class StatusBar {
 
 		const sdk_path = await get_sdk_path(false)
 		const extensions_enabled =
-			get_config('renpyExtensionsEnabled') === 'Enabled'
+			get_config("renpyExtensionsEnabled") === "Enabled"
 
 		if (sdk_path && this.idle_processes > 0 && extensions_enabled) {
 			this.follow_cursor_bar.show()
@@ -139,16 +138,16 @@ export class StatusBar {
 		}
 
 		if (this.state.is_follow_cursor) {
-			this.follow_cursor_bar.text = '$(pinned) Following Cursor'
+			this.follow_cursor_bar.text = "$(pinned) Following Cursor"
 			this.follow_cursor_bar.color = new vscode.ThemeColor(
-				'statusBarItem.warningForeground'
+				"statusBarItem.warningForeground"
 			)
 			this.follow_cursor_bar.backgroundColor = new vscode.ThemeColor(
-				'statusBarItem.warningBackground'
+				"statusBarItem.warningBackground"
 			)
 		} else {
-			this.follow_cursor_bar.text = '$(pin) Follow Cursor'
-			this.follow_cursor_bar.command = 'renpyWarp.toggleFollowCursor'
+			this.follow_cursor_bar.text = "$(pin) Follow Cursor"
+			this.follow_cursor_bar.command = "renpyWarp.toggleFollowCursor"
 			this.follow_cursor_bar.tooltip =
 				"When enabled, keep editor cursor and Ren'Py dialogue in sync"
 			this.follow_cursor_bar.color = undefined
@@ -157,11 +156,11 @@ export class StatusBar {
 
 		if (
 			sdk_path &&
-			this.state.socket_server_status === 'stopped' &&
+			this.state.socket_server_status === "stopped" &&
 			extensions_enabled
 		) {
 			this.instance_bar.text = "$(plug) Start Ren'Py socket server"
-			this.instance_bar.command = 'renpyWarp.startSocketServer'
+			this.instance_bar.command = "renpyWarp.startSocketServer"
 			this.instance_bar.tooltip = "Start Ren'Py WebSocket server"
 		} else if (this.starting_processes > 0) {
 			this.instance_bar.text = `$(loading~spin) Starting Ren'Py...`
@@ -169,11 +168,11 @@ export class StatusBar {
 			this.instance_bar.tooltip = undefined
 		} else if (this.idle_processes > 0) {
 			this.instance_bar.text = `$(debug-stop) Quit Ren'Py`
-			this.instance_bar.command = 'renpyWarp.killAll'
+			this.instance_bar.command = "renpyWarp.killAll"
 			this.instance_bar.tooltip = "Kill all running Ren'Py instances"
 		} else {
 			this.instance_bar.text = `$(play) Launch Ren'Py Project`
-			this.instance_bar.command = 'renpyWarp.launch'
+			this.instance_bar.command = "renpyWarp.launch"
 			this.instance_bar.tooltip = "Launch new Ren'Py instance"
 		}
 
@@ -193,30 +192,28 @@ export class StatusBar {
 		if (!sdk_path || !executable || !version) {
 			this.sdk_bar.text = "$(warp-renpy) Set Ren'Py SDK"
 			this.sdk_bar.backgroundColor = new vscode.ThemeColor(
-				'statusBarItem.warningBackground'
+				"statusBarItem.warningBackground"
 			)
 			this.sdk_bar.color = new vscode.ThemeColor(
-				'statusBarItem.warningForeground'
+				"statusBarItem.warningForeground"
 			)
-			this.sdk_bar.tooltip = ''
+			this.sdk_bar.tooltip = ""
 		} else {
 			this.sdk_bar.backgroundColor = undefined
 			this.sdk_bar.color = undefined
 
 			if (
 				// if is managed by the extension
-				sdk_path.includes('/globalStorage/paisleysoftworks.renpywarp/')
+				sdk_path.includes("/globalStorage/paisleysoftworks.renpywarp/")
 			) {
 				this.sdk_bar.text = `$(warp-renpy) ${version}`
 			} else {
-				this.sdk_bar.text = `$(warp-renpy) ${tildify(
-					sdk_path
-				)} (${version})`
+				this.sdk_bar.text = `$(warp-renpy) ${tildify(sdk_path)} (${version})`
 			}
 
 			this.sdk_bar.tooltip = `Using Ren'Py SDK at ${tildify(sdk_path)}`
 		}
-		this.sdk_bar.command = 'renpyWarp.setSdkPath'
+		this.sdk_bar.command = "renpyWarp.setSdkPath"
 		this.sdk_bar.show()
 	}
 

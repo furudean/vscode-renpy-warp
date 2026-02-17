@@ -1,19 +1,19 @@
-import * as vscode from 'vscode'
-import path from 'upath'
-import child_process from 'child_process'
+import * as vscode from "vscode"
+import path from "upath"
+import child_process from "child_process"
 
-import { ProcessManager, ManagedProcess, AnyProcess } from './process'
-import { get_config } from './config'
-import { get_log_file, get_logger } from './log'
-import { get_editor_path, get_executable, find_project_root } from './sh'
-import { has_current_rpe, prompt_install_rpe } from './rpe'
-import { StatusBar } from './status_bar'
-import { prompt_projects_in_workspaces } from './path'
-import { prompt_configure_extensions } from './onboard'
-import { WarpSocketService } from './socket'
-import TailFile from '@logdna/tail-file/lib/tail-file'
-import split2 from 'split2'
-import { get_sdk_path } from './sdk'
+import { ProcessManager, ManagedProcess, AnyProcess } from "./process"
+import { get_config } from "./config"
+import { get_log_file, get_logger } from "./log"
+import { get_editor_path, get_executable, find_project_root } from "./sh"
+import { has_current_rpe, prompt_install_rpe } from "./rpe"
+import { StatusBar } from "./status_bar"
+import { prompt_projects_in_workspaces } from "./path"
+import { prompt_configure_extensions } from "./onboard"
+import { WarpSocketService } from "./socket"
+import TailFile from "@logdna/tail-file/lib/tail-file"
+import split2 from "split2"
+import { get_sdk_path } from "./sdk"
 
 export const logger = get_logger()
 
@@ -54,12 +54,12 @@ export async function launch_renpy({
 	status_bar,
 	wss,
 	extra_environment,
-	command,
+	command
 }: LaunchRenpyOptions): Promise<ManagedProcess | undefined> {
-	logger.info('launch_renpy:', { file, line })
+	logger.info("launch_renpy:", { file, line })
 
-	const strategy = get_config('strategy')
-	let extensions_enabled = get_config('renpyExtensionsEnabled')
+	const strategy = get_config("strategy")
+	let extensions_enabled = get_config("renpyExtensionsEnabled")
 
 	if (
 		!command &&
@@ -67,16 +67,16 @@ export async function launch_renpy({
 		pm.length &&
 		line !== undefined &&
 		Number.isInteger(line) &&
-		strategy === 'Update Window' &&
-		extensions_enabled === 'Enabled'
+		strategy === "Update Window" &&
+		extensions_enabled === "Enabled"
 	) {
-		logger.info('warping in existing window')
+		logger.info("warping in existing window")
 
 		const project_root = find_project_root(file)
-		logger.debug('game root:', project_root)
+		logger.debug("game root:", project_root)
 
 		const filename_relative = path.relative(
-			path.join(project_root, 'game/'),
+			path.join(project_root, "game/"),
 			file
 		)
 
@@ -93,7 +93,7 @@ export async function launch_renpy({
 		logger.info("opening new ren'py window")
 
 		const nonce = Math.trunc(Math.random() * Number.MAX_SAFE_INTEGER)
-		status_bar.set_process(nonce, 'starting')
+		status_bar.set_process(nonce, "starting")
 
 		const project_root = file
 			? find_project_root(file)
@@ -116,28 +116,28 @@ export async function launch_renpy({
 				status_bar.delete_process(nonce)
 				return undefined
 			}
-			if (extensions_enabled === 'Not set') {
+			if (extensions_enabled === "Not set") {
 				const success = await prompt_configure_extensions(executable)
 				if (success === false) {
 					status_bar.delete_process(nonce)
 					return undefined
 				}
-				extensions_enabled = get_config('renpyExtensionsEnabled')
+				extensions_enabled = get_config("renpyExtensionsEnabled")
 			}
 
-			if (extensions_enabled === 'Enabled') {
+			if (extensions_enabled === "Enabled") {
 				const has_current = await has_current_rpe({
 					executable,
 					sdk_path,
 					context,
-					project_root,
+					project_root
 				})
 
 				if (!has_current) {
 					const installed_path = await prompt_install_rpe({
 						project: project_root,
 						executable,
-						context,
+						context
 					})
 
 					if (!installed_path) {
@@ -149,7 +149,7 @@ export async function launch_renpy({
 				await wss.start()
 			}
 
-			if (strategy === 'Replace Window') pm.at(-1)?.kill()
+			if (strategy === "Replace Window") pm.at(-1)?.kill()
 
 			let cmds = [...executable, project_root]
 
@@ -159,68 +159,64 @@ export async function launch_renpy({
 
 			if (file && line !== undefined) {
 				const filename_relative = path.relative(
-					path.join(project_root, 'game/'),
+					path.join(project_root, "game/"),
 					file
 				)
-				cmds = [...cmds, '--warp', `${filename_relative}:${line + 1}`]
+				cmds = [...cmds, "--warp", `${filename_relative}:${line + 1}`]
 			}
 
 			const process_env: Record<string, string | undefined> = {
 				...process.env,
-				...(get_config('processEnvironment') as object),
+				...(get_config("processEnvironment") as object),
 				...extra_environment,
 				WARP_WS_NONCE: nonce.toString(),
 				// see: https://www.renpy.org/doc/html/editor.html
-				RENPY_EDIT_PY: await get_editor_path(sdk_path),
+				RENPY_EDIT_PY: await get_editor_path(sdk_path)
 			}
 
 			return await vscode.window.withProgress(
 				{
 					title: intent ?? "Starting Ren'Py...",
 					location: vscode.ProgressLocation.Notification,
-					cancellable: true,
+					cancellable: true
 				},
 				async (_, cancel) => {
 					logger.info(
-						'spawning process:',
+						"spawning process:",
 						// Object.entries(process_env)
 						// 	.map(([k, v]) => `${k}="${v}"`)
 						// 	.join(' '),
-						cmds.map((k) => `"${k}"`).join(' ')
+						cmds.map((k) => `"${k}"`).join(" ")
 					)
 
 					const { log_file, file_handle } = await get_log_file(
 						`process-${nonce}.log`
 					)
 
-					const process = child_process.spawn(
-						cmds[0],
-						cmds.slice(1),
-						{
-							env: process_env,
-							detached: true,
-							stdio: ['ignore', file_handle.fd, file_handle.fd],
-						}
-					)
-					process.on('error', (e) => {
-						logger.error('process error:', e)
+					const process = child_process.spawn(cmds[0], cmds.slice(1), {
+						env: process_env,
+						detached: true,
+						stdio: ["ignore", file_handle.fd, file_handle.fd]
+					})
+					process.on("error", (e) => {
+						logger.error("process error:", e)
 					})
 
 					// close the file handle for parent process, since the child has a copy
 					file_handle.close()
 
 					if (!process.pid) {
-						throw new Error('failed to start process')
+						throw new Error("failed to start process")
 					}
 
-					logger.info('successfully spawned process', process.pid)
+					logger.info("successfully spawned process", process.pid)
 
 					const rpp = new ManagedProcess({
 						process,
 						project_root,
-						log_file,
+						log_file
 					})
-					rpp.on('exit', () => {
+					rpp.on("exit", () => {
 						status_bar.delete_process(nonce)
 						file_handle.close()
 					})
@@ -233,22 +229,22 @@ export async function launch_renpy({
 
 					pm.add(nonce, rpp)
 
-					if (extensions_enabled === 'Enabled') {
+					if (extensions_enabled === "Enabled") {
 						try {
 							await rpp.wait_for_socket(10_000)
 						} catch (error: unknown) {
-							logger.error('timed out waiting for socket:', error)
+							logger.error("timed out waiting for socket:", error)
 							if (rpp.dead === false) {
 								vscode.window.showErrorMessage(
 									"Timed out trying to connect to Ren'Py window. Is the socket client running?",
-									'OK'
+									"OK"
 								)
 							}
 							throw error
 						}
 					}
 
-					status_bar.set_process(nonce, 'idle')
+					status_bar.set_process(nonce, "idle")
 
 					return rpp
 				}
@@ -262,7 +258,7 @@ export async function launch_renpy({
 
 export async function launch_sdk({
 	sdk_path,
-	executable,
+	executable
 }: {
 	sdk_path: string
 	executable: string[]
@@ -272,14 +268,14 @@ export async function launch_sdk({
 			{
 				title: "Opening Ren'Py launcher",
 				location: vscode.ProgressLocation.Notification,
-				cancellable: false,
+				cancellable: false
 			},
 			async () => {
 				const process_env: Record<string, string | undefined> = {
 					...process.env,
-					...(get_config('processEnvironment') as object),
+					...(get_config("processEnvironment") as object),
 					// see: https://www.renpy.org/doc/html/editor.html
-					RENPY_EDIT_PY: await get_editor_path(sdk_path),
+					RENPY_EDIT_PY: await get_editor_path(sdk_path)
 				}
 
 				const { file_handle, log_file } = await get_log_file(
@@ -289,10 +285,10 @@ export async function launch_sdk({
 				const pp = child_process.spawn(executable[0], {
 					env: process_env,
 					detached: true,
-					stdio: ['ignore', file_handle.fd, file_handle.fd],
+					stdio: ["ignore", file_handle.fd, file_handle.fd]
 				})
-				pp.on('error', (e) => {
-					logger.error('process error:', e)
+				pp.on("error", (e) => {
+					logger.error("process error:", e)
 				})
 
 				// close the file handle for parent process, since the child has a copy
@@ -306,26 +302,22 @@ export async function launch_sdk({
 				logger.info(`logging process ${pp.pid} to ${log_file}`)
 
 				const tail = new TailFile(log_file, {
-					encoding: 'utf8',
+					encoding: "utf8"
 				})
 				tail.start()
 
-				tail.pipe(split2()).on('data', (line: string) => {
+				tail.pipe(split2()).on("data", (line: string) => {
 					output_channel.appendLine(line)
 				})
 
-				pp.on('close', async (code) => {
-					logger.info(
-						`launcher process ${pp.pid} exited with code ${code}`
-					)
+				pp.on("close", async (code) => {
+					logger.info(`launcher process ${pp.pid} exited with code ${code}`)
 					await tail.quit()
-					output_channel?.appendLine(
-						`process exited with code ${code}`
-					)
+					output_channel?.appendLine(`process exited with code ${code}`)
 				})
 
 				if (!pp.pid) {
-					throw new Error('failed to start process')
+					throw new Error("failed to start process")
 				}
 			}
 		)

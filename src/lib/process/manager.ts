@@ -1,6 +1,6 @@
-import * as vscode from 'vscode'
-import { AnyProcess, ManagedProcess } from '.'
-import { EventEmitter } from 'node:events'
+import * as vscode from "vscode"
+import { AnyProcess, ManagedProcess } from "."
+import { EventEmitter } from "node:events"
 
 export class ProcessManager {
 	private processes = new Map<number, AnyProcess>()
@@ -24,21 +24,17 @@ export class ProcessManager {
 	async add(id: number, process: AnyProcess) {
 		this.processes.set(id, process)
 
-		this.emit('attach', process)
+		this.emit("attach", process)
 
-		process.on('exit', () => {
+		process.on("exit", () => {
 			this.processes.delete(id)
-			this.emit('exit', process)
+			this.emit("exit", process)
 
 			if (process instanceof ManagedProcess && process.exit_code) {
 				vscode.window
-					.showErrorMessage(
-						"Ren'Py process exited with errors",
-						'OK',
-						'Logs'
-					)
+					.showErrorMessage("Ren'Py process exited with errors", "OK", "Logs")
 					.then((selected) => {
-						if (selected === 'Logs') process.output_channel?.show()
+						if (selected === "Logs") process.output_channel?.show()
 					})
 			}
 		})

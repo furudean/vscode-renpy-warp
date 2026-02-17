@@ -1,1 +1,1 @@
-declare module 'sort-paths'
+declare module "sort-paths"

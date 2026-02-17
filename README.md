@@ -5,16 +5,16 @@ Studio Code.
 
 ## Features
 
--   Start and quit your Ren'Py game directly from Visual Studio Code
--   Warp games to a specific line, or jump to a label
--   Move cursor position in Visual Studio Code as dialogue progresses with the
-    _Follow Cursor_ mode
--   A gutter decoration to remind you where you are in the game, even when the
-    cursor moves away
--   Automatically enable autoreload when files change (with a setting)
--   Can discover and bind to games that were started outside of Visual Studio
-    Code
--   Can manage installs of the Ren'Py SDK directly from Visual Studio Code
+- Start and quit your Ren'Py game directly from Visual Studio Code
+- Warp games to a specific line, or jump to a label
+- Move cursor position in Visual Studio Code as dialogue progresses with the
+  _Follow Cursor_ mode
+- A gutter decoration to remind you where you are in the game, even when the
+  cursor moves away
+- Automatically enable autoreload when files change (with a setting)
+- Can discover and bind to games that were started outside of Visual Studio
+  Code
+- Can manage installs of the Ren'Py SDK directly from Visual Studio Code
 
 ## Commands
 
@@ -103,7 +103,6 @@ codesetting="renpyWarp.followCursorMode">renpyWarp.followCursorMode</code>
 
 Cursor syncing can be turned on by default with the setting <code
 codesetting="renpyWarp.followCursorOnLaunch">renpyWarp.followCursorOnLaunch</code>.
-
 
 ## Version support
 

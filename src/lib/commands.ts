@@ -1,22 +1,22 @@
-import * as vscode from 'vscode'
-import { get_config, set_config, show_file } from './config'
-import { launch_renpy, launch_sdk } from './launch'
-import { prompt_configure_extensions } from './onboard'
-import { find_projects_in_workspaces } from './path'
+import * as vscode from "vscode"
+import { get_config, set_config, show_file } from "./config"
+import { launch_renpy, launch_sdk } from "./launch"
+import { prompt_configure_extensions } from "./onboard"
+import { find_projects_in_workspaces } from "./path"
 import {
 	get_sdk_path,
 	prompt_sdk_quick_pick,
-	prompt_install_sdk_picker,
-} from './sdk'
-import { prompt_install_rpe, uninstall_rpes } from './rpe'
-import { get_executable } from './sh'
-import { WarpSocketService } from './socket'
-import { ProcessManager } from './process'
-import { StatusBar } from './status_bar'
-import { FollowCursorService, sync_editor_with_renpy } from './follow_cursor'
-import { get_logger } from './log'
-import { is_special_label } from './label'
-import path from 'upath'
+	prompt_install_sdk_picker
+} from "./sdk"
+import { prompt_install_rpe, uninstall_rpes } from "./rpe"
+import { get_executable } from "./sh"
+import { WarpSocketService } from "./socket"
+import { ProcessManager } from "./process"
+import { StatusBar } from "./status_bar"
+import { FollowCursorService, sync_editor_with_renpy } from "./follow_cursor"
+import { get_logger } from "./log"
+import { is_special_label } from "./label"
+import path from "upath"
 
 const logger = get_logger()
 
@@ -31,7 +31,7 @@ export function get_commands(
 		string,
 		(...args: unknown[]) => Promise<unknown> | unknown
 	> = {
-		'renpyWarp.launch': async () => {
+		"renpyWarp.launch": async () => {
 			try {
 				await launch_renpy({ context, pm, status_bar, wss })
 			} catch (error: unknown) {
@@ -39,7 +39,7 @@ export function get_commands(
 			}
 		},
 
-		'renpyWarp.warpToLine': async () => {
+		"renpyWarp.warpToLine": async () => {
 			const editor = vscode.window.activeTextEditor
 			if (!editor) return
 
@@ -51,14 +51,14 @@ export function get_commands(
 					context,
 					pm,
 					status_bar,
-					wss,
+					wss
 				})
 			} catch (error: unknown) {
 				logger.error(error as Error)
 			}
 		},
 
-		'renpyWarp.warpToFile': async (uri: unknown) => {
+		"renpyWarp.warpToFile": async (uri: unknown) => {
 			const fs_path =
 				uri instanceof vscode.Uri
 					? uri.fsPath
@@ -72,18 +72,18 @@ export function get_commands(
 					context,
 					pm,
 					status_bar,
-					wss,
+					wss
 				})
 			} catch (error: unknown) {
 				logger.error(error as Error)
 			}
 		},
 
-		'renpyWarp.jumpToLabel': async () => {
-			if (get_config('renpyExtensionsEnabled') !== 'Enabled') {
+		"renpyWarp.jumpToLabel": async () => {
+			if (get_config("renpyExtensionsEnabled") !== "Enabled") {
 				vscode.window.showErrorMessage(
 					"Ren'Py extensions must be enabled to use this feature",
-					'OK'
+					"OK"
 				)
 				return
 			}
@@ -97,8 +97,8 @@ export function get_commands(
 					wss,
 					context,
 					extra_environment: {
-						RENPY_SKIP_SPLASHSCREEN: '1',
-					},
+						RENPY_SKIP_SPLASHSCREEN: "1"
+					}
 				})
 				if (process === undefined) return
 				await process.wait_for_labels(500)
@@ -107,7 +107,7 @@ export function get_commands(
 			if (process.labels === undefined) {
 				vscode.window.showErrorMessage(
 					"Ren'Py has not reported any labels",
-					'OK'
+					"OK"
 				)
 				return
 			}
@@ -120,18 +120,15 @@ export function get_commands(
 						label,
 						iconPath:
 							process.current_label === label
-								? new vscode.ThemeIcon('arrow-right')
-								: new vscode.ThemeIcon('blank'),
+								? new vscode.ThemeIcon("arrow-right")
+								: new vscode.ThemeIcon("blank")
 					})
 				)
 
-			const selection = await vscode.window.showQuickPick(
-				filtered_labels,
-				{
-					placeHolder: 'Select a label to jump to',
-					title: "Jump to Ren'Py label",
-				}
-			)
+			const selection = await vscode.window.showQuickPick(filtered_labels, {
+				placeHolder: "Select a label to jump to",
+				title: "Jump to Ren'Py label"
+			})
 
 			if (selection === undefined) return
 
@@ -142,12 +139,12 @@ export function get_commands(
 			)
 		},
 
-		'renpyWarp.toggleFollowCursor': async () => {
+		"renpyWarp.toggleFollowCursor": async () => {
 			if (follow_cursor.enabled) {
 				follow_cursor.off()
 
 				if (!pm.length) {
-					status_bar.notify('$(pin) Follow Cursor: Off')
+					status_bar.notify("$(pin) Follow Cursor: Off")
 				}
 			} else {
 				const process = pm.at(-1)
@@ -160,11 +157,11 @@ export function get_commands(
 							line: last_cursor.line - 1,
 							path: last_cursor.path,
 							relative_path: last_cursor.relative_path,
-							force: true,
+							force: true
 						})
 					}
 				} else {
-					status_bar.notify('$(pinned) Follow Cursor: On')
+					status_bar.notify("$(pinned) Follow Cursor: On")
 					follow_cursor.enabled = true
 					return
 				}
@@ -173,14 +170,14 @@ export function get_commands(
 			}
 		},
 
-		'renpyWarp.syncCursorPosition': async () => {
+		"renpyWarp.syncCursorPosition": async () => {
 			const recent = pm.at(-1)
 			const last_cursor = recent?.last_cursor
 
 			if (last_cursor === undefined) {
 				vscode.window.showInformationMessage(
-					'Sync Cursor Position: No cursor reported from process yet',
-					'OK'
+					"Sync Cursor Position: No cursor reported from process yet",
+					"OK"
 				)
 				return
 			}
@@ -188,13 +185,13 @@ export function get_commands(
 				line: last_cursor.line - 1,
 				path: last_cursor.path,
 				relative_path: last_cursor.relative_path,
-				force: true,
+				force: true
 			})
 		},
 
-		'renpyWarp.killAll': () => pm.kill_all(),
+		"renpyWarp.killAll": () => pm.kill_all(),
 
-		'renpyWarp.installRpe': async () => {
+		"renpyWarp.installRpe": async () => {
 			const sdk_path = await get_sdk_path()
 			if (!sdk_path) return
 
@@ -206,12 +203,12 @@ export function get_commands(
 				await prompt_install_rpe({
 					project: project_root,
 					executable,
-					context,
+					context
 				})
 			}
 		},
 
-		'renpyWarp.uninstallRpe': async () => {
+		"renpyWarp.uninstallRpe": async () => {
 			const sdk_path = await get_sdk_path()
 			if (!sdk_path) return
 
@@ -223,20 +220,20 @@ export function get_commands(
 			)
 		},
 
-		'renpyWarp.setSdkPath': async (): Promise<string | undefined> => {
+		"renpyWarp.setSdkPath": async (): Promise<string | undefined> => {
 			const fs_path = await prompt_sdk_quick_pick(context)
 
 			if (!fs_path) return undefined
-			await set_config('sdkPath', fs_path, true)
+			await set_config("sdkPath", fs_path, true)
 
 			return fs_path
 		},
 
-		'renpyWarp.downloadSdk': async () => {
+		"renpyWarp.downloadSdk": async () => {
 			await prompt_install_sdk_picker(context)
 		},
 
-		'renpyWarp.setExtensionsPreference': async () => {
+		"renpyWarp.setExtensionsPreference": async () => {
 			const sdk_path = await get_sdk_path()
 			if (!sdk_path) return
 
@@ -246,27 +243,27 @@ export function get_commands(
 			await prompt_configure_extensions(executable)
 		},
 
-		'renpyWarp.startSocketServer': async () => {
-			if (get_config('renpyExtensionsEnabled') === 'Enabled') {
+		"renpyWarp.startSocketServer": async () => {
+			if (get_config("renpyExtensionsEnabled") === "Enabled") {
 				await wss.start()
 			} else {
 				vscode.window.showErrorMessage(
 					"Ren'Py extensions must be enabled to use the socket server",
-					'OK'
+					"OK"
 				)
 			}
 		},
 
-		'renpyWarp.stopSocketServer': () => {
+		"renpyWarp.stopSocketServer": () => {
 			wss.close()
 		},
 
-		'renpyWarp.resetSuppressedMessages': () => {
-			context.globalState.update('hideExternalProcessConnected', false)
-			context.globalState.update('hideRpeInstallUpdateMessage', false)
+		"renpyWarp.resetSuppressedMessages": () => {
+			context.globalState.update("hideExternalProcessConnected", false)
+			context.globalState.update("hideRpeInstallUpdateMessage", false)
 		},
 
-		'renpyWarp.launchSDK': async () => {
+		"renpyWarp.launchSDK": async () => {
 			const sdk_path = await get_sdk_path()
 			if (!sdk_path) return
 
@@ -276,74 +273,69 @@ export function get_commands(
 			await launch_sdk({ sdk_path, executable })
 		},
 
-		'renpyWarp.lint': async () => {
+		"renpyWarp.lint": async () => {
 			try {
 				const p = await launch_renpy({
-					intent: 'Linting project...',
-					command: 'lint',
+					intent: "Linting project...",
+					command: "lint",
 					context,
 					pm,
 					status_bar,
-					wss,
+					wss
 				})
 
 				if (p?.project_root) {
 					// https://github.com/renpy/renpy/blob/8646cd3f39dd74a17d52d1b882697b24574078d9/launcher/game/distribute.rpy#L876-L878
 					const project_name = path.basename(p.project_root)
 					await show_file(
-						path.join(
-							await get_sdk_path(),
-							'tmp',
-							project_name,
-							'lint.txt'
-						)
+						path.join(await get_sdk_path(), "tmp", project_name, "lint.txt")
 					)
 				}
 			} catch (error: unknown) {
 				logger.error(error as Error)
 				vscode.window
 					.showErrorMessage(
-						'Failed to lint project. Check the output for more details.',
-						'OK',
-						'Open Output'
+						"Failed to lint project. Check the output for more details.",
+						"OK",
+						"Open Output"
 					)
 					.then((selection) => {
-						if (selection === 'Open Output') {
+						if (selection === "Open Output") {
 							logger.show()
 						}
 					})
 			}
 		},
 
-		'renpyWarp.rmpersistent': async () => {
+		"renpyWarp.rmpersistent": async () => {
 			try {
 				await launch_renpy({
-					intent: 'Removing persistent data...',
-					command: 'rmpersistent',
+					intent: "Removing persistent data...",
+					command: "rmpersistent",
 					context,
 					pm,
 					status_bar,
-					wss,
+					wss
 				})
 				vscode.window.showInformationMessage(
-					'Persistent data was deleted',
-					'OK'
+					"Persistent data was deleted",
+					"OK"
 				)
 			} catch (error: unknown) {
 				logger.error(error as Error)
 				vscode.window
 					.showErrorMessage(
-						'Failed to delete persistent data. Check the output for more details.',
-						'OK',
-						'Open Output'
+						"Failed to delete persistent data. Check the output for more details.",
+						"OK",
+						"Open Output"
 					)
 					.then((selection) => {
-						if (selection === 'Open Output') {
+						if (selection === "Open Output") {
 							logger.show()
 						}
 					})
 			}
-		},
+		}
 	}
 
 	return commands
@@ -359,8 +351,6 @@ export function register_commands(
 	const commands = get_commands(context, pm, status_bar, follow_cursor, wss)
 
 	for (const [name, handler] of Object.entries(commands)) {
-		context.subscriptions.push(
-			vscode.commands.registerCommand(name, handler)
-		)
+		context.subscriptions.push(vscode.commands.registerCommand(name, handler))
 	}
 }

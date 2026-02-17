@@ -1,29 +1,29 @@
-import { homedir } from 'node:os'
-import { get_config, set_config, set_config_exclusive } from './config'
-import { path_exists, resolve_path } from './path'
-import * as vscode from 'vscode'
-import path, { basename } from 'upath'
-import tildify from 'tildify'
-import { get_logger } from './log'
-import { download_sdk, list_downloaded_sdks, uninstall_sdk } from './download'
-import open from 'open'
-import { get_executable, get_version } from './sh'
+import { homedir } from "node:os"
+import { get_config, set_config, set_config_exclusive } from "./config"
+import { path_exists, resolve_path } from "./path"
+import * as vscode from "vscode"
+import path, { basename } from "upath"
+import tildify from "tildify"
+import { get_logger } from "./log"
+import { download_sdk, list_downloaded_sdks, uninstall_sdk } from "./download"
+import open from "open"
+import { get_executable, get_version } from "./sh"
 import {
 	fetch_sdk_channels,
 	find_sdk_in_directory,
 	list_remote_sdks,
 	RemoteSdk,
 	semver_compare,
-	sort_remote_sdks,
-} from './api'
+	sort_remote_sdks
+} from "./api"
 
 export const logger = get_logger()
 
 enum SdkAction {
-	Path = 'Path',
-	ShowDirectory = 'ShowDirectory',
-	FilePicker = 'SystemFilePicker',
-	InstallSdk = 'InstallSdk',
+	Path = "Path",
+	ShowDirectory = "ShowDirectory",
+	FilePicker = "SystemFilePicker",
+	InstallSdk = "InstallSdk"
 }
 
 interface SdkQuickPickItem extends vscode.QuickPickItem {
@@ -37,7 +37,7 @@ interface DownloadSdkQuickPickItem extends vscode.QuickPickItem {
 }
 
 export async function path_is_sdk(sdk_path: string): Promise<boolean> {
-	return await path_exists(path.join(sdk_path, 'renpy.py'))
+	return await path_exists(path.join(sdk_path, "renpy.py"))
 }
 
 /**
@@ -45,21 +45,21 @@ export async function path_is_sdk(sdk_path: string): Promise<boolean> {
  * user to set the path if it is not set.
  */
 export async function get_sdk_path(prompt = true): Promise<string | undefined> {
-	let sdk_path_setting = get_config('sdkPath') as string
+	let sdk_path_setting = get_config("sdkPath") as string
 
-	logger.debug('raw sdk path:', sdk_path_setting)
+	logger.debug("raw sdk path:", sdk_path_setting)
 
 	if (!sdk_path_setting.trim()) {
 		if (!prompt) return undefined
 
 		const selection = await vscode.window.showInformationMessage(
 			"Please set a Ren'Py SDK path to continue",
-			'Set SDK Path',
-			'Cancel'
+			"Set SDK Path",
+			"Cancel"
 		)
-		if (selection === 'Set SDK Path') {
+		if (selection === "Set SDK Path") {
 			sdk_path_setting = await vscode.commands.executeCommand(
-				'renpyWarp.setSdkPath'
+				"renpyWarp.setSdkPath"
 			)
 		}
 		if (!sdk_path_setting) return
@@ -79,15 +79,15 @@ export async function prompt_sdk_quick_pick(
 	): SdkQuickPickItem {
 		const buttons: vscode.QuickInputButton[] = [
 			{
-				iconPath: new vscode.ThemeIcon('folder'),
-				tooltip: 'Show directory',
-			},
+				iconPath: new vscode.ThemeIcon("folder"),
+				tooltip: "Show directory"
+			}
 		]
 
 		if (!label) {
 			buttons.push({
-				iconPath: new vscode.ThemeIcon('trash'),
-				tooltip: 'Delete',
+				iconPath: new vscode.ThemeIcon("trash"),
+				tooltip: "Delete"
 			})
 		}
 
@@ -96,27 +96,26 @@ export async function prompt_sdk_quick_pick(
 			// description: tildify(sdk_path),
 			iconPath:
 				sdk_path === current_sdk_path
-					? new vscode.ThemeIcon('check')
-					: new vscode.ThemeIcon('blank'),
+					? new vscode.ThemeIcon("check")
+					: new vscode.ThemeIcon("blank"),
 			action: SdkAction.Path,
 			path: sdk_path,
-			description:
-				sdk_path === current_sdk_path ? '(selected)' : undefined,
-			buttons,
+			description: sdk_path === current_sdk_path ? "(selected)" : undefined,
+			buttons
 		}
 	}
 
 	const options: SdkQuickPickItem[] = [
 		{
-			label: '$(plus) Download SDK version...',
+			label: "$(plus) Download SDK version...",
 			action: SdkAction.InstallSdk,
-			alwaysShow: true,
+			alwaysShow: true
 		},
 		{
-			label: '$(file-directory) Enter SDK path...',
+			label: "$(file-directory) Enter SDK path...",
 			action: SdkAction.FilePicker,
-			alwaysShow: true,
-		},
+			alwaysShow: true
+		}
 	]
 
 	const quick_pick = vscode.window.createQuickPick<SdkQuickPickItem>()
@@ -128,25 +127,23 @@ export async function prompt_sdk_quick_pick(
 	quick_pick.busy = true
 
 	quick_pick.onDidTriggerItemButton(async (e) => {
-		if (!e.item.path) throw new Error('item path is undefined')
+		if (!e.item.path) throw new Error("item path is undefined")
 		switch (e.button.tooltip) {
-			case 'Show directory': {
+			case "Show directory": {
 				await open(e.item.path)
 				break
 			}
-			case 'Delete':
+			case "Delete":
 				await uninstall_sdk(e.item.path, context)
 				if (e.item.path === current_sdk_path) {
-					await set_config_exclusive('sdkPath', undefined, true)
+					await set_config_exclusive("sdkPath", undefined, true)
 				}
 				quick_pick.items = quick_pick.items.filter(
 					(i) => i.path !== e.item.path
 				)
 				break
 			default:
-				throw new Error(
-					`unexpected button tooltip: ${e.button.tooltip}`
-				)
+				throw new Error(`unexpected button tooltip: ${e.button.tooltip}`)
 		}
 	})
 
@@ -180,10 +177,10 @@ export async function prompt_sdk_quick_pick(
 			})
 			.map((sdk_path) => create_quick_pick_item(sdk_path)),
 		{
-			label: '',
-			kind: vscode.QuickPickItemKind.Separator,
+			label: "",
+			kind: vscode.QuickPickItemKind.Separator
 		},
-		...quick_pick.items,
+		...quick_pick.items
 	]
 
 	if (current_sdk_path && !current_sdk_is_managed_by_extension) {
@@ -201,10 +198,10 @@ export async function prompt_sdk_quick_pick(
 		quick_pick.items = [
 			create_quick_pick_item(current_sdk_path, label),
 			{
-				label: '',
-				kind: vscode.QuickPickItemKind.Separator,
+				label: "",
+				kind: vscode.QuickPickItemKind.Separator
 			},
-			...quick_pick.items,
+			...quick_pick.items
 		]
 	}
 
@@ -233,22 +230,22 @@ export async function prompt_sdk_quick_pick(
 			return
 
 		default:
-			throw new Error('Unexpected selection state')
+			throw new Error("Unexpected selection state")
 	}
 }
 
 export async function prompt_sdk_file_picker(): Promise<string | undefined> {
 	const input_path = await vscode.window.showOpenDialog({
 		title: "Set Ren'Py SDK directory",
-		openLabel: 'Select SDK',
+		openLabel: "Select SDK",
 		defaultUri: vscode.Uri.file(
-			resolve_path((get_config('sdkPath') as string) || homedir())
+			resolve_path((get_config("sdkPath") as string) || homedir())
 		),
 		canSelectFolders: true,
 		canSelectFiles: false,
-		canSelectMany: false,
+		canSelectMany: false
 	})
-	if (typeof input_path === 'undefined' || input_path.length === 0) return
+	if (typeof input_path === "undefined" || input_path.length === 0) return
 
 	const fs_path = input_path[0].fsPath
 	const is_sdk = await path_is_sdk(fs_path)
@@ -256,7 +253,7 @@ export async function prompt_sdk_file_picker(): Promise<string | undefined> {
 	if (!is_sdk) {
 		const err_selection = await vscode.window.showErrorMessage(
 			"Path is not a Ren'Py SDK",
-			'Reselect'
+			"Reselect"
 		)
 		if (err_selection) return prompt_sdk_file_picker()
 
@@ -271,7 +268,7 @@ export async function prompt_install_sdk_picker(
 ): Promise<string | void> {
 	const quick_pick = vscode.window.createQuickPick<DownloadSdkQuickPickItem>()
 	quick_pick.title = "Select Ren'Py SDK"
-	quick_pick.placeholder = 'Select SDK version to download'
+	quick_pick.placeholder = "Select SDK version to download"
 	quick_pick.ignoreFocusOut = true
 	quick_pick.busy = true
 	quick_pick.show()
@@ -279,19 +276,19 @@ export async function prompt_install_sdk_picker(
 	// Load remote SDKs and SDK channels in parallel
 	const [remote_sdks, sdk_channels] = await Promise.all([
 		list_remote_sdks(),
-		fetch_sdk_channels('https://renpy.org/channels.json'),
+		fetch_sdk_channels("https://renpy.org/channels.json")
 	])
 
 	if (remote_sdks.length === 0) {
 		vscode.window.showErrorMessage(
-			'No remote SDKs found. Please check your internet connection.'
+			"No remote SDKs found. Please check your internet connection."
 		)
 		return
 	}
 	const version_channel = new Map(
 		Object.values(sdk_channels.releases).map((c) => [
-			c.split_version.slice(0, 3).join('.'),
-			c.channel,
+			c.split_version.slice(0, 3).join("."),
+			c.channel
 		])
 	)
 	const highest_stable_version = Array.from(version_channel.keys())[0] // assume first is stable
@@ -299,7 +296,7 @@ export async function prompt_install_sdk_picker(
 	const recommended_sdks = remote_sdks.filter(
 		(sdk) =>
 			version_channel.has(sdk.name) &&
-			!version_channel.get(sdk.name)?.startsWith('Nightly')
+			!version_channel.get(sdk.name)?.startsWith("Nightly")
 	)
 
 	const downloaded_sdks = (await list_downloaded_sdks(context)).map((sdk) =>
@@ -313,7 +310,7 @@ export async function prompt_install_sdk_picker(
 	const filtered_sdks = Array.from(
 		all_valid_sdks
 			// don't include unsupported versions
-			.filter((sdk) => semver_compare(sdk.name, '7.0.0') <= 0)
+			.filter((sdk) => semver_compare(sdk.name, "7.0.0") <= 0)
 			// only include highest patch for each minor
 			.reduce((map, sdk) => {
 				const minor = `${sdk.semver!.major}.${sdk.semver!.minor}`
@@ -345,9 +342,9 @@ export async function prompt_install_sdk_picker(
 	function map_sdk(sdk: RemoteSdk): DownloadSdkQuickPickItem {
 		const buttons: vscode.QuickInputButton[] = [
 			{
-				iconPath: new vscode.ThemeIcon('globe'),
-				tooltip: 'Show download in browser',
-			},
+				iconPath: new vscode.ThemeIcon("globe"),
+				tooltip: "Show download in browser"
+			}
 		]
 
 		// if (downloaded_sdks.includes(sdk.name)) {
@@ -362,37 +359,37 @@ export async function prompt_install_sdk_picker(
 			description: sdk.url.hostname + sdk.url.pathname,
 			url: sdk.url,
 			iconPath: downloaded_sdks.includes(sdk.name)
-				? new vscode.ThemeIcon('check')
-				: new vscode.ThemeIcon('blank'),
-			buttons,
+				? new vscode.ThemeIcon("check")
+				: new vscode.ThemeIcon("blank"),
+			buttons
 		}
 	}
 
 	quick_pick.items = [
 		{
-			label: 'Recommended',
-			kind: vscode.QuickPickItemKind.Separator,
+			label: "Recommended",
+			kind: vscode.QuickPickItemKind.Separator
 		},
 		...recommended_sdks.map(map_sdk),
 		{
-			label: '',
-			kind: vscode.QuickPickItemKind.Separator,
+			label: "",
+			kind: vscode.QuickPickItemKind.Separator
 		},
 		...filtered_sdks.map(map_sdk),
 		{
-			label: '',
-			kind: vscode.QuickPickItemKind.Separator,
+			label: "",
+			kind: vscode.QuickPickItemKind.Separator
 		},
 		{
-			label: 'Show all versions',
-			iconPath: new vscode.ThemeIcon('more'),
-		},
+			label: "Show all versions",
+			iconPath: new vscode.ThemeIcon("more")
+		}
 	]
 	quick_pick.busy = false
 
 	quick_pick.onDidTriggerItemButton(async (e) => {
-		if (e.button.tooltip === 'Show download in browser') {
-			if (!e.item.url) throw new Error('item url is undefined')
+		if (e.button.tooltip === "Show download in browser") {
+			if (!e.item.url) throw new Error("item url is undefined")
 			await open(e.item.url.toString())
 		}
 	})
@@ -402,26 +399,22 @@ export async function prompt_install_sdk_picker(
 			try {
 				const selection = quick_pick.selectedItems[0]
 
-				if (selection.label === 'Show all versions') {
+				if (selection.label === "Show all versions") {
 					quick_pick.items = all_valid_sdks.map(map_sdk)
 					return
 				}
 
 				if (!selection || !selection.url)
-					return reject('invalid selection state')
+					return reject("invalid selection state")
 
 				quick_pick.hide()
 
 				const sdk_url = await find_sdk_in_directory(selection.url)
-				const file = await download_sdk(
-					sdk_url,
-					selection.label,
-					context
-				)
+				const file = await download_sdk(sdk_url, selection.label, context)
 
-				if (!file) return reject('missing file after download')
+				if (!file) return reject("missing file after download")
 
-				await set_config('sdkPath', file, true)
+				await set_config("sdkPath", file, true)
 
 				vscode.window.showInformationMessage(
 					`Ren'Py ${selection.label} installed and set as current SDK`
@@ -429,10 +422,10 @@ export async function prompt_install_sdk_picker(
 
 				return resolve(undefined)
 			} catch (error) {
-				logger.error('Error during SDK installation:', error)
+				logger.error("Error during SDK installation:", error)
 				vscode.window.showErrorMessage(
 					`Failed to install SDK: ${
-						error instanceof Error ? error.message : 'Unknown error'
+						error instanceof Error ? error.message : "Unknown error"
 					}`
 				)
 				reject(error)

@@ -1,16 +1,16 @@
-import * as vscode from 'vscode'
-import path from 'upath'
-import untildify from 'untildify'
-import fs from 'node:fs/promises'
-import { get_logger } from './log'
-import { get_user_ignore_pattern } from './config'
-import env_paths from 'env-paths'
-import { name as pkg_name } from '../../package.json'
-import sortPaths from 'sort-paths'
+import * as vscode from "vscode"
+import path from "upath"
+import untildify from "untildify"
+import fs from "node:fs/promises"
+import { get_logger } from "./log"
+import { get_user_ignore_pattern } from "./config"
+import env_paths from "env-paths"
+import { name as pkg_name } from "../../package.json"
+import sortPaths from "sort-paths"
 
 const logger = get_logger()
 
-export const paths = env_paths(pkg_name, { suffix: '' })
+export const paths = env_paths(pkg_name, { suffix: "" })
 
 /**
  * @param {string} str
@@ -34,10 +34,10 @@ export async function mkdir_exist_ok(file_path: string): Promise<void> {
 		await fs.mkdir(file_path)
 	} catch (e) {
 		if (
-			typeof e === 'object' &&
+			typeof e === "object" &&
 			e !== null &&
-			'code' in e &&
-			e.code !== 'EEXIST'
+			"code" in e &&
+			e.code !== "EEXIST"
 		) {
 			throw e
 		}
@@ -54,10 +54,7 @@ export async function find_projects_in_workspaces(
 	const workspace_games = new Map<string, string[]>()
 
 	for (const workspace of vscode.workspace.workspaceFolders ?? []) {
-		const pattern = new vscode.RelativePattern(
-			workspace,
-			'**/game/**/*.rpy'
-		)
+		const pattern = new vscode.RelativePattern(workspace, "**/game/**/*.rpy")
 		const files = await vscode.workspace.findFiles(
 			pattern,
 			await get_user_ignore_pattern()
@@ -72,7 +69,7 @@ export async function find_projects_in_workspaces(
 			const parts = relative.split(path.sep)
 
 			for (const [i, part] of Array.from(parts.entries()).reverse()) {
-				if (part === 'game') {
+				if (part === "game") {
 					const full_path = path.join(
 						workspace.uri.fsPath,
 						...parts.slice(0, i)
@@ -112,7 +109,7 @@ export async function prompt_projects_in_workspaces(
 		if (!silent)
 			vscode.window.showErrorMessage(
 				"No Ren'Py project in workspace. Workspace must contain a directory 'game' with .rpy files",
-				'OK'
+				"OK"
 			)
 		return
 	}
@@ -128,23 +125,23 @@ export async function prompt_projects_in_workspaces(
 		options.push(
 			{
 				label: workspace,
-				kind: vscode.QuickPickItemKind.Separator,
+				kind: vscode.QuickPickItemKind.Separator
 			},
 			...games.map((game) => ({
-				label: '$(folder) ' + path.basename(game),
+				label: "$(folder) " + path.basename(game),
 				description:
 					path.basename(game) === path.relative(workspace, game)
 						? undefined
-						: path.relative(workspace, path.resolve(game, '..')),
-				value: game,
+						: path.relative(workspace, path.resolve(game, "..")),
+				value: game
 			}))
 		)
 	}
 
 	const selection = await vscode.window.showQuickPick(options, {
-		title: 'Which project should be started?',
-		placeHolder: 'Select a project',
-		matchOnDescription: true,
+		title: "Which project should be started?",
+		placeHolder: "Select a project",
+		matchOnDescription: true
 	})
 
 	return selection?.value

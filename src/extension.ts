@@ -1,16 +1,16 @@
-import * as vscode from 'vscode'
+import * as vscode from "vscode"
 
-import { ProcessManager } from './lib/process/manager'
-import { FollowCursorService } from './lib/follow_cursor'
-import { get_logger } from './lib/log'
-import { get_config, get_configuration_object, set_config } from './lib/config'
-import { StatusBar } from './lib/status_bar'
-import { get_message_handler, WarpSocketService } from './lib/socket'
-import { register_commands } from './lib/commands'
-import { update_existing_rpes } from './lib/rpe'
-import { register_handlers } from './lib/handlers'
-import { DecorationService } from './lib/decoration'
-import { AnyProcess } from './lib/process'
+import { ProcessManager } from "./lib/process/manager"
+import { FollowCursorService } from "./lib/follow_cursor"
+import { get_logger } from "./lib/log"
+import { get_config, get_configuration_object, set_config } from "./lib/config"
+import { StatusBar } from "./lib/status_bar"
+import { get_message_handler, WarpSocketService } from "./lib/socket"
+import { register_commands } from "./lib/commands"
+import { update_existing_rpes } from "./lib/rpe"
+import { register_handlers } from "./lib/handlers"
+import { DecorationService } from "./lib/decoration"
+import { AnyProcess } from "./lib/process"
 
 const logger = get_logger()
 
@@ -18,15 +18,14 @@ export function activate(context: vscode.ExtensionContext) {
 	// migrate settings from version<=1.5.0 where renpyExtensionsEnabled was a boolean
 	const conf = get_configuration_object()
 	if (
-		typeof conf.inspect('renpyExtensionsEnabled')?.globalValue === 'boolean'
+		typeof conf.inspect("renpyExtensionsEnabled")?.globalValue === "boolean"
 	) {
-		set_config('renpyExtensionsEnabled', undefined, false)
+		set_config("renpyExtensionsEnabled", undefined, false)
 	}
 	if (
-		typeof conf.inspect('renpyExtensionsEnabled')?.workspaceValue ===
-		'boolean'
+		typeof conf.inspect("renpyExtensionsEnabled")?.workspaceValue === "boolean"
 	) {
-		set_config('renpyExtensionsEnabled', undefined, true)
+		set_config("renpyExtensionsEnabled", undefined, true)
 	}
 
 	const status_bar = new StatusBar()
@@ -37,16 +36,16 @@ export function activate(context: vscode.ExtensionContext) {
 		message_handler: get_message_handler(follow_cursor),
 		pm,
 		status_bar,
-		context,
+		context
 	})
 
 	context.subscriptions.push(pm, follow_cursor, status_bar, ds)
 
 	let pm_init = false
-	pm.on('exit', () => {
+	pm.on("exit", () => {
 		vscode.commands.executeCommand(
-			'setContext',
-			'renpyWarp.runningProcesses',
+			"setContext",
+			"renpyWarp.runningProcesses",
 			pm.length
 		)
 
@@ -55,7 +54,7 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 		if (
 			follow_cursor.enabled &&
-			get_config('renpyExtensionsEnabled') === 'Enabled'
+			get_config("renpyExtensionsEnabled") === "Enabled"
 		) {
 			const most_recent = pm.at(-1)
 
@@ -67,28 +66,26 @@ export function activate(context: vscode.ExtensionContext) {
 			}
 		}
 	})
-	pm.on('attach', async (rpp: AnyProcess) => {
+	pm.on("attach", async (rpp: AnyProcess) => {
 		vscode.commands.executeCommand(
-			'setContext',
-			'renpyWarp.runningProcesses',
+			"setContext",
+			"renpyWarp.runningProcesses",
 			pm.length
 		)
 
 		ds.track(rpp)
 
 		if (
-			(get_config('renpyExtensionsEnabled') === 'Enabled' &&
-				get_config('followCursorOnLaunch') &&
+			(get_config("renpyExtensionsEnabled") === "Enabled" &&
+				get_config("followCursorOnLaunch") &&
 				!pm_init) ||
 			follow_cursor.enabled // follow cursor is already active, replace it
 		) {
-			logger.info('enabling follow cursor for new process')
+			logger.info("enabling follow cursor for new process")
 			await follow_cursor.set(rpp)
 
 			if (pm.length > 1) {
-				status_bar.notify(
-					`$(debug-line-by-line) Now following pid ${rpp.pid}`
-				)
+				status_bar.notify(`$(debug-line-by-line) Now following pid ${rpp.pid}`)
 			}
 		}
 
@@ -99,27 +96,27 @@ export function activate(context: vscode.ExtensionContext) {
 	register_handlers(context, pm, wss)
 
 	if (
-		get_config('renpyExtensionsEnabled') === 'Enabled' &&
-		get_config('sdkPath')
+		get_config("renpyExtensionsEnabled") === "Enabled" &&
+		get_config("sdkPath")
 	) {
 		update_existing_rpes(context).catch((error) => {
 			logger.error(error)
 			vscode.window
 				.showErrorMessage(
-					'Failed to install/update RPE on startup',
-					'Logs',
-					'OK'
+					"Failed to install/update RPE on startup",
+					"Logs",
+					"OK"
 				)
 				.then((selection) => {
-					if (selection === 'Logs') {
+					if (selection === "Logs") {
 						logger.show()
 					}
 				})
 		})
 
-		if (get_config('autoStartSocketServer')) {
+		if (get_config("autoStartSocketServer")) {
 			wss.start().catch((error) => {
-				logger.error('failed to start socket server:', error)
+				logger.error("failed to start socket server:", error)
 			})
 		}
 	}

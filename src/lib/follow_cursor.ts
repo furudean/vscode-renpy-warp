@@ -1,10 +1,10 @@
-import * as vscode from 'vscode'
-import { get_config } from './config'
-import { AnyProcess } from './process'
-import { get_logger } from './log'
-import path from 'upath'
-import { find_project_root } from './sh'
-import { StatusBar } from './status_bar'
+import * as vscode from "vscode"
+import { get_config } from "./config"
+import { AnyProcess } from "./process"
+import { get_logger } from "./log"
+import path from "upath"
+import { find_project_root } from "./sh"
+import { StatusBar } from "./status_bar"
 
 const logger = get_logger()
 const last_warps = new Map<number, string>()
@@ -24,7 +24,7 @@ export async function sync_editor_with_renpy({
 	path,
 	relative_path,
 	line,
-	force,
+	force
 }: SyncEditorWithRenpyOptions): Promise<void> {
 	const warp_spec = `${path}:${line + 1}`
 	if (!force && warp_spec === last_warps.get(process.pid)) return // no change
@@ -62,11 +62,11 @@ export async function warp_renpy_to_cursor(
 	const file = editor.document.uri.fsPath
 	const line = editor.selection.active.line
 
-	if (!filename.endsWith('.rpy')) return
+	if (!filename.endsWith(".rpy")) return
 
 	const project_root = find_project_root(file)
 	const filename_relative = path.relative(
-		path.join(project_root, 'game/'),
+		path.join(project_root, "game/"),
 		file
 	)
 
@@ -76,13 +76,13 @@ export async function warp_renpy_to_cursor(
 	last_warps.set(process.pid, warp_spec)
 
 	if (!rp) {
-		logger.warn('no renpy process found')
+		logger.warn("no renpy process found")
 		return
 	}
 
 	await rp.warp_to_line(filename_relative, line + 1)
 	status_bar.notify(`$(debug-line-by-line) Warped to ${warp_spec}`)
-	logger.info('warped to', warp_spec)
+	logger.info("warped to", warp_spec)
 }
 
 export class FollowCursorService {
@@ -97,7 +97,7 @@ export class FollowCursorService {
 	}
 
 	async set(process: AnyProcess) {
-		if (get_config('renpyExtensionsEnabled') !== 'Enabled') return
+		if (get_config("renpyExtensionsEnabled") !== "Enabled") return
 
 		this.active_process = process
 		this.enabled = true
@@ -106,10 +106,9 @@ export class FollowCursorService {
 		this.text_editor_handle = vscode.window.onDidChangeTextEditorSelection(
 			async (event) => {
 				if (
-					[
-						"Visual Studio Code updates Ren'Py",
-						'Update both',
-					].includes(get_config('followCursorMode') as string) &&
+					["Visual Studio Code updates Ren'Py", "Update both"].includes(
+						get_config("followCursorMode") as string
+					) &&
 					event.kind !== vscode.TextEditorSelectionChangeKind.Command
 				) {
 					await warp_renpy_to_cursor(process, this.status_bar)
@@ -118,12 +117,12 @@ export class FollowCursorService {
 		)
 
 		this.status_bar.update(() => ({
-			is_follow_cursor: true,
+			is_follow_cursor: true
 		}))
 
 		if (
-			["Visual Studio Code updates Ren'Py", 'Update both'].includes(
-				get_config('followCursorMode') as string
+			["Visual Studio Code updates Ren'Py", "Update both"].includes(
+				get_config("followCursorMode") as string
 			)
 		) {
 			await warp_renpy_to_cursor(process, this.status_bar)
@@ -140,7 +139,7 @@ export class FollowCursorService {
 		this.text_editor_handle = undefined
 
 		this.status_bar.update(() => ({
-			is_follow_cursor: false,
+			is_follow_cursor: false
 		}))
 	}
 

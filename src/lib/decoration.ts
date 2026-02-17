@@ -1,10 +1,10 @@
-import * as vscode from 'vscode'
-import { AnyProcess } from './process'
-import path from 'upath'
-import { get_config } from './config'
-import { AnySocketMessage, CurrentLineSocketMessage } from './socket'
-import { realpath } from 'node:fs/promises'
-import { get_logger } from './log'
+import * as vscode from "vscode"
+import { AnyProcess } from "./process"
+import path from "upath"
+import { get_config } from "./config"
+import { AnySocketMessage, CurrentLineSocketMessage } from "./socket"
+import { realpath } from "node:fs/promises"
+import { get_logger } from "./log"
 
 const logger = get_logger()
 
@@ -23,21 +23,17 @@ export class DecorationService {
 	private decoration: vscode.TextEditorDecorationType
 
 	constructor({ context }: { context: vscode.ExtensionContext }) {
-		this.enabled = get_config('showEditorDecorations') as boolean
+		this.enabled = get_config("showEditorDecorations") as boolean
 
 		this.decoration = vscode.window.createTextEditorDecorationType({
-			gutterIconPath: context.asAbsolutePath(
-				'dist/assets/arrow-right.svg'
-			),
+			gutterIconPath: context.asAbsolutePath("dist/assets/arrow-right.svg"),
 			dark: {
 				gutterIconPath: context.asAbsolutePath(
-					'dist/assets/arrow-right-white.svg'
-				),
+					"dist/assets/arrow-right-white.svg"
+				)
 			},
-			overviewRulerColor: new vscode.ThemeColor(
-				'editorCursor.foreground'
-			),
-			overviewRulerLane: vscode.OverviewRulerLane.Center,
+			overviewRulerColor: new vscode.ThemeColor("editorCursor.foreground"),
+			overviewRulerLane: vscode.OverviewRulerLane.Center
 		})
 
 		this.subscriptions = [
@@ -46,21 +42,16 @@ export class DecorationService {
 				this.update_decorations().catch(logger.error)
 			}),
 			vscode.workspace.onDidChangeConfiguration((e) => {
-				if (e.affectsConfiguration('renpyWarp.showEditorDecorations')) {
-					this.enabled = get_config(
-						'showEditorDecorations'
-					) as boolean
+				if (e.affectsConfiguration("renpyWarp.showEditorDecorations")) {
+					this.enabled = get_config("showEditorDecorations") as boolean
 					this.update_decorations().catch(logger.error)
 				}
 			}),
 			vscode.workspace.onDidChangeTextDocument((e) => {
-				if (
-					e.document.uri.scheme === 'file' &&
-					e.contentChanges.length
-				) {
+				if (e.document.uri.scheme === "file" && e.contentChanges.length) {
 					this.update_decorations().catch(logger.error)
 				}
-			}),
+			})
 		]
 	}
 
@@ -71,7 +62,7 @@ export class DecorationService {
 				continue
 			}
 
-			if (editor.document.uri.scheme !== 'file') continue
+			if (editor.document.uri.scheme !== "file") continue
 
 			const editor_path = await safe_realpath(editor.document.uri.fsPath)
 			if (!editor_path) continue
@@ -79,7 +70,7 @@ export class DecorationService {
 			const ranges: vscode.Range[] = []
 
 			for (const [, state] of this.state) {
-				if (path.relative(editor_path, state.path) === '') {
+				if (path.relative(editor_path, state.path) === "") {
 					const line = state.line - 1
 					ranges.push(new vscode.Range(line, 0, line, 0))
 				}
@@ -90,20 +81,20 @@ export class DecorationService {
 	}
 
 	track(process: AnyProcess) {
-		process.on('socketMessage', (message: AnySocketMessage) => {
-			if (message.type === 'current_line') {
+		process.on("socketMessage", (message: AnySocketMessage) => {
+			if (message.type === "current_line") {
 				this.state.set(process.pid, message)
 				this.update_decorations().catch(logger.error)
 			}
-			if (message.type === 'current_label') {
-				if (['start', 'main_menu_screen'].includes(message.label)) {
+			if (message.type === "current_label") {
+				if (["start", "main_menu_screen"].includes(message.label)) {
 					// if game starts, ends or is loaded from save
 					this.state.delete(process.pid)
 					this.update_decorations().catch(logger.error)
 				}
 			}
 		})
-		process.on('exit', () => {
+		process.on("exit", () => {
 			this.state.delete(process.pid)
 			this.update_decorations().catch(logger.error)
 		})

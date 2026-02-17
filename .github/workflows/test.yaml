@@ -1,35 +1,35 @@
-'on':
-    push: {}
+"on":
+  push: {}
 
 name: Test
 jobs:
-    test:
-        strategy:
-            matrix:
-                os: [ubuntu-latest, windows-latest, macos-latest]
-        runs-on: '${{ matrix.os }}'
+  test:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: "${{ matrix.os }}"
 
-        steps:
-            - name: Checkout
-              uses: actions/checkout@v4
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
-            - name: Install Node.js
-              uses: actions/setup-node@v4
-              with:
-                  node-version: 20
-                  cache: 'npm'
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "npm"
 
-            - name: Cache .vscode-test/
-              id: cache-vscode-test
-              uses: actions/cache@v4
-              with:
-                  path: .vscode-test
-                  key: ${{ runner.os }}-vscode-test
+      - name: Cache .vscode-test/
+        id: cache-vscode-test
+        uses: actions/cache@v4
+        with:
+          path: .vscode-test
+          key: ${{ runner.os }}-vscode-test
 
-            - run: npm ci
+      - run: npm ci
 
-            - run: xvfb-run -a npm test
-              if: runner.os == 'Linux'
+      - run: xvfb-run -a npm test
+        if: runner.os == 'Linux'
 
-            - run: npm test
-              if: runner.os != 'Linux'
+      - run: npm test
+        if: runner.os != 'Linux'

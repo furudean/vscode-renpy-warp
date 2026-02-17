@@ -1,6 +1,6 @@
-import * as vscode from 'vscode'
+import * as vscode from "vscode"
 
-import { name as extension_name } from '../../package.json'
+import { name as extension_name } from "../../package.json"
 
 export function get_configuration_object(): vscode.WorkspaceConfiguration {
 	return vscode.workspace.getConfiguration(extension_name)
@@ -45,14 +45,14 @@ export async function show_file(path: string): Promise<void> {
 }
 
 export async function get_user_ignore_pattern(): Promise<string> {
-	const extension_ignores = get_config('exclude') as string[]
+	const extension_ignores = get_config("exclude") as string[]
 	const vscode_ignores = Object.entries(
-		vscode.workspace.getConfiguration('files').get('exclude') as Record<
+		vscode.workspace.getConfiguration("files").get("exclude") as Record<
 			string,
 			boolean
 		>
 	)
 		.filter(([, value]) => value === true)
 		.map(([key]) => key)
-	return '{' + [...extension_ignores, ...vscode_ignores].join(',') + '}'
+	return "{" + [...extension_ignores, ...vscode_ignores].join(",") + "}"
 }
