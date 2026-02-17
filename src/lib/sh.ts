@@ -21,7 +21,7 @@ export function get_version(executable: string[]): {
 	major: number
 	minor: number
 	patch: number
-	rest: string
+	rest: string | undefined
 } {
 	const RENPY_VERSION_REGEX =
 		/^Ren'Py (?<major>\d+)\.(?<minor>\d+)\.(?<patch>\d+)(?:\.(?<rest>.*))?\s*$/

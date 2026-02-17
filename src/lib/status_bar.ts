@@ -186,7 +186,8 @@ export class StatusBar {
 		}
 
 		if (executable) {
-			version = get_version(executable)?.semver
+			const v = get_version(executable)
+			version = v.semver + (v.rest?.endsWith("+nightly") ? v.rest : "")
 		}
 
 		if (!sdk_path || !executable || !version) {
