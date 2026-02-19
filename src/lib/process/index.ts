@@ -111,25 +111,33 @@ export class UnmanagedProcess {
 
 		logger.info("waiting for socket connection from renpy window...")
 
-		return new Promise((resolve, reject) => {
-			const timeout = setTimeout(() => {
-				clearInterval(interval)
-				reject(new Error("timed out waiting for socket"))
-			}, timeout_ms)
+		return vscode.window.withProgress(
+			{
+				title: "Waiting for connection to Ren'Py process...",
+				location: vscode.ProgressLocation.Notification,
+				cancellable: false
+			},
+			async () =>
+				new Promise((resolve, reject) => {
+					const timeout = setTimeout(() => {
+						clearInterval(interval)
+						reject(new Error("timed out"))
+					}, timeout_ms)
 
-			const interval = setInterval(() => {
-				if (this.socket_ready || this.dead) {
-					clearTimeout(timeout)
-					clearInterval(interval)
+					const interval = setInterval(() => {
+						if (this.socket_ready || this.dead) {
+							clearTimeout(timeout)
+							clearInterval(interval)
 
-					if (this.socket_ready) {
-						resolve()
-					} else {
-						reject(new Error("process died before socket connected"))
-					}
-				}
-			}, 50)
-		})
+							if (this.socket_ready) {
+								resolve()
+							} else {
+								reject(new Error("process died before socket connected"))
+							}
+						}
+					}, 50)
+				})
+		)
 	}
 
 	async wait_for_labels(timeout_ms: number): Promise<void> {
@@ -160,7 +168,9 @@ export class UnmanagedProcess {
 
 	/** Send a message to the Ren'Py process via WebSocket */
 	private async ipc(message: SocketMessage): Promise<void> {
-		await this.wait_for_socket(5000)
+		await this.wait_for_socket(5000).catch((e) => {
+			vscode.window.showErrorMessage("Failed to connect to socket: " + e)
+		})
 
 		return new Promise((resolve, reject) => {
 			const serialized = JSON.stringify(message)

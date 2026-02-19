@@ -1,5 +1,4 @@
-import * as vscode from "vscode"
-import { AnyProcess, ManagedProcess } from "."
+import { AnyProcess } from "."
 import { EventEmitter } from "node:events"
 
 export class ProcessManager {
@@ -29,14 +28,6 @@ export class ProcessManager {
 		process.on("exit", () => {
 			this.processes.delete(id)
 			this.emit("exit", process)
-
-			if (process instanceof ManagedProcess && process.exit_code) {
-				vscode.window
-					.showErrorMessage("Ren'Py process exited with errors", "OK", "Logs")
-					.then((selected) => {
-						if (selected === "Logs") process.output_channel?.show()
-					})
-			}
 		})
 	}
 

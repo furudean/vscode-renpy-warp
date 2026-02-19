@@ -327,7 +327,7 @@ export class WarpSocketService {
 					"Oh no"
 				)
 			} else {
-				const picked = await vscode.window.showErrorMessage(
+				const picked = await vscode.window.showWarningMessage(
 					`RPE in running Ren'Py process does not match extension. It may be out of date. Update?`,
 					"Update",
 					"Don't Update"
@@ -422,7 +422,6 @@ export class WarpSocketService {
 			rpp.on("exit", () => {
 				logger.info(`external process ${pid} exited`)
 				this.status_bar.delete_process(pid)
-				this.status_bar.notify(`$(info) External process ${pid} exited`)
 			})
 
 			this.pm.add(pid, rpp)
@@ -444,7 +443,7 @@ export class WarpSocketService {
 						}
 					})
 			} else {
-				this.status_bar.notify(`$(info) Connected to external process ${pid}`)
+				this.status_bar.notify(`$(plug) Connected to Ren'Py process ${pid}`)
 			}
 		}
 		return rpp

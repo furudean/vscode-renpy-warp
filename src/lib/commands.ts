@@ -101,8 +101,15 @@ export function get_commands(
 					}
 				})
 				if (process === undefined) return
-				await process.wait_for_labels(500)
 			}
+
+			try {
+				await process.wait_for_socket(5000)
+			} catch (e: unknown) {
+				vscode.window.showWarningMessage("Failed to connect to socket: " + e)
+				return
+			}
+			await process.wait_for_labels(1000) // should arrive shortly after connection is established
 
 			if (process.labels === undefined) {
 				vscode.window.showErrorMessage(
@@ -132,6 +139,7 @@ export function get_commands(
 
 			if (selection === undefined) return
 
+			if (process.dead) return
 			await process.jump_to_label(selection.label)
 
 			status_bar.notify(
