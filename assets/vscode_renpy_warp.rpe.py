@@ -34,6 +34,14 @@ except ValueError:
     logger.setLevel(level=logging.INFO)
 
 
+class RenpyWarpQuitAction(renpy.ui.Action):
+    def __call__(self):
+        renpy.exports.quit()
+
+
+original_quit_action = renpy.config.quit_action
+
+
 def get_meta():
     RPE_FILE_PATTERN = re.compile(
         r"(?:vscode_)?renpy_warp_(?P<version>\d+\.\d+\.\d+)(?:_(?P<checksum>[a-z0-9]+))?\.rpe(?:\.py)?")
@@ -187,6 +195,7 @@ def socket_service(port, version, checksum):
                 websocket.close(4000, 'renpy quit')
 
             renpy.config.quit_callbacks.append(quit)
+            renpy.config.quit_action = RenpyWarpQuitAction()
 
             logger.info(f"connected to renpy warp socket server on :{port}")
             py_exec("renpy.notify(\"Connected to Ren'Py Launch and Sync\")")
@@ -194,6 +203,7 @@ def socket_service(port, version, checksum):
             socket_producer(websocket)
             socket_listener(websocket)  # this blocks until socket is closed
 
+            renpy.config.quit_action = original_quit_action
             logger.info(f"socket service on :{port} exited")
 
             if not quitting:

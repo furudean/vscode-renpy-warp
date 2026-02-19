@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 # Unreleased
 
+- The _Quit Ren'Py_ button now closes the window without asking for a confirmation
 - Remove error message when initial socket connection cannot be made, and notify the user when waiting for a connection to be established
 - Remove error message when game crashes (you already know that it crashed...)
 - Improve how versions are shown
