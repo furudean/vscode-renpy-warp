@@ -7,6 +7,7 @@ All notable changes to this project will be documented in this file.
 - Remove error message when initial socket connection cannot be made, and notify the user when waiting for a connection to be established
 - Remove error message when game crashes (you already know that it crashed...)
 - Improve how versions are shown
+- There is now a way to return from the "Download SDK" menu
 - Bump packages
 
 ## 3.1.0 - 2026-01-29

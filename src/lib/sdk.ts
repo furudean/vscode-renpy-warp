@@ -107,7 +107,7 @@ export async function prompt_sdk_quick_pick(
 
 	const options: SdkQuickPickItem[] = [
 		{
-			label: "$(plus) Download SDK version...",
+			label: "$(cloud-download) Download SDK version...",
 			action: SdkAction.InstallSdk,
 			alwaysShow: true
 		},
@@ -377,12 +377,16 @@ export async function prompt_install_sdk_picker(
 		},
 		...filtered_sdks.map(map_sdk),
 		{
+			label: "Show all versions",
+			iconPath: new vscode.ThemeIcon("more")
+		},
+		{
 			label: "",
 			kind: vscode.QuickPickItemKind.Separator
 		},
 		{
-			label: "Show all versions",
-			iconPath: new vscode.ThemeIcon("more")
+			label: "Select SDK...",
+			iconPath: new vscode.ThemeIcon("arrow-left")
 		}
 	]
 	quick_pick.busy = false
@@ -399,8 +403,24 @@ export async function prompt_install_sdk_picker(
 			try {
 				const selection = quick_pick.selectedItems[0]
 
+				if (selection.label === "Select SDK...") {
+					prompt_sdk_quick_pick(context)
+					resolve(undefined)
+					return
+				}
+
 				if (selection.label === "Show all versions") {
-					quick_pick.items = all_valid_sdks.map(map_sdk)
+					quick_pick.items = [
+						...all_valid_sdks.map(map_sdk),
+						{
+							label: "",
+							kind: vscode.QuickPickItemKind.Separator
+						},
+						{
+							label: "Select SDK...",
+							iconPath: new vscode.ThemeIcon("arrow-left")
+						}
+					]
 					return
 				}
 
