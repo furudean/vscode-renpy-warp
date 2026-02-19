@@ -188,13 +188,13 @@ def socket_service(port, version, checksum):
         ) as websocket:
             quitting = False
 
-            def quit():
+            def renpy_warp_quit_callback():
                 nonlocal quitting
                 quitting = True
                 logger.info(f"closing websocket connection :{port}")
                 websocket.close(4000, 'renpy quit')
 
-            renpy.config.quit_callbacks.append(quit)
+            renpy.config.quit_callbacks.append(renpy_warp_quit_callback)
             renpy.config.quit_action = RenpyWarpQuitAction()
 
             logger.info(f"connected to renpy warp socket server on :{port}")
@@ -203,6 +203,7 @@ def socket_service(port, version, checksum):
             socket_producer(websocket)
             socket_listener(websocket)  # this blocks until socket is closed
 
+            renpy.config.quit_callbacks.remove(renpy_warp_quit_callback)
             renpy.config.quit_action = original_quit_action
             logger.info(f"socket service on :{port} exited")
 

@@ -9,6 +9,7 @@ All notable changes to this project will be documented in this file.
 - Remove error message when game crashes (you already know that it crashed...)
 - Improve how versions are shown
 - There is now a way to return from the "Download SDK" menu
+- Properly clean up `renpy.config.quit_callbacks` when connection closes
 - Bump packages
 
 ## 3.1.0 - 2026-01-29
