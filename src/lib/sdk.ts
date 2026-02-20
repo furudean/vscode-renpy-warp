@@ -119,8 +119,7 @@ export async function prompt_sdk_quick_pick(
 	]
 
 	const quick_pick = vscode.window.createQuickPick<SdkQuickPickItem>()
-	quick_pick.title = "Select Ren'Py SDK"
-	quick_pick.placeholder = "Select Ren'Py SDK to use"
+	quick_pick.placeholder = "Select Ren'Py SDK"
 	quick_pick.items = options
 	quick_pick.keepScrollPosition = true
 	quick_pick.ignoreFocusOut = true
@@ -236,8 +235,7 @@ export async function prompt_sdk_quick_pick(
 
 export async function prompt_sdk_file_picker(): Promise<string | undefined> {
 	const input_path = await vscode.window.showOpenDialog({
-		title: "Set Ren'Py SDK directory",
-		openLabel: "Select SDK",
+		openLabel: "Select Ren'Py SDK",
 		defaultUri: vscode.Uri.file(
 			resolve_path((get_config("sdkPath") as string) || homedir())
 		),
@@ -267,7 +265,6 @@ export async function prompt_install_sdk_picker(
 	context: vscode.ExtensionContext
 ): Promise<string | void> {
 	const quick_pick = vscode.window.createQuickPick<DownloadSdkQuickPickItem>()
-	quick_pick.title = "Select Ren'Py SDK"
 	quick_pick.placeholder = "Select SDK version to download"
 	quick_pick.ignoreFocusOut = true
 	quick_pick.busy = true
