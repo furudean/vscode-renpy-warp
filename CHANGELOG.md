@@ -11,6 +11,7 @@ All notable changes to this project will be documented in this file.
 - There is now a way to return from the "Download SDK" menu
 - Properly clean up `renpy.config.quit_callbacks` when connection closes
 - Bump packages
+- Remove the unused `renpyWarp.sdksDirectories` setting
 
 ## 3.1.0 - 2026-01-29
 

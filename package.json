@@ -386,18 +386,6 @@
 					],
 					"order": 3
 				},
-				"renpyWarp.sdksDirectories": {
-					"type": "array",
-					"default": [
-						"~/.renutil"
-					],
-					"items": {
-						"type": "string"
-					},
-					"markdownDescription": "Directories to search for Ren'Py SDKs. This is used when searching for an SDK to use when setting the SDK path.\n\nThis should be an absolute path, or a path starting with `~` to indicate the home directory.",
-					"order": 3,
-					"scope": "machine-overridable"
-				},
 				"renpyWarp.editor": {
 					"type": "string",
 					"default": "launcher/Visual Studio Code (System).edit.py",
