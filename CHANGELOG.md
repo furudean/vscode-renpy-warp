@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## Unreleased
+## 3.2.2 - 2026-02-20
 
 - Fix favorite saving not working
 - Fix unfavorited items showing wrong icon
