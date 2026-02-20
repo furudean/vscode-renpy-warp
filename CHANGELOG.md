@@ -13,6 +13,7 @@ All notable changes to this project will be documented in this file.
 - Properly clean up `renpy.config.quit_callbacks` when connection closes
 - Bump packages
 - Remove the unused `renpyWarp.sdksDirectories` setting
+- Adds a `renpyWarp.resetWorkspaceState` command, which removes any workspace-level persistent data saved by the extension
 
 ## 3.1.0 - 2026-01-29
 

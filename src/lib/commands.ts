@@ -458,6 +458,13 @@ export function get_commands(
 						}
 					})
 			}
+		},
+		"renpyWarp.resetWorkspaceState": async () => {
+			const keys = context.workspaceState.keys()
+			for (const key of keys) {
+				await context.workspaceState.update(key, undefined)
+			}
+			vscode.window.showInformationMessage("Workspace state cleared", "OK")
 		}
 	}
 

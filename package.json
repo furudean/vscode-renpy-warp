@@ -203,6 +203,11 @@
 				"command": "renpyWarp.rmpersistent",
 				"title": "Delete persistent data",
 				"category": "Ren'Py Launch"
+			},
+			{
+				"command": "renpyWarp.resetWorkspaceState",
+				"title": "Reset Workspace State",
+				"category": "Ren'Py Launch"
 			}
 		],
 		"menus": {
