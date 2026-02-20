@@ -105,7 +105,6 @@ export function get_commands(
 			}
 
 			const storage_key = `renpyWarp.jumpToLabel.${process.project_root}`
-			await context.workspaceState.update(storage_key, undefined)
 
 			const favorites: string[] = context.workspaceState.get(storage_key) ?? []
 
@@ -144,8 +143,8 @@ export function get_commands(
 					})
 				} else {
 					buttons.push({
-						iconPath: new vscode.ThemeIcon("star-full"),
-						tooltip: "Remove favorite"
+						iconPath: new vscode.ThemeIcon("star"),
+						tooltip: "Make favorite"
 					})
 				}
 

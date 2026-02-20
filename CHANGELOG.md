@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## Unreleased
+
+- Fix favorite saving not working
+- Fix unfavorited items showing wrong icon
+
 ## 3.2.1 - 2026-02-20
 
 Windows build failed due to lint failures, so this is an attempt to release it again. This patch contains no changes -- See changelog for 3.2.0.
