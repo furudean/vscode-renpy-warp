@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-# Unreleased
+## 3.2.0 - 2026-02-20
 
 - You can now favorite labels in the `renpyWarp.jumpToLabel` ([#108](https://github.com/furudean/vscode-renpy-warp/issues/108))
 - The _Quit Ren'Py_ button now closes the window without asking for confirmation in Ren'Py. This is achieved by overwriting `config.quit_action` when a session is active.
