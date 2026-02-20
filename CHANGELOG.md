@@ -6,14 +6,14 @@ All notable changes to this project will be documented in this file.
 
 - You can now favorite labels in the `renpyWarp.jumpToLabel` ([#108](https://github.com/furudean/vscode-renpy-warp/issues/108))
 - The _Quit Ren'Py_ button now closes the window without asking for confirmation in Ren'Py. This is achieved by overwriting `config.quit_action` when a session is active.
-- Remove error message when initial socket connection cannot be made, and instead notify the user when waiting for a connection to be established
-- Remove error message when game crashes (you already know that it crashed...)
-- Improve how versions are shown
+- Remove error message when initial socket connection cannot be made, and instead notify the user when waiting for a connection to be established ([#109](https://github.com/furudean/vscode-renpy-warp/issues/109))
+- Remove error message when game crashes (you already know that it crashed...) ([#109](https://github.com/furudean/vscode-renpy-warp/issues/109))
+- Improve how versions are rendered in status bar
 - There is now a way to return from the "Download SDK" menu
-- Properly clean up `renpy.config.quit_callbacks` when connection closes
-- Bump packages
+- Properly clean up `renpy.config.quit_callbacks` when connection closes in RPE
 - Remove the unused `renpyWarp.sdksDirectories` setting
 - Adds a `renpyWarp.resetWorkspaceState` command, which removes any workspace-level persistent data saved by the extension
+- Bump packages
 
 ## 3.1.0 - 2026-01-29
 
