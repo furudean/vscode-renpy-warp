@@ -89,6 +89,7 @@ export function get_commands(
 			}
 
 			let process = pm.at(-1)
+			const new_process = process === undefined
 
 			if (process === undefined) {
 				process = await launch_renpy({
@@ -103,48 +104,162 @@ export function get_commands(
 				if (process === undefined) return
 			}
 
-			try {
-				await process.wait_for_socket(5000)
-			} catch (e: unknown) {
-				vscode.window.showWarningMessage("Failed to connect to socket: " + e)
-				return
-			}
-			await process.wait_for_labels(1000) // should arrive shortly after connection is established
+			const storage_key = `renpyWarp.jumpToLabel.${process.project_root}`
+			await context.workspaceState.update(storage_key, undefined)
 
-			if (process.labels === undefined) {
-				vscode.window.showErrorMessage(
-					"Ren'Py has not reported any labels",
-					"OK"
-				)
-				return
+			const favorites: string[] = context.workspaceState.get(storage_key) ?? []
+
+			async function save_favorites() {
+				await context.workspaceState.update(storage_key, favorites)
 			}
 
-			const filtered_labels = process.labels
-				.filter((label) => !is_special_label(label))
-				.sort()
-				.map(
-					(label): vscode.QuickPickItem => ({
-						label,
-						iconPath:
-							process.current_label === label
-								? new vscode.ThemeIcon("arrow-right")
-								: new vscode.ThemeIcon("blank")
+			const quick_pick = vscode.window.createQuickPick()
+			quick_pick.placeholder = "Select a label to jump to"
+			quick_pick.busy = true
+			quick_pick.ignoreFocusOut = new_process // focus might be lost on new process
+			quick_pick.keepScrollPosition = true
+
+			function map_label(label: string): vscode.QuickPickItem {
+				const is_favorite = favorites.includes(label)
+				const fav_index = favorites.indexOf(label)
+				const is_first = fav_index === 0
+				const is_last = fav_index === favorites.length - 1
+
+				const buttons: vscode.QuickInputButton[] = []
+
+				if (is_favorite) {
+					if (!is_first)
+						buttons.push({
+							iconPath: new vscode.ThemeIcon("arrow-up"),
+							tooltip: "Move up"
+						})
+					if (!is_last)
+						buttons.push({
+							iconPath: new vscode.ThemeIcon("arrow-down"),
+							tooltip: "Move down"
+						})
+					buttons.push({
+						iconPath: new vscode.ThemeIcon("star-full"),
+						tooltip: "Remove favorite"
 					})
-				)
+				} else {
+					buttons.push({
+						iconPath: new vscode.ThemeIcon("star-full"),
+						tooltip: "Remove favorite"
+					})
+				}
 
-			const selection = await vscode.window.showQuickPick(filtered_labels, {
-				placeHolder: "Select a label to jump to",
-				title: "Jump to Ren'Py label"
+				return {
+					label,
+					iconPath:
+						process?.current_label === label
+							? new vscode.ThemeIcon("arrow-right")
+							: new vscode.ThemeIcon("blank"),
+					buttons
+				}
+			}
+
+			function build_items(labels: string[]): vscode.QuickPickItem[] {
+				const _labels = [...labels].sort()
+
+				const fav_labels = favorites.filter((l) => _labels.includes(l))
+				const other_labels = _labels.filter((l) => !favorites.includes(l))
+
+				const items: vscode.QuickPickItem[] = []
+
+				if (fav_labels.length > 0) {
+					items.push({
+						label: "Favorites",
+						kind: vscode.QuickPickItemKind.Separator
+					})
+					items.push(...fav_labels.map(map_label))
+				}
+
+				if (other_labels.length > 0) {
+					items.push({
+						label: "",
+						kind: vscode.QuickPickItemKind.Separator
+					})
+					items.push(...other_labels.map(map_label))
+				}
+
+				return items
+			}
+
+			let filtered_labels: string[] = []
+
+			quick_pick.show()
+
+			quick_pick.onDidTriggerItemButton(async (e) => {
+				const label = e.item.label
+				const fav_index = favorites.indexOf(label)
+				const is_favorite = fav_index !== -1
+
+				if (e.button.tooltip === "Move up" && fav_index > 0) {
+					favorites.splice(fav_index, 1)
+					favorites.splice(fav_index - 1, 0, label)
+				} else if (
+					e.button.tooltip === "Move down" &&
+					fav_index < favorites.length - 1
+				) {
+					favorites.splice(fav_index, 1)
+					favorites.splice(fav_index + 1, 0, label)
+				} else if (is_favorite) {
+					favorites.splice(fav_index, 1)
+				} else {
+					favorites.push(label)
+				}
+
+				await save_favorites()
+				quick_pick.items = build_items(filtered_labels)
 			})
 
-			if (selection === undefined) return
+			const promise = new Promise<string | void>((resolve) => {
+				quick_pick.onDidAccept(async () => {
+					const selection = quick_pick.selectedItems[0]
 
-			if (process.dead) return
-			await process.jump_to_label(selection.label)
+					if (selection === undefined || process.dead) {
+						resolve()
+						return
+					}
 
-			status_bar.notify(
-				`$(debug-line-by-line) Jumped to label '${selection.label}'`
-			)
+					await process.jump_to_label(selection.label)
+
+					status_bar.notify(
+						`$(debug-line-by-line) Jumped to label '${selection.label}'`
+					)
+					resolve()
+				})
+
+				quick_pick.onDidHide(() => {
+					resolve(undefined)
+				})
+			})
+
+			promise.finally(() => {
+				quick_pick.dispose()
+			})
+			;(async () => {
+				try {
+					await process.wait_for_socket(5000)
+					await process.wait_for_labels(1000)
+
+					if (process.labels !== undefined) {
+						filtered_labels = process.labels
+							.filter((label) => !is_special_label(label))
+							.sort()
+
+						quick_pick.items = build_items(filtered_labels)
+					}
+				} catch (e: unknown) {
+					vscode.window.showWarningMessage("Failed to connect to Ren'Py: " + e)
+					quick_pick.dispose()
+				} finally {
+					quick_pick.busy = false
+				}
+			})()
+
+			return promise
 		},
 
 		"renpyWarp.toggleFollowCursor": async () => {

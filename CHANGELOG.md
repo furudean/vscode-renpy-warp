@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 # Unreleased
 
+- You can now favorite labels in the `renpyWarp.jumpToLabel` ([#108](https://github.com/furudean/vscode-renpy-warp/issues/108))
 - The _Quit Ren'Py_ button now closes the window without asking for confirmation in Ren'Py. This is achieved by overwriting `config.quit_action` when a session is active.
 - Remove error message when initial socket connection cannot be made, and instead notify the user when waiting for a connection to be established
 - Remove error message when game crashes (you already know that it crashed...)
