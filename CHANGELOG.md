@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## 3.2.1 - 2026-02-20
+
+Windows build failed due to lint failures, so this is an attempt to release it again. This patch contains no changes -- See changelog for 3.2.0.
+
 ## 3.2.0 - 2026-02-20
 
 - You can now favorite labels in the `renpyWarp.jumpToLabel` ([#108](https://github.com/furudean/vscode-renpy-warp/issues/108))
