@@ -369,11 +369,13 @@ export async function prompt_install_sdk_picker(
 
 		return {
 			label: sdk.name,
-			description: sdk.url.hostname + sdk.url.pathname,
+			description: downloaded_sdks.includes(sdk.name)
+				? "(downloaded)"
+				: undefined,
 			url: sdk.url,
 			iconPath: downloaded_sdks.includes(sdk.name)
-				? new vscode.ThemeIcon("check")
-				: new vscode.ThemeIcon("blank"),
+				? new vscode.ThemeIcon("cloud-download")
+				: new vscode.ThemeIcon("cloud"),
 			buttons
 		}
 	}
@@ -390,11 +392,7 @@ export async function prompt_install_sdk_picker(
 		},
 		...filtered_sdks.map(map_sdk),
 		{
-			label: "",
-			kind: vscode.QuickPickItemKind.Separator
-		},
-		{
-			label: "Show all versions",
+			label: "Show all",
 			iconPath: new vscode.ThemeIcon("more")
 		}
 	]
@@ -420,7 +418,7 @@ export async function prompt_install_sdk_picker(
 				try {
 					const selection = quick_pick.selectedItems[0]
 
-					if (selection.label === "Show all versions") {
+					if (selection.label === "Show all") {
 						quick_pick.items = [
 							...all_valid_sdks.map(map_sdk),
 							{
