@@ -37,24 +37,26 @@ fi
 # bump version via npm
 npm version "$BUMP_TYPE" --no-git-tag-version > /dev/null
 
-# read the new version
-NEW_VERSION=$(jq -r '.version' package.json)
-TODAY=$(date +"%Y-%m-%d")
-
 # replace ## Unreleased in CHANGELOG.md
 if ! grep -q "^## Unreleased" CHANGELOG.md; then
   echo "error: could not find '## Unreleased' in CHANGELOG.md"
   exit 1
 fi
 
+# read the new version
+NEW_VERSION=$(jq -r '.version' package.json)
+TODAY=$(date +"%Y-%m-%d")
+
 perl -i -pe "s/^## Unreleased/## ${NEW_VERSION} - ${TODAY}/" CHANGELOG.md
 
 # commit
-git add package.json CHANGELOG.md
-git commit -m "chore: release v${NEW_VERSION}"
+git add package.json package-lock.json CHANGELOG.md
+git commit -m "release v${NEW_VERSION}"
 
 # create a git tag
 git tag "v${NEW_VERSION}"
+
+COMMIT_HASH=$(git rev-parse --short HEAD)
 
 echo ""
 echo "made commit for v${NEW_VERSION}"
@@ -63,4 +65,4 @@ echo "to push commit and tag, run:"
 echo "  git push && git push origin v${NEW_VERSION}"
 echo ""
 echo "to undo commit and remove the tag, run:"
-echo "  git tag -d v${NEW_VERSION} && git reset HEAD~1"
+echo "  git tag -d v${NEW_VERSION} && git reset ${COMMIT_HASH}^"
