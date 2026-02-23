@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## Unreleased
+
+- Revise back button to SDK download when opened from SDK selector
+
 ## 3.2.2 - 2026-02-20
 
 - Fix favorite saving not working

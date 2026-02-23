@@ -36,6 +36,12 @@ interface DownloadSdkQuickPickItem extends vscode.QuickPickItem {
 	installed_uri?: vscode.Uri
 }
 
+interface InstallSdkPickerOptions {
+	show_back_button?: boolean
+}
+
+const RETURN_ACTION = Symbol("return_action")
+
 export async function path_is_sdk(sdk_path: string): Promise<boolean> {
 	return await path_exists(path.join(sdk_path, "renpy.py"))
 }
@@ -71,6 +77,15 @@ export async function get_sdk_path(prompt = true): Promise<string | undefined> {
 export async function prompt_sdk_quick_pick(
 	context: vscode.ExtensionContext
 ): Promise<string | void> {
+	while (true) {
+		const result = await _prompt_sdk_quick_pick(context)
+		if (result !== RETURN_ACTION) return result
+	}
+}
+
+async function _prompt_sdk_quick_pick(
+	context: vscode.ExtensionContext
+): Promise<string | typeof RETURN_ACTION | void> {
 	const current_sdk_path = await get_sdk_path(false)
 
 	function create_quick_pick_item(
@@ -107,7 +122,7 @@ export async function prompt_sdk_quick_pick(
 
 	const options: SdkQuickPickItem[] = [
 		{
-			label: "$(cloud-download) Download SDK version...",
+			label: "$(cloud-download) Download new SDK version...",
 			action: SdkAction.InstallSdk,
 			alwaysShow: true
 		},
@@ -212,7 +227,9 @@ export async function prompt_sdk_quick_pick(
 
 	switch (selection.action) {
 		case SdkAction.InstallSdk:
-			return await prompt_install_sdk_picker(context)
+			return await prompt_install_sdk_picker(context, {
+				show_back_button: true
+			})
 
 		case SdkAction.FilePicker:
 			return await prompt_sdk_file_picker()
@@ -262,12 +279,16 @@ export async function prompt_sdk_file_picker(): Promise<string | undefined> {
 }
 
 export async function prompt_install_sdk_picker(
-	context: vscode.ExtensionContext
-): Promise<string | void> {
+	context: vscode.ExtensionContext,
+	{ show_back_button }: InstallSdkPickerOptions = {}
+): Promise<string | typeof RETURN_ACTION | void> {
 	const quick_pick = vscode.window.createQuickPick<DownloadSdkQuickPickItem>()
 	quick_pick.placeholder = "Select SDK version to download"
 	quick_pick.ignoreFocusOut = true
 	quick_pick.busy = true
+	if (show_back_button) {
+		quick_pick.buttons = [vscode.QuickInputButtons.Back]
+	}
 	quick_pick.show()
 
 	// Load remote SDKs and SDK channels in parallel
@@ -344,13 +365,6 @@ export async function prompt_install_sdk_picker(
 			}
 		]
 
-		// if (downloaded_sdks.includes(sdk.name)) {
-		// 	buttons.push({
-		// 		iconPath: new vscode.ThemeIcon('folder'),
-		// 		tooltip: 'Reveal in files',
-		// 	})
-		// }
-
 		return {
 			label: sdk.name,
 			description: sdk.url.hostname + sdk.url.pathname,
@@ -374,16 +388,12 @@ export async function prompt_install_sdk_picker(
 		},
 		...filtered_sdks.map(map_sdk),
 		{
-			label: "Show all versions",
-			iconPath: new vscode.ThemeIcon("more")
-		},
-		{
 			label: "",
 			kind: vscode.QuickPickItemKind.Separator
 		},
 		{
-			label: "Select SDK...",
-			iconPath: new vscode.ThemeIcon("arrow-left")
+			label: "Show all versions",
+			iconPath: new vscode.ThemeIcon("more")
 		}
 	]
 	quick_pick.busy = false
@@ -395,64 +405,63 @@ export async function prompt_install_sdk_picker(
 		}
 	})
 
-	const promise = new Promise<string | void>((resolve, reject) => {
-		quick_pick.onDidAccept(async () => {
-			try {
-				const selection = quick_pick.selectedItems[0]
-
-				if (selection.label === "Select SDK...") {
-					prompt_sdk_quick_pick(context)
-					resolve(undefined)
-					return
+	const promise = new Promise<string | typeof RETURN_ACTION | void>(
+		(resolve, reject) => {
+			quick_pick.onDidTriggerButton((button) => {
+				if (button === vscode.QuickInputButtons.Back) {
+					quick_pick.hide()
+					resolve(RETURN_ACTION)
 				}
+			})
 
-				if (selection.label === "Show all versions") {
-					quick_pick.items = [
-						...all_valid_sdks.map(map_sdk),
-						{
-							label: "",
-							kind: vscode.QuickPickItemKind.Separator
-						},
-						{
-							label: "Select SDK...",
-							iconPath: new vscode.ThemeIcon("arrow-left")
-						}
-					]
-					return
+			quick_pick.onDidAccept(async () => {
+				try {
+					const selection = quick_pick.selectedItems[0]
+
+					if (selection.label === "Show all versions") {
+						quick_pick.items = [
+							...all_valid_sdks.map(map_sdk),
+							{
+								label: "",
+								kind: vscode.QuickPickItemKind.Separator
+							}
+						]
+						return
+					}
+
+					if (!selection || !selection.url)
+						return reject("invalid selection state")
+
+					quick_pick.hide()
+
+					const sdk_url = await find_sdk_in_directory(selection.url)
+					const file = await download_sdk(sdk_url, selection.label, context)
+
+					if (!file) return reject("missing file after download")
+
+					await set_config("sdkPath", file, true)
+
+					vscode.window.showInformationMessage(
+						`Ren'Py ${selection.label} installed and set as current SDK`
+					)
+
+					return resolve(undefined)
+				} catch (error) {
+					logger.error("Error during SDK installation:", error)
+					vscode.window.showErrorMessage(
+						`Failed to install SDK: ${
+							error instanceof Error ? error.message : "Unknown error"
+						}`
+					)
+					reject(error)
 				}
+			})
 
-				if (!selection || !selection.url)
-					return reject("invalid selection state")
-
-				quick_pick.hide()
-
-				const sdk_url = await find_sdk_in_directory(selection.url)
-				const file = await download_sdk(sdk_url, selection.label, context)
-
-				if (!file) return reject("missing file after download")
-
-				await set_config("sdkPath", file, true)
-
-				vscode.window.showInformationMessage(
-					`Ren'Py ${selection.label} installed and set as current SDK`
-				)
-
-				return resolve(undefined)
-			} catch (error) {
-				logger.error("Error during SDK installation:", error)
-				vscode.window.showErrorMessage(
-					`Failed to install SDK: ${
-						error instanceof Error ? error.message : "Unknown error"
-					}`
-				)
-				reject(error)
-			}
-		})
-
-		quick_pick.onDidHide(() => {
-			resolve(undefined)
-		})
-	})
+			quick_pick.onDidHide(() => {
+				resolve(undefined)
+			})
+		}
+	)
 
 	promise.finally(() => {
 		quick_pick.dispose()
