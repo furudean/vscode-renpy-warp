@@ -19,12 +19,14 @@ import {
 
 export const logger = get_logger()
 
-enum SdkAction {
-	Path = "Path",
-	ShowDirectory = "ShowDirectory",
-	FilePicker = "SystemFilePicker",
-	InstallSdk = "InstallSdk"
-}
+const SdkAction = {
+	Path: Symbol("Path"),
+	ShowDirectory: Symbol("ShowDirectory"),
+	SystemFilePicker: Symbol("SystemSystemFilePicker"),
+	InstallSdk: Symbol("InstallSdk")
+} as const
+
+type SdkAction = (typeof SdkAction)[keyof typeof SdkAction]
 
 interface SdkQuickPickItem extends vscode.QuickPickItem {
 	action?: SdkAction
@@ -128,7 +130,7 @@ async function _prompt_sdk_quick_pick(
 		},
 		{
 			label: "$(file-directory) Enter SDK path...",
-			action: SdkAction.FilePicker,
+			action: SdkAction.SystemFilePicker,
 			alwaysShow: true
 		}
 	]
@@ -231,7 +233,7 @@ async function _prompt_sdk_quick_pick(
 				show_back_button: true
 			})
 
-		case SdkAction.FilePicker:
+		case SdkAction.SystemFilePicker:
 			return await prompt_sdk_file_picker()
 
 		case SdkAction.Path:
