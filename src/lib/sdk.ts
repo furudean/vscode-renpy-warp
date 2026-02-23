@@ -272,7 +272,7 @@ export async function prompt_sdk_file_picker(): Promise<string | undefined> {
 			"Path is not a Ren'Py SDK",
 			"Reselect"
 		)
-		if (err_selection) return prompt_sdk_file_picker()
+		if (err_selection === "Reselect") return prompt_sdk_file_picker()
 
 		return
 	}
