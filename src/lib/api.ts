@@ -1,5 +1,6 @@
 import { JSDOM } from "jsdom"
 import { SemVer, parse as semver_parse } from "semver"
+import url_join from "url-join"
 
 export interface RemoteSdk {
 	name: string
@@ -34,6 +35,10 @@ async function fetch_and_parse_nginx_directory(
 }
 
 function fix_broken_semver(name: string): string {
+	// 8.6.0.26021201+nightly.master -> 8.6.0--26021201+nightly.master
+	if (name.match(/^\d+\.\d+\.\d+\.\d+\+/)) {
+		return name.replace(/^(\d+\.\d+\.\d+)\.(\d+\+)/, "$1--$2")
+	}
 	// 4.0
 	if (name.match(/^\d+\.\d+$/)) {
 		return `${name}.0` // add patch version if missing
@@ -98,7 +103,43 @@ export async function list_remote_sdks(): Promise<RemoteSdk[]> {
 	return sdks
 }
 
-export async function find_sdk_in_directory(
+const NIGHTLY_INDEX_URL = "https://nightly.renpy.org/"
+
+export async function list_nightly_sdks(): Promise<RemoteSdk[]> {
+	const request = await fetch(NIGHTLY_INDEX_URL)
+	const text = await request.text()
+
+	const { document } = new JSDOM(text).window
+
+	const tr = Array.from(
+		document.querySelectorAll("table tr")
+	) as HTMLTableRowElement[]
+
+	function map_row(tr: HTMLTableRowElement): RemoteSdk[] {
+		const cols = Array.from(tr.querySelectorAll("td"))
+		const cols_with_versions = cols.slice(1)
+
+		const mapped = cols_with_versions.flatMap((c): RemoteSdk | undefined => {
+			const a = c.querySelector("a")
+
+			if (!a) return
+
+			return {
+				name: a.text,
+				url: new URL(a.href, NIGHTLY_INDEX_URL),
+				semver: semver_parse(fix_broken_semver(a.text))
+			}
+		})
+
+		return mapped.filter(Boolean) as RemoteSdk[]
+	}
+
+	const versions = tr.slice(3).flatMap(map_row).sort(sort_remote_sdks)
+
+	return versions
+}
+
+export async function find_sdk_in_nginx_dir(
 	directory: string | URL
 ): Promise<URL> {
 	const dir = await fetch_and_parse_nginx_directory(directory)
@@ -109,6 +150,34 @@ export async function find_sdk_in_directory(
 		throw new Error(
 			`No SDK found in directory ${directory}. Please check the URL or directory path.`
 		)
+	}
+
+	return sdk
+}
+
+export async function find_sdk_in_nightly_index(
+	url: string | URL
+): Promise<URL> {
+	url = new URL(url)
+	const request = await fetch(url)
+	const text = await request.text()
+
+	const { document } = new JSDOM(text).window
+
+	const table = document.querySelector("table")
+
+	if (!table) {
+		throw new Error(`unexpected html in ${url}`)
+	}
+
+	const anchors = Array.from(table.querySelectorAll("a").values())
+
+	const dir = anchors.map((a) => new URL(url_join(url.href, a.href)))
+
+	const sdk = dir.find((url) => url.pathname.endsWith("-sdk.zip"))
+
+	if (!sdk) {
+		throw new Error(`No SDK found in ${url}`)
 	}
 
 	return sdk

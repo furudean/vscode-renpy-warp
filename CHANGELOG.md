@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+- You can now download nightly versions in the SDK downloader
 - Revise back button to SDK download when opened from SDK selector
 - Fix certain nightly version strings not being correctly parsed
 

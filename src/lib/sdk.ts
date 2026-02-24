@@ -10,7 +10,9 @@ import open from "open"
 import { get_executable, get_version } from "./sh"
 import {
 	fetch_sdk_channels,
-	find_sdk_in_directory,
+	find_sdk_in_nginx_dir,
+	find_sdk_in_nightly_index,
+	list_nightly_sdks,
 	list_remote_sdks,
 	RemoteSdk,
 	semver_compare,
@@ -36,6 +38,7 @@ interface SdkQuickPickItem extends vscode.QuickPickItem {
 interface DownloadSdkQuickPickItem extends vscode.QuickPickItem {
 	url?: URL
 	installed_uri?: vscode.Uri
+	nightly?: boolean
 }
 
 interface InstallSdkPickerOptions {
@@ -294,8 +297,9 @@ export async function prompt_install_sdk_picker(
 	quick_pick.show()
 
 	// Load remote SDKs and SDK channels in parallel
-	const [remote_sdks, sdk_channels] = await Promise.all([
+	const [remote_sdks, nightly_sdks, sdk_channels] = await Promise.all([
 		list_remote_sdks(),
+		list_nightly_sdks(),
 		fetch_sdk_channels("https://renpy.org/channels.json")
 	])
 
@@ -359,7 +363,12 @@ export async function prompt_install_sdk_picker(
 		}, [])
 		.sort(sort_remote_sdks)
 
-	function map_sdk(sdk: RemoteSdk): DownloadSdkQuickPickItem {
+	function map_sdk(sdk: RemoteSdk): DownloadSdkQuickPickItem
+	function map_sdk(sdk: RemoteSdk, nightly: boolean): DownloadSdkQuickPickItem
+	function map_sdk(
+		sdk: RemoteSdk,
+		nightly: boolean | undefined = false
+	): DownloadSdkQuickPickItem {
 		const buttons: vscode.QuickInputButton[] = [
 			{
 				iconPath: new vscode.ThemeIcon("globe"),
@@ -376,7 +385,8 @@ export async function prompt_install_sdk_picker(
 			iconPath: downloaded_sdks.includes(sdk.name)
 				? new vscode.ThemeIcon("cloud-download")
 				: new vscode.ThemeIcon("cloud"),
-			buttons
+			buttons,
+			nightly
 		}
 	}
 
@@ -394,7 +404,12 @@ export async function prompt_install_sdk_picker(
 		{
 			label: "Show all",
 			iconPath: new vscode.ThemeIcon("more")
-		}
+		},
+		{
+			label: "Nightly",
+			kind: vscode.QuickPickItemKind.Separator
+		},
+		...nightly_sdks.map((sdk) => map_sdk(sdk, true))
 	]
 	quick_pick.busy = false
 
@@ -422,9 +437,10 @@ export async function prompt_install_sdk_picker(
 						quick_pick.items = [
 							...all_valid_sdks.map(map_sdk),
 							{
-								label: "",
+								label: "Nightly",
 								kind: vscode.QuickPickItemKind.Separator
-							}
+							},
+							...nightly_sdks.map((sdk) => map_sdk(sdk, true))
 						]
 						return
 					}
@@ -434,7 +450,9 @@ export async function prompt_install_sdk_picker(
 
 					quick_pick.hide()
 
-					const sdk_url = await find_sdk_in_directory(selection.url)
+					const sdk_url = selection.nightly
+						? await find_sdk_in_nightly_index(selection.url)
+						: await find_sdk_in_nginx_dir(selection.url)
 					const file = await download_sdk(sdk_url, selection.label, context)
 
 					if (!file) return reject("missing file after download")
