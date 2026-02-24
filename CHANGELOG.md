@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## Unreleased
+## 3.3.0 - 2026-02-23
 
 - You can now download nightly versions in the SDK downloader
 - Revise back button to SDK download when opened from SDK selector
