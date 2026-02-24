@@ -363,9 +363,7 @@ export async function prompt_install_sdk_picker(
 		}, [])
 		.sort(sort_remote_sdks)
 
-	function map_sdk(sdk: RemoteSdk): DownloadSdkQuickPickItem
-	function map_sdk(sdk: RemoteSdk, nightly: boolean): DownloadSdkQuickPickItem
-	function map_sdk(
+	function _map_sdk(
 		sdk: RemoteSdk,
 		nightly: boolean | undefined = false
 	): DownloadSdkQuickPickItem {
@@ -390,17 +388,22 @@ export async function prompt_install_sdk_picker(
 		}
 	}
 
+	const get_sdk_mapper =
+		(nightly: boolean | undefined = false) =>
+		(sdk: RemoteSdk) =>
+			_map_sdk(sdk, nightly)
+
 	quick_pick.items = [
 		{
 			label: "Recommended",
 			kind: vscode.QuickPickItemKind.Separator
 		},
-		...recommended_sdks.map(map_sdk),
+		...recommended_sdks.map(get_sdk_mapper()),
 		{
 			label: "",
 			kind: vscode.QuickPickItemKind.Separator
 		},
-		...filtered_sdks.map(map_sdk),
+		...filtered_sdks.map(get_sdk_mapper()),
 		{
 			label: "Show all",
 			iconPath: new vscode.ThemeIcon("more")
@@ -409,7 +412,7 @@ export async function prompt_install_sdk_picker(
 			label: "Nightly",
 			kind: vscode.QuickPickItemKind.Separator
 		},
-		...nightly_sdks.map((sdk) => map_sdk(sdk, true))
+		...nightly_sdks.map(get_sdk_mapper(true))
 	]
 	quick_pick.busy = false
 
@@ -435,12 +438,12 @@ export async function prompt_install_sdk_picker(
 
 					if (selection.label === "Show all") {
 						quick_pick.items = [
-							...all_valid_sdks.map(map_sdk),
+							...all_valid_sdks.map(get_sdk_mapper()),
 							{
 								label: "Nightly",
 								kind: vscode.QuickPickItemKind.Separator
 							},
-							...nightly_sdks.map((sdk) => map_sdk(sdk, true))
+							...nightly_sdks.map(get_sdk_mapper(true))
 						]
 						return
 					}
