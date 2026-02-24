@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## Unreleased
+## 3.3.2 - 2026-02-23
 
 fix a bug relating to version strings
 
