@@ -58,13 +58,11 @@ export function get_version(executable: string[]): {
 		throw new Error("bad version string: " + output)
 	}
 
-	const semver = rest
-		? `${major}.${minor}.${patch}--${rest}`
-		: `${major}.${minor}.${patch}`
+	const semver = `${major}.${minor}.${patch}`
 
 	const display = rest.includes("+")
 		? `${major}.${minor}.${patch}${rest}`
-		: `${major}.${minor}.${patch}`
+		: semver
 
 	return {
 		semver,

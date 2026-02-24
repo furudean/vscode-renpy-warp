@@ -64,9 +64,9 @@ export async function install_rpe({
 }): Promise<string | undefined> {
 	const version = get_version(executable)
 
-	if (!semver.satisfies(version.semver, ">=8")) {
+	if (semver.lt(version.semver, "8.0.0")) {
 		logger.error(
-			`Ren'Py version must be 8.0.0 or newer to use extensions (is ${version.semver})`
+			`Ren'Py version must be 8.0.0 or newer to use extensions (is ${version.display})`
 		)
 		return undefined
 	}
@@ -171,7 +171,7 @@ export async function has_current_rpe({
 	const renpy_version = get_version(executable)
 	logger.debug("renpy version (semver):", renpy_version.semver)
 
-	if (semver.satisfies(renpy_version.semver, "<8.2.0")) return false
+	if (semver.lt(renpy_version.semver, "8.2.0")) return false
 
 	const supports_rpe_py = semver.gte(renpy_version.semver, "8.3.0")
 	const supports_libs = semver.gte(renpy_version.semver, "8.4.0")
@@ -217,8 +217,8 @@ export async function prompt_install_rpe({
 }): Promise<string | undefined> {
 	const version = get_version(executable)
 
-	if (!semver.satisfies(version.semver, ">=8.2.0")) {
-		await prompt_not_rpy8_invalid_configuration(version.semver)
+	if (semver.lt(version.semver, "8.2.0")) {
+		await prompt_not_rpy8_invalid_configuration(version.display)
 		return
 	}
 

@@ -36,7 +36,7 @@ export async function prompt_configure_extensions(
 
 	const renpy_version = get_version(executable)
 
-	if (semver.satisfies(renpy_version.semver, ">=8.2.0")) {
+	if (semver.gte(renpy_version.semver, "8.2.0")) {
 		const selection = await vscode.window.showQuickPick(
 			Object.keys(selection_map),
 			{
