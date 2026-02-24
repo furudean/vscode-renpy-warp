@@ -187,7 +187,7 @@ export class StatusBar {
 
 		if (executable) {
 			const v = get_version(executable)
-			version = v.semver + (v.rest?.endsWith("+nightly") ? v.rest : "")
+			version = v.display
 		}
 
 		if (!sdk_path || !executable || !version) {

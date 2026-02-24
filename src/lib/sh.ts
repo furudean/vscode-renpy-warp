@@ -22,9 +22,11 @@ export function get_version(executable: string[]): {
 	minor: number
 	patch: number
 	rest: string | undefined
+	display: string
+	raw: string
 } {
 	const RENPY_VERSION_REGEX =
-		/^Ren'Py (?<major>\d+)\.(?<minor>\d+)\.(?<patch>\d+)(?:\.(?<rest>.*))?\s*$/
+		/^(?:Ren'Py )?(?<major>\d+)\.(?<minor>\d+)\.(?<patch>\d+)(?:\.(?<rest>.*))?\s*$/
 
 	logger.debug("getting version for", executable)
 
@@ -41,9 +43,9 @@ export function get_version(executable: string[]): {
 
 	// output commonly usually stderr, but we try and capture whichever one has
 	// a valid value just in case
-	const output = version_string.output.find(
-		(o) => typeof o === "string" && o.length > 0
-	) as string | undefined
+	const output = version_string.output
+		.find((o) => typeof o === "string" && o.length > 0)
+		?.trim() as string | undefined
 
 	if (output === undefined) {
 		throw new Error(`bad output from version command ${version_string.output}`)
@@ -56,12 +58,22 @@ export function get_version(executable: string[]): {
 		throw new Error("bad version string: " + output)
 	}
 
+	const semver = rest
+		? `${major}.${minor}.${patch}--${rest}`
+		: `${major}.${minor}.${patch}`
+
+	const display = rest.includes("+")
+		? `${major}.${minor}.${patch}${rest}`
+		: `${major}.${minor}.${patch}`
+
 	return {
-		semver: `${major}.${minor}.${patch}`,
+		semver,
 		major: Number(major),
 		minor: Number(minor),
 		patch: Number(patch),
-		rest
+		rest,
+		display,
+		raw: output
 	}
 }
 

@@ -5,6 +5,7 @@ All notable changes to this project will be documented in this file.
 ## Unreleased
 
 - Revise back button to SDK download when opened from SDK selector
+- Fix certain nightly version strings not being correctly parsed
 
 ## 3.2.2 - 2026-02-20
 
