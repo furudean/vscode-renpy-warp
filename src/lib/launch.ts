@@ -166,6 +166,7 @@ export async function launch_renpy({
 			}
 
 			const process_env: Record<string, string | undefined> = {
+				RENPY_SCREENSHOT_PATTERN: path.join(project_root, "screenshot%04d.png"),
 				...process.env,
 				...(get_config("processEnvironment") as object),
 				...extra_environment,
