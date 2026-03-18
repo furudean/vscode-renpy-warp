@@ -206,6 +206,11 @@
 				"category": "Ren'Py Launch"
 			},
 			{
+				"command": "renpyWarp.forceRecompile",
+				"title": "Force Recompile",
+				"category": "Ren'Py Launch"
+			},
+			{
 				"command": "renpyWarp.resetWorkspaceState",
 				"title": "Reset Workspace State",
 				"category": "Ren'Py Launch"

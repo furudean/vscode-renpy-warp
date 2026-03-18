@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## Unreleased
+
+- Add "Force Recompile" command (`renpyWarp.forceRecompile`) to recompile all `.rpy` scripts
+
 ## 3.4.0 - 2026-03-05
 
 - Set `RENPY_SCREENSHOT_PATTERN` on launched processes if not overwritten by any other environment
