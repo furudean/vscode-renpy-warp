@@ -459,32 +459,32 @@ export function get_commands(
 			}
 		},
 		"renpyWarp.forceRecompile": async () => {
-		try {
-			await launch_renpy({
-				intent: "Force recompiling project...",
-				command: "compile",
-				context,
-				pm,
-				status_bar,
-				wss
-			})
-		} catch (error: unknown) {
-			logger.error(error as Error)
-			vscode.window
-				.showErrorMessage(
-					"Failed to recompile project. Check the output for more details.",
-					"OK",
-					"Open Output"
-				)
-				.then((selection) => {
-					if (selection === "Open Output") {
-						logger.show()
-					}
+			try {
+				await launch_renpy({
+					intent: "Force recompiling project...",
+					command: "compile",
+					context,
+					pm,
+					status_bar,
+					wss
 				})
-		}
-	},
+			} catch (error: unknown) {
+				logger.error(error as Error)
+				vscode.window
+					.showErrorMessage(
+						"Failed to recompile project. Check the output for more details.",
+						"OK",
+						"Open Output"
+					)
+					.then((selection) => {
+						if (selection === "Open Output") {
+							logger.show()
+						}
+					})
+			}
+		},
 
-	"renpyWarp.resetWorkspaceState": async () => {
+		"renpyWarp.resetWorkspaceState": async () => {
 			const keys = context.workspaceState.keys()
 			for (const key of keys) {
 				await context.workspaceState.update(key, undefined)
