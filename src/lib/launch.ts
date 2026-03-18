@@ -1,6 +1,7 @@
 import * as vscode from "vscode"
 import path from "upath"
 import child_process from "child_process"
+import fs from "node:fs/promises"
 
 import { ProcessManager, ManagedProcess, AnyProcess } from "./process"
 import { get_config } from "./config"
@@ -8,7 +9,10 @@ import { get_log_file, get_logger } from "./log"
 import { get_editor_path, get_executable, find_project_root } from "./sh"
 import { has_current_rpe, prompt_install_rpe } from "./rpe"
 import { StatusBar } from "./status_bar"
-import { prompt_projects_in_workspaces } from "./path"
+import {
+	find_projects_in_workspaces,
+	prompt_projects_in_workspaces
+} from "./path"
 import { prompt_configure_extensions } from "./onboard"
 import { WarpSocketService } from "./socket"
 import TailFile from "@logdna/tail-file/lib/tail-file"
@@ -240,6 +244,28 @@ export async function launch_renpy({
 	}
 }
 
+async function register_workspace_projects_with_launcher(
+	projects: string[],
+	sdk_path: string
+): Promise<void> {
+	const projects_txt = path.join(sdk_path, "projects.txt")
+
+	const file = await fs.readFile(projects_txt, "utf-8").catch(() => "")
+	const current_projects = file.split("\n")
+	const projects_not_in_txt = projects.filter(
+		(p) => !current_projects.includes(p)
+	)
+
+	if (projects_not_in_txt.length) {
+		logger.info("writing projects.txt to:", projects_txt)
+		const prefix = file.length > 0 && !file.endsWith("\n") ? "\n" : ""
+		await fs.appendFile(
+			projects_txt,
+			prefix + projects_not_in_txt.join("\n") + "\n"
+		)
+	}
+}
+
 export async function launch_sdk({
 	sdk_path,
 	executable
@@ -260,6 +286,13 @@ export async function launch_sdk({
 					...(get_config("processEnvironment") as object),
 					// see: https://www.renpy.org/doc/html/editor.html
 					RENPY_EDIT_PY: await get_editor_path(sdk_path)
+				}
+
+				// write workspace projects to projects.txt in the ren'py projects
+				// directory so they show up in the launcher alongside existing projects
+				const projects = await find_projects_in_workspaces()
+				if (projects.length > 0) {
+					await register_workspace_projects_with_launcher(projects, sdk_path)
 				}
 
 				const { file_handle, log_file } = await get_log_file(
