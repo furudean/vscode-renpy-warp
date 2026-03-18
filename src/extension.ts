@@ -3,7 +3,7 @@ import * as vscode from "vscode"
 import { ProcessManager } from "./lib/process/manager"
 import { FollowCursorService } from "./lib/follow_cursor"
 import { get_logger } from "./lib/log"
-import { get_config, get_configuration_object, set_config } from "./lib/config"
+import { get_config, get_configuration_object, init_config_cache, set_config } from "./lib/config"
 import { StatusBar } from "./lib/status_bar"
 import { get_message_handler, WarpSocketService } from "./lib/socket"
 import { register_commands } from "./lib/commands"
@@ -27,6 +27,8 @@ export function activate(context: vscode.ExtensionContext) {
 	) {
 		set_config("renpyExtensionsEnabled", undefined, true)
 	}
+
+	init_config_cache(context)
 
 	const status_bar = new StatusBar()
 	const follow_cursor = new FollowCursorService({ status_bar })

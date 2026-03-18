@@ -25,7 +25,7 @@ export class ProcessManager {
 
 		this.emit("attach", process)
 
-		process.on("exit", () => {
+		process.once("exit", () => {
 			this.processes.delete(id)
 			this.emit("exit", process)
 		})

@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file.
 
 - Add "Force Recompile" command (`renpyWarp.forceRecompile`) to recompile all `.rpy` scripts
 - Write workspace projects to `projects.txt` in the Ren'Py SDK directory before opening the launcher, so they appear alongside existing projects
+- Optimization pass
 
 ## 3.4.0 - 2026-03-05
 

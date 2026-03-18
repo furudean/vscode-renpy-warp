@@ -18,17 +18,20 @@ interface SyncEditorWithRenpyOptions {
 	line: number
 	/** skip redundancy checks */
 	force?: boolean
+	/** pid of the renpy process, used for deduplication */
+	pid?: number
 }
 
 export async function sync_editor_with_renpy({
 	path,
 	relative_path,
 	line,
-	force
+	force,
+	pid = 0
 }: SyncEditorWithRenpyOptions): Promise<void> {
 	const warp_spec = `${path}:${line + 1}`
-	if (!force && warp_spec === last_warps.get(process.pid)) return // no change
-	last_warps.set(process.pid, warp_spec)
+	if (!force && warp_spec === last_warps.get(pid)) return // no change
+	last_warps.set(pid, warp_spec)
 
 	const doc = await vscode.workspace.openTextDocument(path)
 	const editor = await vscode.window.showTextDocument(doc)
@@ -72,8 +75,8 @@ export async function warp_renpy_to_cursor(
 
 	const warp_spec = `${filename_relative}:${line + 1}`
 
-	if (warp_spec === last_warps.get(process.pid)) return // no change
-	last_warps.set(process.pid, warp_spec)
+	if (warp_spec === last_warps.get(rp.pid)) return // no change
+	last_warps.set(rp.pid, warp_spec)
 
 	if (!rp) {
 		logger.warn("no renpy process found")
@@ -101,6 +104,10 @@ export class FollowCursorService {
 
 		this.active_process = process
 		this.enabled = true
+
+		process.once("exit", () => {
+			last_warps.delete(process.pid)
+		})
 
 		this.text_editor_handle?.dispose()
 		this.text_editor_handle = vscode.window.onDidChangeTextEditorSelection(

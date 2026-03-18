@@ -77,7 +77,8 @@ export function get_message_handler(follow_cursor: FollowCursorService) {
 					await sync_editor_with_renpy({
 						path: message.path as string,
 						relative_path: message.relative_path as string,
-						line: (message.line as number) - 1
+						line: (message.line as number) - 1,
+						pid: process.pid
 					})
 				}
 			}
@@ -136,6 +137,7 @@ export class WarpSocketService {
 			this.status_bar.notify(`$(server-process) Socket server :${port} closed`)
 
 			this.deny_processes.clear()
+			this.allowed_processes.clear()
 			this.pm.clear()
 			this.status_bar.update(() => ({
 				socket_server_status: "stopped",

@@ -21,6 +21,7 @@ export class DecorationService {
 	private subscriptions: vscode.Disposable[]
 	private enabled: boolean
 	private decoration: vscode.TextEditorDecorationType
+	private update_timeout: ReturnType<typeof setTimeout> | undefined
 
 	constructor({ context }: { context: vscode.ExtensionContext }) {
 		this.enabled = get_config("showEditorDecorations") as boolean
@@ -39,20 +40,27 @@ export class DecorationService {
 		this.subscriptions = [
 			this.decoration,
 			vscode.window.onDidChangeActiveTextEditor(() => {
-				this.update_decorations().catch(logger.error)
+				this.schedule_update()
 			}),
 			vscode.workspace.onDidChangeConfiguration((e) => {
 				if (e.affectsConfiguration("renpyWarp.showEditorDecorations")) {
 					this.enabled = get_config("showEditorDecorations") as boolean
-					this.update_decorations().catch(logger.error)
+					this.schedule_update()
 				}
 			}),
 			vscode.workspace.onDidChangeTextDocument((e) => {
 				if (e.document.uri.scheme === "file" && e.contentChanges.length) {
-					this.update_decorations().catch(logger.error)
+					this.schedule_update()
 				}
 			})
 		]
+	}
+
+	private schedule_update() {
+		clearTimeout(this.update_timeout)
+		this.update_timeout = setTimeout(() => {
+			this.update_decorations().catch(logger.error)
+		}, 150)
 	}
 
 	private async update_decorations() {

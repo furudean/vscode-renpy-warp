@@ -2,12 +2,29 @@ import * as vscode from "vscode"
 
 import { name as extension_name } from "../../package.json"
 
+const config_cache = new Map<string, unknown>()
+
+export function init_config_cache(context: vscode.ExtensionContext) {
+	context.subscriptions.push(
+		vscode.workspace.onDidChangeConfiguration((e) => {
+			if (e.affectsConfiguration(extension_name)) {
+				config_cache.clear()
+			}
+		})
+	)
+}
+
 export function get_configuration_object(): vscode.WorkspaceConfiguration {
 	return vscode.workspace.getConfiguration(extension_name)
 }
 
 export function get_config(key: string): unknown {
-	return vscode.workspace.getConfiguration(extension_name).get(key)
+	if (config_cache.has(key)) {
+		return config_cache.get(key)
+	}
+	const value = vscode.workspace.getConfiguration(extension_name).get(key)
+	config_cache.set(key, value)
+	return value
 }
 
 export async function set_config(
@@ -15,6 +32,7 @@ export async function set_config(
 	value: unknown,
 	workspace = false
 ): Promise<void> {
+	config_cache.clear()
 	return vscode.workspace
 		.getConfiguration(extension_name)
 		.update(
