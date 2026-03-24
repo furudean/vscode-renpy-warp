@@ -78,7 +78,7 @@
 		"adm-zip": "^0.5.14",
 		"env-paths": "^4.0.0",
 		"extract-zip": "^2.0.1",
-		"find-process": "^2.0.0",
+		"find-process": "^2.1.0",
 		"get-port": "^7.1.0",
 		"jsdom": "^28.1.0",
 		"memoize": "^10.0.0",
